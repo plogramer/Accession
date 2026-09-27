@@ -24,6 +24,8 @@ eDiscovery vendors receive data from many sources. Each delivery ("media") is as
 
 The application is **read-only toward the evidence**: it must never modify source files or their metadata.
 
+**Tagline** (shown on the Start window and About screen): *Inventory, hash, and report every media you receive.*
+
 ## 2. Glossary
 
 | Term | Definition |
@@ -73,6 +75,7 @@ The application is **read-only toward the evidence**: it must never modify sourc
 | TECH-04 | Database access via `Microsoft.Data.Sqlite`. Recommended helpers: Dapper (queries), CommunityToolkit.Mvvm (MVVM), a streaming Excel writer (MiniExcel or Open XML SDK `OpenXmlWriter`), a WPF chart library (LiveCharts2 or ScottPlot), Serilog (application log). Final library choice is a design decision; all must have licences allowing commercial use. |
 | TECH-05 | Application settings (per Windows user) stored in `%APPDATA%\Accession\settings.json`. Application log in `%LOCALAPPDATA%\Accession\logs\`. |
 | TECH-06 | The application must support paths longer than 260 characters (UNC and local) – long paths are normal in eDiscovery data. |
+| TECH-07 | Solution `Accession.sln` with projects `Accession.App` (WPF UI), `Accession.Core` (services, scanning, models – no UI references), `Accession.Data` (SQLite access) and `Accession.Tests`. Root namespace `Accession`. The repository name stays `minventory`. |
 
 ## 5. Functional Requirements
 
@@ -530,7 +533,8 @@ Start Window
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│  Accession                                                  │
+│  ACCESSION                                                   │
+│  Inventory, hash, and report every media you receive.        │
 │                                                              │
 │   [ + New Inventory ]     [ Open Inventory... ]              │
 │                                                              │
@@ -592,7 +596,7 @@ Menus:
 - **Media**: Add, Scan, Rescan, Resume, Delete, Open in Explorer.
 - **Scan**: Pause, Resume, Cancel, Retry Failed Files.
 - **Export**: Export to Excel.
-- **Help**: About (version, evidence-handling notes).
+- **Help**: About (app name, tagline, version, evidence-handling notes).
 
 ### 8.5 Dashboard
 
@@ -774,7 +778,7 @@ Fields from section 5.11 grouped as **Display** (size unit, time zone), **Scanni
 | Q7 | Last-access time | Best-effort preservation (SCN-42); captured value always taken before hashing. |
 | Q8 | Root-level exclusions | `$RECYCLE.BIN`, `System Volume Information` ignored during discovery only. |
 | Q9 | Chat category | Chat exports (Slack/Teams) are usually JSON/HTML and will be classified under Text/Web by extension; only dedicated formats such as `rsmf` map to Chat. |
-| Q10 | App name | "Accession" |
+| Q10 | App name | **Decided:** "Accession", tagline *"Inventory, hash, and report every media you receive."* |
 
 ---
 
