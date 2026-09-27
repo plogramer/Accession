@@ -2,7 +2,7 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
-using Accession.App.ViewModels.Browsing;
+using Accession.Presentation.ViewModels.Browsing;
 using Accession.Core.Settings;
 using Accession.Data.Browsing;
 

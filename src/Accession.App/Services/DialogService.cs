@@ -1,12 +1,14 @@
 using System.Windows;
-using Accession.App.Mvvm;
-using Accession.App.ViewModels;
 using Accession.App.Views;
+using Accession.Presentation.Mvvm;
+using Accession.Presentation.Platform;
+using Accession.Presentation.Services;
+using Accession.Presentation.ViewModels;
 using Microsoft.Win32;
 
 namespace Accession.App.Services;
 
-public sealed class DialogService : IDialogService
+public sealed class DialogService(IDesktop desktop) : IDialogService
 {
     public bool? ShowDialog(DialogViewModelBase viewModel)
     {
@@ -28,7 +30,7 @@ public sealed class DialogService : IDialogService
         ShowMessage(title, message, MessageBoxButton.OK, MessageBoxImage.Warning);
 
     public void ShowError(string title, string message, Exception? exception = null) =>
-        ShowDialog(new ErrorDialogViewModel(title, message, exception));
+        ShowDialog(new ErrorDialogViewModel(title, message, exception, desktop));
 
     public bool Confirm(string title, string message) =>
         ShowMessage(title, message, MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes;

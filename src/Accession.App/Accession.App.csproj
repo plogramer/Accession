@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Accession.Core\Accession.Core.csproj" />
     <ProjectReference Include="..\Accession.Data\Accession.Data.csproj" />
+    <ProjectReference Include="..\Accession.Presentation\Accession.Presentation.csproj" />
     <ProjectReference Include="..\Accession.UI\Accession.UI.csproj" />
   </ItemGroup>
 

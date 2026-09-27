@@ -1,5 +1,5 @@
 using System.Windows.Controls;
-using Accession.App.ViewModels.MediaScreen;
+using Accession.Presentation.ViewModels.MediaScreen;
 
 namespace Accession.App.Views;
 

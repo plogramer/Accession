@@ -1,11 +1,11 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:vm="clr-namespace:Accession.App.ViewModels"
-                    xmlns:shell="clr-namespace:Accession.App.ViewModels.Shell"
-                    xmlns:media="clr-namespace:Accession.App.ViewModels.MediaScreen"
-                    xmlns:scan="clr-namespace:Accession.App.ViewModels.Scanning"
-                    xmlns:dash="clr-namespace:Accession.App.ViewModels.Dashboard"
-                    xmlns:browse="clr-namespace:Accession.App.ViewModels.Browsing"
+                    xmlns:vm="clr-namespace:Accession.Presentation.ViewModels;assembly=Accession.Presentation"
+                    xmlns:shell="clr-namespace:Accession.Presentation.ViewModels.Shell;assembly=Accession.Presentation"
+                    xmlns:media="clr-namespace:Accession.Presentation.ViewModels.MediaScreen;assembly=Accession.Presentation"
+                    xmlns:scan="clr-namespace:Accession.Presentation.ViewModels.Scanning;assembly=Accession.Presentation"
+                    xmlns:dash="clr-namespace:Accession.Presentation.ViewModels.Dashboard;assembly=Accession.Presentation"
+                    xmlns:browse="clr-namespace:Accession.Presentation.ViewModels.Browsing;assembly=Accession.Presentation"
                     xmlns:views="clr-namespace:Accession.App.Views">
     <!-- Maps each view model to its view. The navigation and dialog services rely on these. -->
 

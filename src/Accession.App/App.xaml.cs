@@ -1,13 +1,16 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Threading;
+using Accession.App.Platform;
 using Accession.App.Services;
-using Accession.App.ViewModels;
+using Accession.Presentation.Platform;
+using Accession.Presentation.Services;
+using Accession.Presentation.ViewModels;
 using Accession.Core.Runtime;
 using Accession.Core.Settings;
 using Accession.Core.Threading;
-using Accession.App.ViewModels.MediaScreen;
-using Accession.App.ViewModels.Shell;
+using Accession.Presentation.ViewModels.MediaScreen;
+using Accession.Presentation.ViewModels.Shell;
 using Accession.Data.MediaManagement;
 using Accession.Data.Sessions;
 using Microsoft.Extensions.DependencyInjection;
@@ -120,6 +123,10 @@ public partial class App : Application
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), AppPaths.AppFolderName, "Queries", "Dashboard"),
             sp.GetRequiredService<ILogger<Accession.Data.Queries.DashboardQueries>>()));
 
+        // Platform
+        builder.Services.AddSingleton<IUiDispatcher, WpfUiDispatcher>();
+        builder.Services.AddSingleton<IDesktop, WindowsDesktop>();
+
         // UI services
         builder.Services.AddSingleton<INavigationService, NavigationService>();
         builder.Services.AddSingleton<IDialogService, DialogService>();
@@ -143,12 +150,12 @@ public partial class App : Application
         builder.Services.AddTransient<InventoryShellViewModel>();
         builder.Services.AddTransient<WebShellViewModel>();
         builder.Services.AddTransient<MediaListViewModel>();
-        builder.Services.AddTransient<Accession.App.ViewModels.Dashboard.DashboardViewModel>();
-        builder.Services.AddTransient<Accession.App.ViewModels.Browsing.FileBrowserViewModel>();
-        builder.Services.AddTransient<Accession.App.ViewModels.Browsing.CategoriesViewModel>();
-        builder.Services.AddTransient<Accession.App.ViewModels.Browsing.AuditLogViewModel>();
-        builder.Services.AddTransient<Accession.App.ViewModels.Scanning.ScanQueueViewModel>();
-        builder.Services.AddTransient<Accession.App.ViewModels.Scanning.ErrorsViewModel>();
+        builder.Services.AddTransient<Accession.Presentation.ViewModels.Dashboard.DashboardViewModel>();
+        builder.Services.AddTransient<Accession.Presentation.ViewModels.Browsing.FileBrowserViewModel>();
+        builder.Services.AddTransient<Accession.Presentation.ViewModels.Browsing.CategoriesViewModel>();
+        builder.Services.AddTransient<Accession.Presentation.ViewModels.Browsing.AuditLogViewModel>();
+        builder.Services.AddTransient<Accession.Presentation.ViewModels.Scanning.ScanQueueViewModel>();
+        builder.Services.AddTransient<Accession.Presentation.ViewModels.Scanning.ErrorsViewModel>();
         AddDialog<NewInventoryViewModel>(builder.Services);
         AddDialog<SettingsViewModel>(builder.Services);
         AddDialog<InventoryPropertiesViewModel>(builder.Services);

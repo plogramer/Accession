@@ -1,6 +1,7 @@
 using System.Windows;
 using Accession.App.Services;
-using Accession.App.ViewModels;
+using Accession.Presentation.Services;
+using Accession.Presentation.ViewModels;
 
 namespace Accession.App;
 

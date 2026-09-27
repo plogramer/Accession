@@ -17,6 +17,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Accession.Tests", "tests\Ac
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Accession.UI", "src\Accession.UI\Accession.UI.csproj", "{AF2EF62A-2047-42AF-A134-C9683A3C8738}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Accession.Presentation", "src\Accession.Presentation\Accession.Presentation.csproj", "{F2287513-12C5-4454-B68D-40AF68F748EF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -87,6 +89,18 @@ Global
 		{AF2EF62A-2047-42AF-A134-C9683A3C8738}.Release|x64.Build.0 = Release|Any CPU
 		{AF2EF62A-2047-42AF-A134-C9683A3C8738}.Release|x86.ActiveCfg = Release|Any CPU
 		{AF2EF62A-2047-42AF-A134-C9683A3C8738}.Release|x86.Build.0 = Release|Any CPU
+		{F2287513-12C5-4454-B68D-40AF68F748EF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F2287513-12C5-4454-B68D-40AF68F748EF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F2287513-12C5-4454-B68D-40AF68F748EF}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{F2287513-12C5-4454-B68D-40AF68F748EF}.Debug|x64.Build.0 = Debug|Any CPU
+		{F2287513-12C5-4454-B68D-40AF68F748EF}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{F2287513-12C5-4454-B68D-40AF68F748EF}.Debug|x86.Build.0 = Debug|Any CPU
+		{F2287513-12C5-4454-B68D-40AF68F748EF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F2287513-12C5-4454-B68D-40AF68F748EF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F2287513-12C5-4454-B68D-40AF68F748EF}.Release|x64.ActiveCfg = Release|Any CPU
+		{F2287513-12C5-4454-B68D-40AF68F748EF}.Release|x64.Build.0 = Release|Any CPU
+		{F2287513-12C5-4454-B68D-40AF68F748EF}.Release|x86.ActiveCfg = Release|Any CPU
+		{F2287513-12C5-4454-B68D-40AF68F748EF}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -97,5 +111,6 @@ Global
 		{CCE33EA3-CA66-469B-A19E-C69DCAF77ECC} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{232AA45D-122C-495B-81ED-0C59CEB2D4D4} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{AF2EF62A-2047-42AF-A134-C9683A3C8738} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{F2287513-12C5-4454-B68D-40AF68F748EF} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal

@@ -1,5 +1,5 @@
 using System.Windows;
-using Accession.App.Mvvm;
+using Accession.Presentation.Mvvm;
 
 namespace Accession.App.Views;
 

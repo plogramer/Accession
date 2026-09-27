@@ -1,6 +1,6 @@
 using System.Windows.Controls;
 using System.Windows.Input;
-using Accession.App.ViewModels.Browsing;
+using Accession.Presentation.ViewModels.Browsing;
 
 namespace Accession.App.Views;
 
