@@ -4,7 +4,7 @@ using Accession.Core.Settings;
 using MediaModel = Accession.Core.Model.Media;
 using MediaStatus = Accession.Core.Model.MediaStatus;
 
-namespace Accession.Presentation.ViewModels.MediaScreen;
+namespace Accession.UI.MediaScreen;
 
 /// <summary>One row of the Media screen grid, with display-ready values.</summary>
 public sealed class MediaRowViewModel

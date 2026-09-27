@@ -1,14 +1,19 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
+using System.Windows.Input;
 using Accession.Core.Formatting;
 using Accession.Core.Model;
+using Accession.Core.Scanning;
 using Accession.Core.Settings;
+using Accession.Data.Browsing;
 using Accession.Data.MediaManagement;
 using Accession.Data.Repositories;
+using Accession.Data.Scanning;
 using Accession.Presentation.Mvvm;
 using Accession.Presentation.Platform;
 using Accession.Presentation.Services;
+using Accession.UI.MediaScreen;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
@@ -16,7 +21,7 @@ using Microsoft.Extensions.Logging;
 namespace Accession.Presentation.ViewModels.MediaScreen;
 
 /// <summary>Media screen (requirements 8.6): registered media, details and scan history.</summary>
-public sealed partial class MediaListViewModel : ViewModelBase, IDisposable
+public sealed partial class MediaListViewModel : ViewModelBase, IMediaModel, IDisposable
 {
     private readonly IUiDispatcher _ui;
     private readonly InventoryHost _host;
@@ -24,10 +29,13 @@ public sealed partial class MediaListViewModel : ViewModelBase, IDisposable
     private readonly ISettingsService _settings;
     private readonly ILogger<MediaListViewModel> _logger;
     private readonly ScanHost _scans;
+    private readonly FileBrowserNavigator _navigator;
     private IReadOnlyList<MediaRowViewModel> _selectedRows = [];
 
-    public MediaListViewModel(InventoryHost host, MediaWorkflows workflows, ScanHost scans, ISettingsService settings, ILogger<MediaListViewModel> logger, IUiDispatcher ui)
+    public MediaListViewModel(InventoryHost host, MediaWorkflows workflows, ScanHost scans, ISettingsService settings, ILogger<MediaListViewModel> logger, IUiDispatcher ui,
+        FileBrowserNavigator navigator)
     {
+        _navigator = navigator;
         _ui = ui;
         _host = host;
         _scans = scans;
@@ -46,7 +54,7 @@ public sealed partial class MediaListViewModel : ViewModelBase, IDisposable
     public ObservableCollection<ScanHistoryRow> ScanHistory { get; } = [];
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(DeleteCommand), nameof(OpenInExplorerCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DeleteCommand), nameof(OpenInExplorerCommand), nameof(OpenFilesCommand))]
     public partial MediaRowViewModel? SelectedRow { get; set; }
 
     [ObservableProperty]
@@ -58,6 +66,76 @@ public sealed partial class MediaListViewModel : ViewModelBase, IDisposable
     public bool HasSelection => SelectedRow is not null;
 
     public bool HasRows => Rows.Count > 0;
+
+    public bool IsReadOnly => _host.IsReadOnly;
+
+    public long? ScanningMediaKey => _scans.Current?.MediaKey;
+
+    public string LiveProgressText
+    {
+        get
+        {
+            if (_scans.Current is not { } current)
+            {
+                return string.Empty;
+            }
+
+            if (_scans.State == CoordinatorState.Paused)
+            {
+                return "Paused";
+            }
+
+            if (_scans.Progress is not { } p || p.MediaKey != current.MediaKey)
+            {
+                return "Starting…";
+            }
+
+            var culture = CultureInfo.CurrentCulture;
+            if (p.Phase == ScanPhase.Enumerating)
+            {
+                return $"Listing: {p.FilesFound.ToString("N0", culture)} files in {p.FoldersFound.ToString("N0", culture)} folders";
+            }
+
+            var unit = _settings.Current.SizeUnit;
+            var parts = new List<string> { $"Hashing {p.FilesHashed.ToString("N0", culture)} of {p.FilesFound.ToString("N0", culture)} files" };
+            if (p.BytesPerSecond > 0)
+            {
+                parts.Add(SizeFormatter.Format((long)p.BytesPerSecond, unit) + "/s");
+            }
+
+            if (p.Eta is { } eta && eta > TimeSpan.Zero)
+            {
+                parts.Add(eta.TotalMinutes < 1 ? "under a minute left" : $"{Math.Ceiling(eta.TotalMinutes).ToString("N0", culture)} min left");
+            }
+
+            return string.Join(" · ", parts);
+        }
+    }
+
+    public double? LiveProgressRatio =>
+        _scans.Current is { } current && _scans.Progress is { Phase: ScanPhase.Hashing or ScanPhase.Finalizing } p && p.MediaKey == current.MediaKey
+            ? p.PercentByBytes / 100
+            : null;
+
+    ICommand IMediaModel.AddMediaCommand => AddMediaCommand;
+
+    ICommand IMediaModel.DiscoverCommand => DiscoverCommand;
+
+    ICommand IMediaModel.DeleteCommand => DeleteCommand;
+
+    ICommand IMediaModel.ScanCommand => ScanCommand;
+
+    ICommand IMediaModel.RescanCommand => RescanCommand;
+
+    ICommand IMediaModel.ResumeCommand => ResumeCommand;
+
+    ICommand IMediaModel.RetryFailedCommand => RetryFailedCommand;
+
+    ICommand IMediaModel.OpenInExplorerCommand => OpenInExplorerCommand;
+
+    ICommand IMediaModel.OpenFilesCommand => OpenFilesCommand;
+
+    ICommand IMediaModel.RefreshCommand => RefreshCommand;
 
     /// <summary>Raised after the list was reloaded (the shell updates its badge).</summary>
     public event EventHandler? RowsReloaded;
@@ -104,6 +182,16 @@ public sealed partial class MediaListViewModel : ViewModelBase, IDisposable
         if (SelectedRow is { } row)
         {
             _workflows.OpenInExplorer(row.Media);
+        }
+    }
+
+    /// <summary>Opens the Files screen for the selected media.</summary>
+    [RelayCommand(CanExecute = nameof(HasSelection))]
+    private void OpenFiles()
+    {
+        if (SelectedRow is { } row)
+        {
+            _navigator.ShowFiles(new FileFilter { MediaKey = row.Media.MediaKey });
         }
     }
 
@@ -215,6 +303,10 @@ public sealed partial class MediaListViewModel : ViewModelBase, IDisposable
 
     private void OnHostChanged(object? sender, PropertyChangedEventArgs e)
     {
+        OnPropertyChanged(nameof(ScanningMediaKey));
+        OnPropertyChanged(nameof(LiveProgressText));
+        OnPropertyChanged(nameof(LiveProgressRatio));
+        OnPropertyChanged(nameof(IsReadOnly));
         AddMediaCommand.NotifyCanExecuteChanged();
         DiscoverCommand.NotifyCanExecuteChanged();
         NotifyScanCommands();

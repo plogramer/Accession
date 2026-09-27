@@ -14,6 +14,7 @@ using Accession.UI.Dashboard;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using Accession.UI.MediaScreen;
 
 namespace Accession.Presentation.ViewModels.Dashboard;
 

@@ -3,6 +3,7 @@ using System.Windows.Input;
 using Accession.UI.App;
 using Accession.UI.Components;
 using Accession.UI.Dashboard;
+using Accession.UI.MediaScreen;
 using Accession.UI.Shell;
 using Accession.UI.Start;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -130,14 +131,14 @@ internal sealed class FakeDashboard : ObservableObject, IDashboardModel
 
 internal sealed partial class FakeShell : ObservableObject, IShellModel
 {
-    public FakeShell(FakeDashboard dashboard, bool scanning = false, bool readOnly = false)
+    public FakeShell(FakeDashboard dashboard, bool scanning = false, bool readOnly = false, IMediaModel? media = null)
     {
         IsScanActive = scanning;
         IsReadOnly = readOnly;
         NavItems =
         [
             new ShellNavItem("Dashboard", "dashboard", "Overview", dashboard),
-            new ShellNavItem("Media", "media", "Inventory"),
+            new ShellNavItem("Media", "media", "Inventory", media) { Badge = media is null ? string.Empty : "5" },
             new ShellNavItem("Files", "files", "Inventory"),
             new ShellNavItem("Categories", "categories", "Inventory"),
             new ShellNavItem("Scan Queue", "queue", "Scanning") { Badge = scanning ? "2" : string.Empty },

@@ -94,7 +94,7 @@
                     {
                         <tr class="clickable" @onclick="() => Run(Model.OpenMediaCommand, row)">
                             <td class="mono strong">@row.MediaId</td>
-                            <td><span class="status @StatusClass(row.Status)">@row.Status</span></td>
+                            <td><span class="status @StatusStyles.ForMedia(row.Status)">@row.Status</span></td>
                             <td class="num">@row.Folders</td>
                             <td class="num">@row.Files</td>
                             <td class="num">@row.Size</td>
@@ -299,14 +299,4 @@
 
     private static string Percent(double ratio) =>
         (Math.Clamp(ratio, 0, 1) * 100).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + "%";
-
-    private static string StatusClass(string status) => status switch
-    {
-        "Completed" => "is-success",
-        "Completed with errors" or "Incomplete" => "is-warning",
-        "Missing" => "is-danger",
-        "Scanning" or "Hashing" or "Queued" => "is-active",
-        "Paused" => "is-paused",
-        _ => "is-neutral",
-    };
 }

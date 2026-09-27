@@ -1,0 +1,269 @@
+@inherits ObservingComponentBase
+
+<div class="page page-wide">
+    <div class="page-header">
+        <div>
+            <h2>Media</h2>
+            <p class="muted">@Summary</p>
+        </div>
+        <div class="page-actions">
+            <button class="icon-btn icon-btn-lg" title="Refresh" @onclick="() => Run(Model.RefreshCommand)"><Icon Name="refresh" /></button>
+            <button class="btn" disabled="@Disabled(Model.DiscoverCommand)" @onclick="() => Run(Model.DiscoverCommand)"><Icon Name="discover" Size="16" /> Discover</button>
+            <button class="btn btn-primary" disabled="@Disabled(Model.AddMediaCommand)" @onclick="() => Run(Model.AddMediaCommand)"><Icon Name="plus" Size="16" /> Add media</button>
+        </div>
+    </div>
+
+    @if (Model.Rows.Count == 0)
+    {
+        <EmptyState Icon="media" Title="No media yet">
+            <p>Add a media folder by its Media ID, or let Accession discover the folders under the root.</p>
+            <div class="empty-actions">
+                <button class="btn" disabled="@Disabled(Model.DiscoverCommand)" @onclick="() => Run(Model.DiscoverCommand)"><Icon Name="discover" Size="16" /> Discover</button>
+                <button class="btn btn-primary" disabled="@Disabled(Model.AddMediaCommand)" @onclick="() => Run(Model.AddMediaCommand)"><Icon Name="plus" Size="16" /> Add media</button>
+            </div>
+        </EmptyState>
+    }
+    else
+    {
+        <div class="master-detail @(Model.SelectedRow is null ? null : "has-detail")">
+            <section class="card">
+                <div class="card-header">
+                    @if (_checked.Count > 0)
+                    {
+                        <span class="strong">@_checked.Count selected</span>
+                        <div class="bulk-actions">
+                            <ScanButtons Model="Model" />
+                        </div>
+                        <button class="link-btn" @onclick="ClearChecked">Clear</button>
+                    }
+                    else
+                    {
+                        <h3>All media</h3>
+                        <span class="muted small">Tick media to scan several at once</span>
+                        <button class="link-btn card-header-end" @onclick="CheckAll">Select all</button>
+                    }
+                </div>
+                <DataTable TItem="MediaRowViewModel" Items="Sorted" SortKey="@_sortKey" SortDescending="_descending" OnSort="Sort"
+                           SelectedItem="Model.SelectedRow" SelectedItemChanged="Select" RowClass="RowClass" MaxHeight="calc(100vh - 290px)">
+                    <Columns>
+                        <Column TItem="MediaRowViewModel" Title="" Width="44px" Class="check-cell">
+                            <input type="checkbox" aria-label="Select @context.MediaId" checked="@_checked.Contains(context.Media.MediaKey)"
+                                   @onclick:stopPropagation="true" @onchange="e => Check(context, e.Value is true)" />
+                        </Column>
+                        <Column TItem="MediaRowViewModel" Title="Media ID" SortKey="id" Class="mono strong">@context.MediaId</Column>
+                        <Column TItem="MediaRowViewModel" Title="Status" SortKey="status">
+                            <span class="status @StatusStyles.ForMedia(context.Status)">@context.Status</span>
+                        </Column>
+                        <Column TItem="MediaRowViewModel" Title="Folders" SortKey="folders" Class="num col-optional">@context.Folders</Column>
+                        <Column TItem="MediaRowViewModel" Title="Files" SortKey="files" Class="num">@context.Files</Column>
+                        <Column TItem="MediaRowViewModel" Title="Size" SortKey="size" Class="num">@context.Size</Column>
+                        <Column TItem="MediaRowViewModel" Title="Hashed">
+                            @if (IsScanning(context) && Model.LiveProgressRatio is { } ratio)
+                            {
+                                <div class="inline-progress">
+                                    <div class="progress small"><div class="progress-bar is-live" style="width:@Percent(ratio)"></div></div>
+                                    <span class="small">@Percent(ratio)</span>
+                                </div>
+                            }
+                            else if (IsScanning(context))
+                            {
+                                <span class="muted small">counting…</span>
+                            }
+                            else
+                            {
+                                <div class="inline-progress">
+                                    <div class="progress small"><div class="progress-bar" style="width:@HashedWidth(context)"></div></div>
+                                    <span class="small">@context.Hashed</span>
+                                </div>
+                            }
+                        </Column>
+                        <Column TItem="MediaRowViewModel" Title="Errors" SortKey="errors" Class="num">
+                            <span class="@(context.HasErrors ? "text-danger" : null)">@context.Errors</span>
+                        </Column>
+                        <Column TItem="MediaRowViewModel" Title="Last scanned" SortKey="scanned" Class="muted col-optional">@context.LastScanned</Column>
+                    </Columns>
+                </DataTable>
+            </section>
+
+            @if (Model.SelectedRow is { } row)
+            {
+                <aside class="card detail">
+                    <div class="detail-header">
+                        <div>
+                            <div class="detail-title mono">@row.MediaId</div>
+                            <span class="status @StatusStyles.ForMedia(row.Status)">@row.Status</span>
+                        </div>
+                        <button class="icon-btn" title="Close details" @onclick="() => Model.SelectedRow = null"><Icon Name="x" /></button>
+                    </div>
+
+                    <div class="detail-path">
+                        <code title="@Model.DetailsPath">@Model.DetailsPath</code>
+                        <button class="icon-btn" title="Open in Explorer" disabled="@Disabled(Model.OpenInExplorerCommand)" @onclick="() => Run(Model.OpenInExplorerCommand)"><Icon Name="external" Size="15" /></button>
+                    </div>
+                    <div class="muted small detail-added">@Model.DetailsAdded</div>
+
+                    @if (row.IsMissing)
+                    {
+                        <div class="banner is-danger"><Icon Name="errors" /><span>The media folder was not found under the root. Its inventory data is kept; rescan when the folder is back.</span></div>
+                    }
+
+                    @if (IsScanning(row))
+                    {
+                        <div class="live-box">
+                            <div class="live-head"><span class="pulse"></span> Scan running</div>
+                            <div class="small">@Model.LiveProgressText</div>
+                            <div class="progress @(Model.LiveProgressRatio is null ? "is-indeterminate" : null)">
+                                <div class="progress-bar" style="width:@(Model.LiveProgressRatio is { } r ? Percent(r) : "35%")"></div>
+                            </div>
+                        </div>
+                    }
+
+                    <div class="stat-grid">
+                        <div><span class="stat-label">Files</span><span class="stat-value">@row.Files</span></div>
+                        <div><span class="stat-label">Folders</span><span class="stat-value">@row.Folders</span></div>
+                        <div><span class="stat-label">Size</span><span class="stat-value">@row.Size</span></div>
+                        <div><span class="stat-label">Hashed</span><span class="stat-value">@row.Hashed</span></div>
+                        <div><span class="stat-label">Errors</span><span class="stat-value @(row.HasErrors ? "text-danger" : null)">@row.Errors</span></div>
+                        <div><span class="stat-label">Scans</span><span class="stat-value">@row.Scans</span></div>
+                    </div>
+
+                    <div class="detail-actions">
+                        <button class="btn btn-primary" disabled="@Disabled(Model.OpenFilesCommand)" @onclick="() => Run(Model.OpenFilesCommand)"><Icon Name="files" Size="16" /> Browse files</button>
+                        @if (_checked.Count == 0)
+                        {
+                            <ScanButtons Model="Model" />
+                        }
+                    </div>
+
+                    <h4 class="detail-section">Scan history</h4>
+                    <DataTable TItem="ScanHistoryRow" Items="Model.ScanHistory" MaxHeight="260px" Class="table-compact" EmptyText="Not scanned yet.">
+                        <Columns>
+                            <Column TItem="ScanHistoryRow" Title="Type">@context.Type</Column>
+                            <Column TItem="ScanHistoryRow" Title="Started" Class="muted"><span title="@context.Files files · by @context.User · ended @context.Ended">@context.Started</span></Column>
+                            <Column TItem="ScanHistoryRow" Title="Outcome">
+                                <span class="status @StatusStyles.ForOutcome(context.Outcome)">@OutcomeText(context.Outcome)</span>
+                            </Column>
+                        </Columns>
+                    </DataTable>
+
+                    @if (!Model.IsReadOnly)
+                    {
+                        <div class="danger-zone">
+                            <div>
+                                <div class="strong">Delete media</div>
+                                <div class="muted small">Removes it and its file list from the inventory. The audit log keeps a record.</div>
+                            </div>
+                            <button class="btn btn-danger-outline" disabled="@Disabled(Model.DeleteCommand)" @onclick="() => Run(Model.DeleteCommand)">Delete…</button>
+                        </div>
+                    }
+                </aside>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private readonly HashSet<long> _checked = [];
+    private string _sortKey = "id";
+    private bool _descending;
+
+    [Parameter, EditorRequired] public IMediaModel Model { get; set; } = default!;
+
+    private string Summary
+    {
+        get
+        {
+            var count = Model.Rows.Count;
+            var scanned = Model.Rows.Count(r => r.Media.ScanCount > 0);
+            return count == 0 ? "Media folders registered in this inventory." : $"{count} media, {scanned} scanned.";
+        }
+    }
+
+    private IReadOnlyList<MediaRowViewModel> Sorted
+    {
+        get
+        {
+            IEnumerable<MediaRowViewModel> rows = _sortKey switch
+            {
+                "status" => Model.Rows.OrderBy(r => r.Status, StringComparer.CurrentCulture),
+                "folders" => Model.Rows.OrderBy(r => r.FolderCount),
+                "files" => Model.Rows.OrderBy(r => r.FileCount),
+                "size" => Model.Rows.OrderBy(r => r.TotalBytes),
+                "errors" => Model.Rows.OrderBy(r => r.ErrorCount),
+                "scanned" => Model.Rows.OrderBy(r => r.Media.LastScanCompletedUtc),
+                _ => Model.Rows.OrderBy(r => r.MediaId, StringComparer.OrdinalIgnoreCase),
+            };
+            return (_descending ? rows.Reverse() : rows).ToList();
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        Observe(Model, Model.Rows, Model.ScanHistory, Model.ScanCommand, Model.RescanCommand, Model.ResumeCommand,
+            Model.RetryFailedCommand, Model.DeleteCommand, Model.AddMediaCommand, Model.DiscoverCommand, Model.OpenFilesCommand);
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        // Rows are reloaded after scans and deletes: forget ticks for media that are gone.
+        var keys = Model.Rows.Select(r => r.Media.MediaKey).ToHashSet();
+        if (_checked.RemoveWhere(k => !keys.Contains(k)) > 0)
+        {
+            PushChecked();
+            StateHasChanged();
+        }
+    }
+
+    private bool IsScanning(MediaRowViewModel row) => Model.ScanningMediaKey == row.Media.MediaKey;
+
+    private string? RowClass(MediaRowViewModel row) => row.IsMissing ? "is-missing" : null;
+
+    private void Select(MediaRowViewModel row) => Model.SelectedRow = row;
+
+    private void Sort(string key)
+    {
+        _descending = key == _sortKey && !_descending;
+        _sortKey = key;
+    }
+
+    private void Check(MediaRowViewModel row, bool isChecked)
+    {
+        if (isChecked)
+        {
+            _checked.Add(row.Media.MediaKey);
+        }
+        else
+        {
+            _checked.Remove(row.Media.MediaKey);
+        }
+
+        PushChecked();
+    }
+
+    private void CheckAll()
+    {
+        _checked.UnionWith(Model.Rows.Select(r => r.Media.MediaKey));
+        PushChecked();
+    }
+
+    private void ClearChecked()
+    {
+        _checked.Clear();
+        PushChecked();
+    }
+
+    private void PushChecked() => Model.SetSelectedRows(Model.Rows.Where(r => _checked.Contains(r.Media.MediaKey)));
+
+    private static string HashedWidth(MediaRowViewModel row) =>
+        row.FileCount == 0 ? (row.Media.ScanCount > 0 ? "100%" : "0%") : Percent((double)row.Media.HashedCount / row.FileCount);
+
+    private static string Percent(double ratio) =>
+        (Math.Clamp(ratio, 0, 1) * 100).ToString("0", System.Globalization.CultureInfo.InvariantCulture) + "%";
+
+    private static string OutcomeText(string outcome) => outcome switch
+    {
+        "" => "Running",
+        "CompletedWithErrors" => "With errors",
+        _ => outcome,
+    };
+}

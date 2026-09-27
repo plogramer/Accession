@@ -6,6 +6,7 @@ using Accession.Data.Schema;
 using Accession.Presentation.Mvvm;
 using Accession.Presentation.Services;
 using Accession.Presentation.ViewModels.Dashboard;
+using Accession.Presentation.ViewModels.MediaScreen;
 using Accession.UI.Shell;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -24,6 +25,8 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
     private readonly MainWindowViewModel _main;
     private readonly FileBrowserNavigator _navigator;
     private readonly DashboardViewModel _dashboard;
+    private readonly MediaListViewModel _mediaList;
+    private readonly ShellNavItem _mediaItem;
     private readonly ShellNavItem _filesItem;
     private readonly ShellNavItem _queueItem;
     private readonly ShellNavItem _errorsItem;
@@ -35,8 +38,11 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
         MediaWorkflows media,
         MainWindowViewModel main,
         FileBrowserNavigator navigator,
-        DashboardViewModel dashboard)
+        DashboardViewModel dashboard,
+        MediaListViewModel mediaList)
     {
+        _mediaList = mediaList;
+        _mediaItem = new ShellNavItem("Media", "media", "Inventory", mediaList);
         _host = host;
         _scans = scans;
         _media = media;
@@ -50,7 +56,7 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
         NavItems =
         [
             new ShellNavItem("Dashboard", "dashboard", "Overview", dashboard),
-            new ShellNavItem("Media", "media", "Inventory"),
+            _mediaItem,
             _filesItem,
             new ShellNavItem("Categories", "categories", "Inventory"),
             _queueItem,
@@ -137,6 +143,7 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
         _host.PropertyChanged += OnSourceChanged;
         _scans.PropertyChanged += OnSourceChanged;
         _dashboard.PropertyChanged += OnDashboardChanged;
+        _mediaList.RowsReloaded += OnMediaReloaded;
     }
 
     public override void OnNavigatedFrom()
@@ -146,6 +153,8 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
         _scans.PropertyChanged -= OnSourceChanged;
         _dashboard.PropertyChanged -= OnDashboardChanged;
         _dashboard.Dispose();
+        _mediaList.RowsReloaded -= OnMediaReloaded;
+        _mediaList.Dispose();
     }
 
     [RelayCommand(CanExecute = nameof(CanScanNow))]
@@ -197,8 +206,11 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
         }
     }
 
+    private void OnMediaReloaded(object? sender, EventArgs e) => UpdateBadges();
+
     private void UpdateBadges()
     {
+        _mediaItem.Badge = _mediaList.Rows.Count > 0 ? _mediaList.Rows.Count.ToString(CultureInfo.CurrentCulture) : string.Empty;
         _queueItem.Badge = _scans.QueueLength > 0 ? _scans.QueueLength.ToString(CultureInfo.CurrentCulture) : string.Empty;
         _errorsItem.Badge = _dashboard.ErrorCount is "0" or "—" ? string.Empty : _dashboard.ErrorCount;
     }

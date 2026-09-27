@@ -1,0 +1,18 @@
+@inherits ObservingComponentBase
+
+@* Scan actions for the ticked media (or the selected one). Only applicable actions are enabled. *@
+<button class="btn" disabled="@Disabled(Model.ScanCommand)" title="Scan media that were not scanned yet, or continue" @onclick="() => Run(Model.ScanCommand)"><Icon Name="play" Size="15" /> Scan</button>
+<Dropdown TriggerClass="btn" Title="More scan options">
+    <Trigger>More <Icon Name="chevron-down" Size="14" /></Trigger>
+    <ChildContent>
+        <MenuItem Icon="refresh" Text="Rescan (full, replaces the file list)" Command="Model.RescanCommand" />
+        <MenuItem Icon="play" Text="Resume interrupted scan" Command="Model.ResumeCommand" />
+        <MenuItem Icon="errors" Text="Retry failed files" Command="Model.RetryFailedCommand" />
+    </ChildContent>
+</Dropdown>
+
+@code {
+    [Parameter, EditorRequired] public IMediaModel Model { get; set; } = default!;
+
+    protected override void OnParametersSet() => Observe(Model.ScanCommand, Model.RescanCommand, Model.ResumeCommand, Model.RetryFailedCommand);
+}

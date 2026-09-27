@@ -5,6 +5,9 @@
         case IDashboardModel dashboard:
             <DashboardPage Model="dashboard" />
             break;
+        case IMediaModel media:
+            <MediaPage Model="media" />
+            break;
         default:
             <ClassicOnlyPage Title="@Item.Key" Icon="@Item.Icon" FilterText="@PendingFilterText" OpenCommand="OpenInClassicCommand" />
             break;
