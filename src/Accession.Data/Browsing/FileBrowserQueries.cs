@@ -130,6 +130,30 @@ public sealed class FileBrowserQueries
         return scope.Connection.Query<FileItem>(new CommandDefinition(sql, parameters, commandTimeout: 0, cancellationToken: cancellationToken)).AsList();
     }
 
+    /// <summary>
+    /// Every file matching <paramref name="filter"/>, in folder then name order, read one row at a time (export: constant
+    /// memory). Enumerate it while <paramref name="scope"/> is open.
+    /// </summary>
+    public IEnumerable<FileItem> StreamForExport(DbScope scope, FileFilter filter, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        ArgumentNullException.ThrowIfNull(filter);
+        var (where, parameters) = BuildWhere(scope, filter);
+        var sql =
+            $"""
+            SELECT f.FileId, f.MediaKey, m.MediaId, f.FolderId, fo.RelativePath AS FolderPath, f.Name, f.Extension,
+                   cat.Name AS Category, f.SizeBytes, f.CreatedUtc, f.ModifiedUtc, f.AccessedUtc, f.Sha1, f.HashStatus
+            FROM File f
+            JOIN Media m ON m.MediaKey = f.MediaKey AND m.IsDeleted = 0
+            JOIN Folder fo ON fo.FolderId = f.FolderId
+            {CategorySql.JoinCategory("f.Extension", "cat")}
+            WHERE {where}
+            ORDER BY fo.RelativePath, f.Name, f.FileId
+            """;
+        return scope.Connection.Query<FileItem>(new CommandDefinition(
+            sql, parameters, commandTimeout: 0, flags: CommandFlags.None, cancellationToken: cancellationToken));
+    }
+
     /// <summary>File count and total size matching <paramref name="filter"/> (for the footer).</summary>
     public FileTotals Totals(InventoryDatabase database, FileFilter filter, CancellationToken cancellationToken = default)
     {
