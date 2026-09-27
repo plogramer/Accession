@@ -15,6 +15,9 @@ public sealed record ScanErrorQuery
     public long? AfterErrorId { get; init; }
 
     public int PageSize { get; init; } = 500;
+
+    /// <summary>Rows to skip (for jumping to a page whose start is not known); prefer <see cref="AfterErrorId"/>.</summary>
+    public long Offset { get; init; }
 }
 
 public sealed class ScanErrorRepository(DbScope scope) : RepositoryBase(scope)
@@ -69,8 +72,9 @@ public sealed class ScanErrorRepository(DbScope scope) : RepositoryBase(scope)
             parameters.Add("AfterErrorId", query.AfterErrorId);
         }
 
-        sql.Append(" ORDER BY ErrorId LIMIT @PageSize");
+        sql.Append(" ORDER BY ErrorId LIMIT @PageSize OFFSET @Offset");
         parameters.Add("PageSize", query.PageSize);
+        parameters.Add("Offset", query.Offset);
 
         return Connection.Query<ScanErrorEntry>(sql.ToString(), parameters, Transaction).AsList();
     }

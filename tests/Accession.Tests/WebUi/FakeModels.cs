@@ -133,8 +133,9 @@ internal sealed class FakeDashboard : ObservableObject, IDashboardModel
 internal sealed partial class FakeShell : ObservableObject, IShellModel
 {
     public FakeShell(FakeDashboard dashboard, bool scanning = false, bool readOnly = false, IMediaModel? media = null,
-        IFilesModel? files = null)
+        IFilesModel? files = null, IReadOnlyDictionary<string, object>? screens = null)
     {
+        object? Screen(string key) => screens is not null && screens.TryGetValue(key, out var model) ? model : null;
         IsScanActive = scanning;
         IsReadOnly = readOnly;
         NavItems =
@@ -143,8 +144,8 @@ internal sealed partial class FakeShell : ObservableObject, IShellModel
             new ShellNavItem("Media", "media", "Inventory", media) { Badge = media is null ? string.Empty : "5" },
             new ShellNavItem("Files", "files", "Inventory", files),
             new ShellNavItem("Categories", "categories", "Inventory"),
-            new ShellNavItem("Scan Queue", "queue", "Scanning") { Badge = scanning ? "2" : string.Empty },
-            new ShellNavItem("Errors", "errors", "Scanning") { Badge = "39" },
+            new ShellNavItem("Scan Queue", "queue", "Scanning", Screen("Scan Queue")) { Badge = scanning ? "2" : string.Empty },
+            new ShellNavItem("Errors", "errors", "Scanning", Screen("Errors")) { Badge = "39" },
             new ShellNavItem("Audit Log", "audit", "Records"),
         ];
         SelectedItem = NavItems[0];

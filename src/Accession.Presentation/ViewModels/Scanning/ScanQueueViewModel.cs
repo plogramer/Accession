@@ -1,3 +1,4 @@
+using System.Windows.Input;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
@@ -8,11 +9,12 @@ using Accession.Data.Scanning;
 using Accession.Presentation.Mvvm;
 using Accession.Presentation.Services;
 using CommunityToolkit.Mvvm.Input;
+using Accession.UI.ScanScreens;
 
 namespace Accession.Presentation.ViewModels.Scanning;
 
 /// <summary>Scan Queue / Progress screen (requirements SCN-02, SCN-05, SCN-24, section 8.9).</summary>
-public sealed partial class ScanQueueViewModel : ViewModelBase, IDisposable
+public sealed partial class ScanQueueViewModel : ViewModelBase, IScanQueueModel, IDisposable
 {
     private readonly ScanHost _scans;
     private readonly ISettingsService _settings;
@@ -28,6 +30,8 @@ public sealed partial class ScanQueueViewModel : ViewModelBase, IDisposable
     public bool IsRunning => _scans.Current is not null;
 
     public bool IsIdle => !IsRunning;
+
+    public bool IsPaused => _scans.State == CoordinatorState.Paused;
 
     public string IdleText => _scans.CanScan
         ? "No scan is running. Select media on the Media screen and choose Scan."
@@ -62,6 +66,18 @@ public sealed partial class ScanQueueViewModel : ViewModelBase, IDisposable
     public ObservableCollection<QueueRow> Queue { get; } = [];
 
     public bool HasQueue => Queue.Count > 0;
+
+    ICommand IScanQueueModel.PauseCommand => PauseCommand;
+
+    ICommand IScanQueueModel.ResumeCommand => ResumeCommand;
+
+    ICommand IScanQueueModel.CancelCommand => CancelCommand;
+
+    ICommand IScanQueueModel.MoveUpCommand => MoveUpCommand;
+
+    ICommand IScanQueueModel.MoveDownCommand => MoveDownCommand;
+
+    ICommand IScanQueueModel.RemoveCommand => RemoveCommand;
 
     public void Dispose() => _scans.PropertyChanged -= OnScansChanged;
 
@@ -163,5 +179,3 @@ public sealed partial class ScanQueueViewModel : ViewModelBase, IDisposable
     private static string Format(TimeSpan span) =>
         span.TotalHours >= 24 ? $"{(int)span.TotalDays}d {span.Hours:00}:{span.Minutes:00}:{span.Seconds:00}" : span.ToString(@"hh\:mm\:ss", CultureInfo.InvariantCulture);
 }
-
-public sealed record QueueRow(int Position, long MediaKey, string MediaId, string Type);

@@ -1,0 +1,102 @@
+@inherits ObservingComponentBase
+
+<div class="page">
+    <div class="page-header">
+        <div>
+            <h2>Scan queue</h2>
+            <p class="muted">One media is scanned at a time; the others wait in order.</p>
+        </div>
+        @if (Model.IsRunning)
+        {
+            <div class="page-actions">
+                @if (Model.IsPaused)
+                {
+                    <button class="btn btn-primary" disabled="@Disabled(Model.ResumeCommand)" @onclick="() => Run(Model.ResumeCommand)"><Icon Name="play" Size="16" /> Resume</button>
+                }
+                else
+                {
+                    <button class="btn" disabled="@Disabled(Model.PauseCommand)" @onclick="() => Run(Model.PauseCommand)"><Icon Name="pause" Size="16" /> Pause</button>
+                }
+                <button class="btn btn-danger-outline" disabled="@Disabled(Model.CancelCommand)" @onclick="() => Run(Model.CancelCommand)"><Icon Name="stop" Size="16" /> Cancel</button>
+            </div>
+        }
+    </div>
+
+    @if (!Model.IsRunning)
+    {
+        <EmptyState Icon="queue" Title="No scan is running">
+            <p>@Model.IdleText</p>
+        </EmptyState>
+    }
+    else
+    {
+        @if (Model.IsPaused)
+        {
+            <div class="banner is-info">
+                <Icon Name="pause" />
+                <span>The scan is paused. It pauses by itself when the network share stops responding; resume when it is reachable again. Nothing is lost.</span>
+            </div>
+        }
+
+        <section class="card scan-card">
+            <div class="scan-head">
+                <div>
+                    <div class="scan-media mono">@Model.CurrentMedia</div>
+                    <div class="scan-phase">
+                        @if (!Model.IsPaused)
+                        {
+                            <span class="pulse"></span>
+                        }
+                        @Model.Phase
+                    </div>
+                </div>
+                <div class="scan-percent">@(Model.IsIndeterminate ? "—" : $"{Model.Percent:0} %")</div>
+            </div>
+            <div class="progress progress-lg @(Model.IsIndeterminate ? "is-indeterminate" : null)">
+                <div class="progress-bar is-live" style="width:@(Model.IsIndeterminate ? "35%" : Width(Model.Percent))"></div>
+            </div>
+            <div class="scan-stats">
+                <div><span class="stat-label">Found</span><span class="stat-value" title="@Model.Counts">@Model.Counts</span></div>
+                <div><span class="stat-label">Hashed</span><span class="stat-value">@Model.HashedText</span></div>
+                <div><span class="stat-label">Data hashed</span><span class="stat-value">@Model.BytesText</span></div>
+                <div><span class="stat-label">Speed</span><span class="stat-value">@Model.RateText</span></div>
+                <div><span class="stat-label">Elapsed</span><span class="stat-value">@Model.Elapsed</span></div>
+                <div><span class="stat-label">Time left</span><span class="stat-value">@Model.Eta</span></div>
+                <div><span class="stat-label">Errors</span><span class="stat-value @(Model.Errors is not ("" or "0") ? "text-danger" : null)">@Model.Errors</span></div>
+                <div><span class="stat-label">Threads</span><span class="stat-value">@Model.Threads</span></div>
+            </div>
+            @if (!string.IsNullOrEmpty(Model.CurrentPath))
+            {
+                <div class="scan-path"><span class="muted small">Now</span> <code title="@Model.CurrentPath">@Model.CurrentPath</code></div>
+            }
+        </section>
+    }
+
+    <section class="card">
+        <div class="card-header">
+            <h3>Waiting</h3>
+            <span class="muted small">@(Model.Queue.Count == 0 ? "Nothing waiting" : $"{Model.Queue.Count} media")</span>
+        </div>
+        <DataTable TItem="QueueRow" Items="Model.Queue" EmptyText="No media are waiting. Queue more from the Media screen.">
+            <Columns>
+                <Column TItem="QueueRow" Title="#" Width="56px" Class="num muted">@context.Position</Column>
+                <Column TItem="QueueRow" Title="Media ID" Class="mono strong">@context.MediaId</Column>
+                <Column TItem="QueueRow" Title="Scan" Class="muted">@context.Type</Column>
+                <Column TItem="QueueRow" Title="" Width="130px" Class="row-actions">
+                    <button class="icon-btn" title="Move up" disabled="@(context.Position == 1)" @onclick="() => Run(Model.MoveUpCommand, context)"><Icon Name="arrow-up" Size="15" /></button>
+                    <button class="icon-btn" title="Move down" disabled="@(context.Position == Model.Queue.Count)" @onclick="() => Run(Model.MoveDownCommand, context)"><Icon Name="arrow-down" Size="15" /></button>
+                    <button class="icon-btn" title="Remove from queue" @onclick="() => Run(Model.RemoveCommand, context)"><Icon Name="x" Size="15" /></button>
+                </Column>
+            </Columns>
+        </DataTable>
+    </section>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IScanQueueModel Model { get; set; } = default!;
+
+    protected override void OnParametersSet() => Observe(Model, Model.Queue, Model.PauseCommand, Model.ResumeCommand, Model.CancelCommand);
+
+    private static string Width(double percent) =>
+        Math.Clamp(percent, 0, 100).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + "%";
+}

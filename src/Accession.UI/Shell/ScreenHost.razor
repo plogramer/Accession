@@ -11,6 +11,12 @@
         case IFilesModel files:
             <FilesPage Model="files" />
             break;
+        case IScanQueueModel queue:
+            <ScanQueuePage Model="queue" />
+            break;
+        case IErrorsModel errors:
+            <ErrorsPage Model="errors" />
+            break;
         default:
             <ClassicOnlyPage Title="@Item.Key" Icon="@Item.Icon" OpenCommand="OpenInClassicCommand" />
             break;

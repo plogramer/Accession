@@ -8,6 +8,7 @@ using Accession.Presentation.Services;
 using Accession.Presentation.ViewModels.Browsing;
 using Accession.Presentation.ViewModels.Dashboard;
 using Accession.Presentation.ViewModels.MediaScreen;
+using Accession.Presentation.ViewModels.Scanning;
 using Accession.UI.Shell;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -28,6 +29,8 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
     private readonly DashboardViewModel _dashboard;
     private readonly MediaListViewModel _mediaList;
     private readonly WebFilesViewModel _files;
+    private readonly ScanQueueViewModel _scanQueue;
+    private readonly ErrorsViewModel _errors;
     private readonly ShellNavItem _mediaItem;
     private readonly ShellNavItem _filesItem;
     private readonly ShellNavItem _queueItem;
@@ -41,8 +44,12 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
         FileBrowserNavigator navigator,
         DashboardViewModel dashboard,
         MediaListViewModel mediaList,
-        WebFilesViewModel files)
+        WebFilesViewModel files,
+        ScanQueueViewModel scanQueue,
+        ErrorsViewModel errors)
     {
+        _scanQueue = scanQueue;
+        _errors = errors;
         _files = files;
         _mediaList = mediaList;
         _mediaItem = new ShellNavItem("Media", "media", "Inventory", mediaList);
@@ -54,8 +61,8 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
         _dashboard = dashboard;
 
         _filesItem = new ShellNavItem("Files", "files", "Inventory", files);
-        _queueItem = new ShellNavItem("Scan Queue", "queue", "Scanning");
-        _errorsItem = new ShellNavItem("Errors", "errors", "Scanning");
+        _queueItem = new ShellNavItem("Scan Queue", "queue", "Scanning", scanQueue);
+        _errorsItem = new ShellNavItem("Errors", "errors", "Scanning", errors);
         NavItems =
         [
             new ShellNavItem("Dashboard", "dashboard", "Overview", dashboard),
@@ -143,8 +150,8 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
         _navigator.ShowFilesRequested += OnShowFiles;
         _host.PropertyChanged += OnSourceChanged;
         _scans.PropertyChanged += OnSourceChanged;
-        _dashboard.PropertyChanged += OnDashboardChanged;
         _mediaList.RowsReloaded += OnMediaReloaded;
+        _errors.PropertyChanged += OnErrorsChanged;
     }
 
     public override void OnNavigatedFrom()
@@ -152,11 +159,13 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
         _navigator.ShowFilesRequested -= OnShowFiles;
         _host.PropertyChanged -= OnSourceChanged;
         _scans.PropertyChanged -= OnSourceChanged;
-        _dashboard.PropertyChanged -= OnDashboardChanged;
         _dashboard.Dispose();
         _mediaList.RowsReloaded -= OnMediaReloaded;
         _mediaList.Dispose();
         _files.Dispose();
+        _scanQueue.Dispose();
+        _errors.PropertyChanged -= OnErrorsChanged;
+        _errors.Dispose();
     }
 
     [RelayCommand(CanExecute = nameof(CanScanNow))]
@@ -187,21 +196,21 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
         OnPropertyChanged(string.Empty);
     }
 
-    private void OnDashboardChanged(object? sender, PropertyChangedEventArgs e)
+    private void OnMediaReloaded(object? sender, EventArgs e) => UpdateBadges();
+
+    private void OnErrorsChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(DashboardViewModel.ErrorCount))
+        if (e.PropertyName == nameof(ErrorsViewModel.ErrorCount))
         {
             UpdateBadges();
         }
     }
 
-    private void OnMediaReloaded(object? sender, EventArgs e) => UpdateBadges();
-
     private void UpdateBadges()
     {
         _mediaItem.Badge = _mediaList.Rows.Count > 0 ? _mediaList.Rows.Count.ToString(CultureInfo.CurrentCulture) : string.Empty;
         _queueItem.Badge = _scans.QueueLength > 0 ? _scans.QueueLength.ToString(CultureInfo.CurrentCulture) : string.Empty;
-        _errorsItem.Badge = _dashboard.ErrorCount is "0" or "—" ? string.Empty : _dashboard.ErrorCount;
+        _errorsItem.Badge = _errors.ErrorCount > 0 ? _errors.ErrorCount.ToString("N0", CultureInfo.CurrentCulture) : string.Empty;
     }
 
 }

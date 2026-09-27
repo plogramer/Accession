@@ -1,0 +1,76 @@
+@inherits ObservingComponentBase
+
+<div class="page page-wide">
+    <div class="page-header">
+        <div>
+            <h2>Errors</h2>
+            <p class="muted">Files and folders that could not be read or hashed. They are listed so you can report them to the sender.</p>
+        </div>
+        <div class="page-actions">
+            <button class="icon-btn icon-btn-lg" title="Refresh" @onclick="() => Run(Model.RefreshCommand)"><Icon Name="refresh" /></button>
+            <button class="btn" disabled="@Disabled(Model.RetryFailedCommand)" title="Hash the failed files of the chosen media again"
+                    @onclick="() => Run(Model.RetryFailedCommand)"><Icon Name="refresh" Size="16" /> Retry failed</button>
+        </div>
+    </div>
+
+    <section class="card">
+        <div class="card-header">
+            <select class="input" title="Media" value="@Model.MediaFilterValue" @onchange="e => Model.MediaFilterValue = e.Value?.ToString() ?? string.Empty">
+                @foreach (var option in Model.MediaFilterOptions)
+                {
+                    <option value="@option.Value">@option.Label</option>
+                }
+            </select>
+            <select class="input" title="Error type" value="@Model.ErrorTypeFilterValue" @onchange="e => Model.ErrorTypeFilterValue = e.Value?.ToString() ?? string.Empty">
+                @foreach (var option in Model.ErrorTypeFilterOptions)
+                {
+                    <option value="@option.Value">@option.Label</option>
+                }
+            </select>
+            <label class="check-row inline"><input type="checkbox" checked="@Model.ShowInfo" @onchange="e => Model.ShowInfo = e.Value is true" /> Show info entries</label>
+            @if (Model.SelectedRow is not null)
+            {
+                <div class="selection-bar end">
+                    <button class="btn btn-sm" disabled="@Disabled(Model.CopyPathCommand)" @onclick="() => Run(Model.CopyPathCommand)"><Icon Name="copy" Size="14" /> Copy path</button>
+                    <button class="btn btn-sm" disabled="@Disabled(Model.OpenContainingFolderCommand)" @onclick="() => Run(Model.OpenContainingFolderCommand)"><Icon Name="folder-open" Size="14" /> Show in folder</button>
+                </div>
+            }
+        </div>
+
+        <DataTable TItem="ErrorRow" Items="Model.PageRows" Virtualize="true" MaxHeight="calc(100vh - 360px)"
+                   SelectedItem="Model.SelectedRow" SelectedItemChanged="row => Model.SelectedRow = row"
+                   EmptyText="No errors match the filter.">
+            <Columns>
+                <Column TItem="ErrorRow" Title="Time" Class="muted nowrap">@context.Time</Column>
+                <Column TItem="ErrorRow" Title="Media" Class="mono">@context.MediaId</Column>
+                <Column TItem="ErrorRow" Title="Type">
+                    <span class="status @SeverityClass(context.Severity)">@context.ErrorType</span>
+                </Column>
+                <Column TItem="ErrorRow" Title="Path" Class="path-cell">
+                    <span title="@context.RelativePath">@context.RelativePath</span>
+                </Column>
+                <Column TItem="ErrorRow" Title="Item" Class="muted">@context.ItemType</Column>
+                <Column TItem="ErrorRow" Title="Code" Class="mono small muted">@context.Code</Column>
+                <Column TItem="ErrorRow" Title="Message" Class="message-cell">
+                    <span title="@context.Message">@context.Message</span>
+                </Column>
+            </Columns>
+        </DataTable>
+
+        <Pager PageIndex="Model.PageIndex" PageSize="Model.ErrorsPageSize" PageSizes="Model.PageSizes" TotalCount="Model.TotalCount"
+               ItemName="errors" OnPageChange="Model.GoToPageAsync" OnPageSizeChange="Model.SetPageSizeAsync" />
+    </section>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IErrorsModel Model { get; set; } = default!;
+
+    protected override void OnParametersSet() => Observe(Model, Model.CopyPathCommand, Model.OpenContainingFolderCommand, Model.RetryFailedCommand);
+
+    private static string SeverityClass(string severity) => severity switch
+    {
+        "Error" => "is-danger",
+        "Warning" => "is-warning",
+        _ => "is-neutral",
+    };
+}

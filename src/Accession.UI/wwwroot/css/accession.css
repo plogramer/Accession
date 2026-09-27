@@ -1021,6 +1021,26 @@ button:disabled { cursor: default; opacity: .45; }
 .files-table .path-cell { max-width: 280px; overflow: hidden; text-overflow: ellipsis; }
 .files-table .status { padding: 1px 8px; }
 
+/* Scan queue and errors */
+
+.scan-card { padding: 20px; gap: 14px; }
+.scan-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.scan-media { font-size: 20px; font-weight: 700; color: var(--text); }
+.scan-phase { display: flex; align-items: center; gap: 8px; margin-top: 4px; color: var(--text-2); }
+.scan-percent { font-size: 30px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.progress-lg { height: 10px; margin: 0; }
+.scan-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; border-radius: var(--radius); overflow: hidden; background: var(--border); border: 1px solid var(--border); }
+.scan-stats > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 10px 12px; background: var(--surface); }
+.scan-stats .stat-value { font-size: 14px; }
+.scan-path { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.scan-path code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); }
+.row-actions { text-align: right; white-space: nowrap; }
+.row-actions .icon-btn { display: inline-grid; color: var(--muted); }
+.check-row.inline { padding: 4px 6px; }
+.selection-bar.end { justify-content: flex-end; }
+.table .message-cell { max-width: 420px; overflow: hidden; text-overflow: ellipsis; }
+.table .path-cell { max-width: 360px; overflow: hidden; text-overflow: ellipsis; }
+
 /* Choice dialogs */
 
 .dialog-body { display: flex; gap: 14px; }
