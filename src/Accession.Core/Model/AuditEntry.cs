@@ -1,0 +1,43 @@
+namespace Accession.Core.Model;
+
+/// <summary>Audited actions (requirement AUD-02). Stored as text.</summary>
+public enum AuditAction
+{
+    InventoryCreated,
+    InventoryOpened,
+    InventoryOpenedReadOnly,
+    InventoryClosed,
+    LockAcquired,
+    LockReleased,
+    LockForced,
+    SchemaUpgraded,
+    ConfigUpdated,
+    RootPathChanged,
+    MediaAdded,
+    MediaDeleted,
+    ScanQueued,
+    ScanStarted,
+    ScanPaused,
+    ScanResumed,
+    ScanCancelled,
+    ScanCompleted,
+    ScanFailed,
+    ExportCreated,
+}
+
+/// <summary>One row of <c>AuditLog</c>. Audit rows are never updated or deleted.</summary>
+public sealed class AuditEntry
+{
+    public long AuditId { get; set; }
+    public DateTimeOffset OccurredAtUtc { get; set; }
+
+    /// <summary><c>DOMAIN\user</c></summary>
+    public string UserName { get; set; } = string.Empty;
+
+    public string MachineName { get; set; } = string.Empty;
+    public AuditAction Action { get; set; }
+    public string? MediaId { get; set; }
+
+    /// <summary>Action-specific details as JSON, or null.</summary>
+    public string? Details { get; set; }
+}
