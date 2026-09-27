@@ -192,7 +192,7 @@ flowchart TD
 | ID | Requirement |
 |---|---|
 | SCN-30 | Each folder has an `IsEnumerated` flag set in the same transaction as its file rows. On resume, file rows of folders not flagged are deleted and those folders are enumerated again. |
-| SCN-31 | Each file has a `HashStatus` (`0 Pending`, `1 Hashed`, `2 Error`). On resume, only `Pending` files are hashed. `Error` files are retried only on a rescan or via *Retry failed files*. |
+| SCN-31 | Each file has a `HashStatus` (`0 Pending`, `1 Hashed`, `2 Error`, `3 Skipped` for file reparse points, which are never read). On resume, only `Pending` files are hashed. `Error` files are retried only on a rescan or via *Retry failed files*. |
 
 #### 5.5.5 Evidence preservation (read-only)
 
@@ -413,7 +413,7 @@ CREATE TABLE File (
     ModifiedUtc         TEXT,
     AccessedUtc         TEXT,
     Sha1                TEXT,                                 -- 40 lowercase hex chars
-    HashStatus          INTEGER NOT NULL DEFAULT 0,           -- 0 Pending, 1 Hashed, 2 Error
+    HashStatus          INTEGER NOT NULL DEFAULT 0,           -- 0 Pending, 1 Hashed, 2 Error, 3 Skipped (reparse point)
     HashedAtUtc         TEXT
 );
 CREATE INDEX IX_File_Folder        ON File (FolderId);

@@ -117,6 +117,12 @@ public sealed class InventoryOpenService
             using (var scope = database.Open())
             using (var transaction = scope.BeginTransaction())
             {
+                var recovered = Scanning.ScanRecovery.Recover(scope, _factory.TimeProvider.GetUtcNow());
+                if (recovered > 0)
+                {
+                    _logger.LogWarning("{Count} media had an unfinished scan and were marked Incomplete", recovered);
+                }
+
                 new InventoryConfigRepository(scope).UpdateLastOpened(_factory.TimeProvider.GetUtcNow(), _factory.User.UserName, path);
                 audit.Write(scope, AuditAction.InventoryOpened, details: new { AppVersion = _appInfo.Version });
                 transaction.Commit();

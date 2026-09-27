@@ -90,7 +90,7 @@ CREATE TABLE File (
     ModifiedUtc          TEXT,
     AccessedUtc          TEXT,
     Sha1                 TEXT,
-    HashStatus           INTEGER NOT NULL DEFAULT 0,        -- 0 Pending, 1 Hashed, 2 Error
+    HashStatus           INTEGER NOT NULL DEFAULT 0,        -- 0 Pending, 1 Hashed, 2 Error, 3 Skipped (reparse point)
     HashedAtUtc          TEXT
 );
 CREATE INDEX IX_File_Folder        ON File (FolderId);
