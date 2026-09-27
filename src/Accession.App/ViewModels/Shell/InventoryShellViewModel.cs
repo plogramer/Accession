@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using Accession.App.Mvvm;
 using Accession.App.Services;
+using Accession.App.ViewModels.Browsing;
 using Accession.App.ViewModels.Dashboard;
 using Accession.App.ViewModels.MediaScreen;
 using Accession.App.ViewModels.Scanning;
@@ -22,6 +23,9 @@ public sealed partial class InventoryShellViewModel : ViewModelBase
     private readonly NavItem _scanQueueItem;
     private readonly NavItem _errorsItem;
     private readonly ErrorsViewModel _errors;
+    private readonly FileBrowserViewModel _files;
+    private readonly NavItem _filesItem;
+    private readonly FileBrowserNavigator _navigator;
 
     public InventoryShellViewModel(
         InventoryHost host,
@@ -29,9 +33,16 @@ public sealed partial class InventoryShellViewModel : ViewModelBase
         MediaListViewModel mediaList,
         ScanQueueViewModel scanQueue,
         ErrorsViewModel errors,
+        FileBrowserViewModel files,
+        CategoriesViewModel categories,
+        AuditLogViewModel auditLog,
+        FileBrowserNavigator navigator,
         ScanHost scans,
         MediaWorkflows media)
     {
+        _files = files;
+        _navigator = navigator;
+        _filesItem = new NavItem("Files", files);
         _host = host;
         _scans = scans;
         _media = media;
@@ -44,11 +55,11 @@ public sealed partial class InventoryShellViewModel : ViewModelBase
         [
             new NavItem("Dashboard", dashboard),
             _mediaItem,
-            new NavItem("Files", new PlaceholderViewModel("Files", "Browse and filter every inventoried file.", "File browser epic (#8)")),
+            _filesItem,
             _scanQueueItem,
             _errorsItem,
-            new NavItem("Categories", new PlaceholderViewModel("Categories", "File categories and their extensions.", "File browser epic (#8)")),
-            new NavItem("Audit Log", new PlaceholderViewModel("Audit Log", "Who did what and when.", "File browser epic (#8)")),
+            new NavItem("Categories", categories),
+            new NavItem("Audit Log", auditLog),
         ];
         SelectedItem = NavItems[0];
         _mediaList.RowsReloaded += (_, _) => UpdateMediaBadge();
@@ -93,12 +104,14 @@ public sealed partial class InventoryShellViewModel : ViewModelBase
 
     public override void OnNavigatedTo()
     {
+        _navigator.ShowFilesRequested += OnShowFiles;
         _host.PropertyChanged += OnHostChanged;
         _scans.PropertyChanged += OnHostChanged;
     }
 
     public override void OnNavigatedFrom()
     {
+        _navigator.ShowFilesRequested -= OnShowFiles;
         _host.PropertyChanged -= OnHostChanged;
         _scans.PropertyChanged -= OnHostChanged;
         foreach (var disposable in NavItems.Select(n => n.Content).OfType<IDisposable>())
@@ -115,6 +128,12 @@ public sealed partial class InventoryShellViewModel : ViewModelBase
 
     [RelayCommand]
     private void ScanNow() => _media.ScanPendingMedia();
+
+    private void OnShowFiles(object? sender, Accession.Data.Browsing.FileFilter filter)
+    {
+        SelectedItem = _filesItem;
+        _files.ApplyPreset(filter);
+    }
 
     private void UpdateBadges()
     {

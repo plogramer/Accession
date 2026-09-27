@@ -107,6 +107,8 @@ public partial class App : Application
         builder.Services.AddSingleton<InventoryPropertiesService>();
         builder.Services.AddSingleton<MediaDiscoveryService>();
         builder.Services.AddSingleton<MediaService>();
+        builder.Services.AddSingleton<Accession.Data.Browsing.FileBrowserQueries>();
+        builder.Services.AddSingleton<Accession.Data.Browsing.CategoryQueries>();
         builder.Services.AddSingleton(sp => new Accession.Data.Queries.DashboardQueries(
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), AppPaths.AppFolderName, "Queries", "Dashboard"),
             sp.GetRequiredService<ILogger<Accession.Data.Queries.DashboardQueries>>()));
@@ -120,6 +122,7 @@ public partial class App : Application
         builder.Services.AddSingleton<InventoryWorkflows>();
         builder.Services.AddSingleton<MediaWorkflows>();
         builder.Services.AddSingleton<ScanHost>();
+        builder.Services.AddSingleton<FileBrowserNavigator>();
 
         // View models and windows
         builder.Services.AddSingleton<MainWindowViewModel>();
@@ -127,6 +130,9 @@ public partial class App : Application
         builder.Services.AddTransient<InventoryShellViewModel>();
         builder.Services.AddTransient<MediaListViewModel>();
         builder.Services.AddTransient<Accession.App.ViewModels.Dashboard.DashboardViewModel>();
+        builder.Services.AddTransient<Accession.App.ViewModels.Browsing.FileBrowserViewModel>();
+        builder.Services.AddTransient<Accession.App.ViewModels.Browsing.CategoriesViewModel>();
+        builder.Services.AddTransient<Accession.App.ViewModels.Browsing.AuditLogViewModel>();
         builder.Services.AddTransient<Accession.App.ViewModels.Scanning.ScanQueueViewModel>();
         builder.Services.AddTransient<Accession.App.ViewModels.Scanning.ErrorsViewModel>();
         AddDialog<NewInventoryViewModel>(builder.Services);

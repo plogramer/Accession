@@ -5,6 +5,7 @@
                     xmlns:media="clr-namespace:Accession.App.ViewModels.MediaScreen"
                     xmlns:scan="clr-namespace:Accession.App.ViewModels.Scanning"
                     xmlns:dash="clr-namespace:Accession.App.ViewModels.Dashboard"
+                    xmlns:browse="clr-namespace:Accession.App.ViewModels.Browsing"
                     xmlns:views="clr-namespace:Accession.App.Views">
     <!-- Maps each view model to its view. The navigation and dialog services rely on these. -->
 
@@ -23,6 +24,15 @@
         <views:MediaListView />
     </DataTemplate>
 
+    <DataTemplate DataType="{x:Type browse:FileBrowserViewModel}">
+        <views:FileBrowserView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type browse:CategoriesViewModel}">
+        <views:CategoriesView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type browse:AuditLogViewModel}">
+        <views:AuditLogView />
+    </DataTemplate>
     <DataTemplate DataType="{x:Type dash:DashboardViewModel}">
         <views:DashboardView />
     </DataTemplate>

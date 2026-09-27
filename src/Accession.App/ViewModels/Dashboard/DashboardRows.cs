@@ -38,4 +38,4 @@ public sealed record BarRow(string Label, string Files, string Size, string Perc
 
 public sealed record ExtensionRowVm(string Extension, string Category, string Files, string Size, string PercentSize, long FileCount, long TotalBytes);
 
-public sealed record LargeFileRowVm(string MediaId, string RelativePath, string Size, string Modified, long SizeBytes);
+public sealed record LargeFileRowVm(long MediaKey, string MediaId, string RelativePath, string Size, string Modified, long SizeBytes);

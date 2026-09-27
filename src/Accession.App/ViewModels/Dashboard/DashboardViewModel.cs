@@ -6,6 +6,7 @@ using Accession.App.Services;
 using Accession.App.ViewModels.MediaScreen;
 using Accession.Core.Formatting;
 using Accession.Core.Settings;
+using Accession.Data.Browsing;
 using Accession.Data.Queries;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -23,13 +24,17 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDisposable
     private readonly DashboardQueries _queries;
     private readonly ISettingsService _settings;
     private readonly ILogger<DashboardViewModel> _logger;
+    private readonly FileBrowserNavigator _navigator;
+    private IReadOnlyList<CategoryTotal> _categoryTotals = [];
     private CancellationTokenSource? _loadCancel;
     private IReadOnlyList<ExtensionRowVm> _allExtensions = [];
     private bool _updatingFilter;
     private bool? _lastScanBusy;
 
-    public DashboardViewModel(InventoryHost host, ScanHost scans, DashboardQueries queries, ISettingsService settings, ILogger<DashboardViewModel> logger)
+    public DashboardViewModel(InventoryHost host, ScanHost scans, DashboardQueries queries, ISettingsService settings,
+        FileBrowserNavigator navigator, ILogger<DashboardViewModel> logger)
     {
+        _navigator = navigator;
         _host = host;
         _scans = scans;
         _queries = queries;
@@ -139,6 +144,68 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDisposable
 
     [RelayCommand]
     private void ClearCategory() => SelectedCategory = null;
+
+    // ---- Click-through to the File browser (DSH-09) ----
+
+    [RelayCommand]
+    private void OpenMedia(DashboardMediaRowVm? row)
+    {
+        if (row is not null)
+        {
+            _navigator.ShowFiles(new FileFilter { MediaKey = row.MediaKey });
+        }
+    }
+
+    [RelayCommand]
+    private void OpenCategory(BarRow? row)
+    {
+        if (row is not null && _categoryTotals.FirstOrDefault(c => c.Category == row.Label) is { } category)
+        {
+            _navigator.ShowFiles(WithMedia(new FileFilter { CategoryId = category.CategoryId }));
+        }
+    }
+
+    [RelayCommand]
+    private void OpenExtension(ExtensionRowVm? row)
+    {
+        if (row is not null)
+        {
+            _navigator.ShowFiles(WithMedia(new FileFilter { Extension = row.Extension == "(none)" ? string.Empty : row.Extension }));
+        }
+    }
+
+    [RelayCommand]
+    private void OpenYear(BarRow? row)
+    {
+        if (row is not null && int.TryParse(row.Label, NumberStyles.None, CultureInfo.InvariantCulture, out var year))
+        {
+            _navigator.ShowFiles(WithMedia(new FileFilter
+            {
+                ModifiedFrom = new DateTimeOffset(year, 1, 1, 0, 0, 0, TimeSpan.Zero),
+                ModifiedTo = new DateTimeOffset(year + 1, 1, 1, 0, 0, 0, TimeSpan.Zero),
+            }));
+        }
+    }
+
+    [RelayCommand]
+    private void OpenLargeFile(LargeFileRowVm? row)
+    {
+        if (row is not null)
+        {
+            var name = row.RelativePath[(row.RelativePath.LastIndexOf('\\') + 1)..];
+            _navigator.ShowFiles(new FileFilter { MediaKey = row.MediaKey, NameContains = name, MinSize = row.SizeBytes, MaxSize = row.SizeBytes });
+        }
+    }
+
+    [RelayCommand]
+    private void OpenDuplicates() => _navigator.ShowFiles(WithMedia(new FileFilter { DuplicatesOnly = true }));
+
+    /// <summary>Carries a single selected media into the File browser filter.</summary>
+    private FileFilter WithMedia(FileFilter filter)
+    {
+        var selected = MediaFilter.Where(m => m.IsChecked).ToList();
+        return selected.Count == 1 && selected.Count != MediaFilter.Count ? filter with { MediaKey = selected[0].MediaKey } : filter;
+    }
 
     partial void OnSelectedCategoryChanged(BarRow? value)
     {
@@ -337,6 +404,7 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDisposable
             });
         }
 
+        _categoryTotals = categories;
         var totalFiles = Math.Max(1, categories.Sum(c => c.FileCount));
         var totalBytes = Math.Max(1, categories.Sum(c => c.TotalBytes));
         var maxBytes = Math.Max(1, categories.Max(c => c.TotalBytes));
@@ -382,7 +450,7 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDisposable
         LargestFiles.Clear();
         foreach (var f in largest)
         {
-            LargestFiles.Add(new LargeFileRowVm(f.MediaId, f.RelativePath, SizeFormatter.Format(f.SizeBytes, unit), TimeFormatter.Format(f.ModifiedUtc, zone), f.SizeBytes));
+            LargestFiles.Add(new LargeFileRowVm(f.MediaKey, f.MediaId, f.RelativePath, SizeFormatter.Format(f.SizeBytes, unit), TimeFormatter.Format(f.ModifiedUtc, zone), f.SizeBytes));
         }
     }
 

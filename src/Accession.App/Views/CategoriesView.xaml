@@ -1,0 +1,56 @@
+<UserControl x:Class="Accession.App.Views.CategoriesView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <DockPanel Margin="12">
+        <Border DockPanel.Dock="Top" Background="#EEF3FB" Padding="10,6" Margin="0,0,0,10">
+            <TextBlock TextWrapping="Wrap"
+                       Text="Categories are defined by the application: every extension belongs to exactly one category. Files without an extension are 'No Extension'; extensions not in the list are 'Other / Unknown'." />
+        </Border>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top" Text="Categories" FontWeight="SemiBold" Margin="0,0,0,6" />
+                <Button DockPanel.Dock="Bottom" Content="Show files in this category" Command="{Binding ShowFilesCommand}" HorizontalAlignment="Left" Padding="8,3" Margin="0,6,0,0" />
+                <DataGrid ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}" AutoGenerateColumns="False" IsReadOnly="True"
+                          SelectionMode="Single" HeadersVisibility="Column" GridLinesVisibility="Horizontal" CanUserAddRows="False">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Category" Binding="{Binding Name}" Width="*" />
+                        <DataGridTextColumn Header="Files" Binding="{Binding Files}" SortMemberPath="FileCount" />
+                        <DataGridTextColumn Header="Size" Binding="{Binding Size}" />
+                        <DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="1.5*" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </DockPanel>
+            <DockPanel Grid.Column="2">
+                <TextBlock DockPanel.Dock="Top" Margin="0,0,0,6" FontWeight="SemiBold">
+                    <Run Text="Extensions of" />
+                    <Run Text="{Binding SelectedCategory.Name, Mode=OneWay}" />
+                </TextBlock>
+                <TextBlock DockPanel.Dock="Bottom" Text="Double-click an extension to see its files. Greyed extensions have no files in this inventory."
+                           Style="{StaticResource HintText}" Margin="0,6,0,0" />
+                <DataGrid x:Name="ExtensionGrid" ItemsSource="{Binding Extensions}" AutoGenerateColumns="False" IsReadOnly="True"
+                          SelectionMode="Single" HeadersVisibility="Column" GridLinesVisibility="Horizontal" CanUserAddRows="False"
+                          MouseDoubleClick="ExtensionGrid_MouseDoubleClick">
+                    <DataGrid.RowStyle>
+                        <Style TargetType="DataGridRow">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasFiles}" Value="False">
+                                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.RowStyle>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Extension" Binding="{Binding Extension}" Width="*" />
+                        <DataGridTextColumn Header="Files" Binding="{Binding Files}" />
+                        <DataGridTextColumn Header="Size" Binding="{Binding Size}" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </DockPanel>
+        </Grid>
+    </DockPanel>
+</UserControl>

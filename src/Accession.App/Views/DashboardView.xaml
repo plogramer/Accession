@@ -104,7 +104,7 @@
                 <Border Style="{StaticResource Tile}">
                     <StackPanel><TextBlock Text="Unique files" Style="{StaticResource TileLabel}" /><TextBlock Text="{Binding UniqueFiles}" Style="{StaticResource TileValue}" /></StackPanel>
                 </Border>
-                <Border Style="{StaticResource Tile}" Width="190">
+                <Border Style="{StaticResource Tile}" Width="190" Cursor="Hand" MouseLeftButtonUp="Duplicates_Click" ToolTip="Click to show duplicate files">
                     <StackPanel>
                         <TextBlock Text="Duplicates" Style="{StaticResource TileLabel}" />
                         <TextBlock Style="{StaticResource TileValue}">
@@ -122,6 +122,7 @@
             <!-- By Media -->
             <TextBlock Text="By Media" Style="{StaticResource SectionTitle}" />
             <DataGrid ItemsSource="{Binding ByMedia}" AutoGenerateColumns="False" IsReadOnly="True" MaxHeight="300"
+                      MouseDoubleClick="ByMedia_DoubleClick" ToolTip="Double-click to show the files"
                       HeadersVisibility="Column" GridLinesVisibility="Horizontal" CanUserAddRows="False">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Media ID" Binding="{Binding MediaId}" Width="2*" />
@@ -146,7 +147,8 @@
                 <StackPanel Margin="0,0,24,0">
                     <TextBlock Text="By Category (by size)" Style="{StaticResource SectionTitle}" />
                     <ListBox ItemsSource="{Binding ByCategory}" SelectedItem="{Binding SelectedCategory}" ItemTemplate="{StaticResource BarTemplate}"
-                             BorderThickness="0" ToolTip="Select a category to show its extensions" />
+                             BorderThickness="0" ToolTip="Select a category to show its extensions; double-click to show its files"
+                             MouseDoubleClick="ByCategory_DoubleClick" />
                     <Button Content="Show all extensions" Command="{Binding ClearCategoryCommand}" HorizontalAlignment="Left" Padding="6,2" Margin="0,6,0,0" />
                 </StackPanel>
                 <DockPanel Grid.Column="1">
@@ -156,6 +158,7 @@
                         <TextBlock Text="{Binding ExtensionHeader}" Style="{StaticResource SectionTitle}" />
                     </DockPanel>
                     <DataGrid ItemsSource="{Binding ByExtension}" AutoGenerateColumns="False" IsReadOnly="True" MaxHeight="380"
+                              MouseDoubleClick="ByExtension_DoubleClick" ToolTip="Double-click to show the files"
                               HeadersVisibility="Column" GridLinesVisibility="Horizontal" CanUserAddRows="False">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Extension" Binding="{Binding Extension}" />
@@ -177,11 +180,13 @@
                 </Grid.ColumnDefinitions>
                 <StackPanel Margin="0,0,24,0">
                     <TextBlock Text="By Year (modified, UTC)" Style="{StaticResource SectionTitle}" />
-                    <ItemsControl ItemsSource="{Binding ByYear}" ItemTemplate="{StaticResource BarTemplate}" />
+                    <ListBox ItemsSource="{Binding ByYear}" ItemTemplate="{StaticResource BarTemplate}" BorderThickness="0"
+                             MouseDoubleClick="ByYear_DoubleClick" ToolTip="Double-click to show the files of that year" />
                 </StackPanel>
                 <StackPanel Grid.Column="1">
                     <TextBlock Text="Largest Files (top 100)" Style="{StaticResource SectionTitle}" />
                     <DataGrid ItemsSource="{Binding LargestFiles}" AutoGenerateColumns="False" IsReadOnly="True" MaxHeight="380"
+                              MouseDoubleClick="LargestFiles_DoubleClick" ToolTip="Double-click to show the file"
                               HeadersVisibility="Column" GridLinesVisibility="Horizontal" CanUserAddRows="False">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Media ID" Binding="{Binding MediaId}" />
