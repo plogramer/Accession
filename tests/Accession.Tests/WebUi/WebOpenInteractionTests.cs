@@ -106,7 +106,7 @@ public sealed class WebOpenInteractionTests
         var deadline = DateTime.UtcNow.AddSeconds(10);
         while (DateTime.UtcNow < deadline)
         {
-            if (center.Current is { } dialog && !ReferenceEquals(dialog, notSame))
+            if (center.Current is ChoiceDialog dialog && !ReferenceEquals(dialog, notSame))
             {
                 return dialog;
             }

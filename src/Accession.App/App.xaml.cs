@@ -126,10 +126,17 @@ public partial class App : Application
         // Platform
         builder.Services.AddSingleton<IUiDispatcher, WpfUiDispatcher>();
         builder.Services.AddSingleton<IDesktop, WindowsDesktop>();
+        builder.Services.AddSingleton<IModalWaiter, WpfModalWaiter>();
 
         // UI services
         builder.Services.AddSingleton<INavigationService, NavigationService>();
-        builder.Services.AddSingleton<IDialogService, DialogService>();
+        builder.Services.AddSingleton<DialogService>();
+        builder.Services.AddSingleton(sp => new WebDialogService(
+            sp.GetRequiredService<Accession.UI.Components.DialogCenter>(),
+            sp.GetRequiredService<IModalWaiter>(),
+            sp.GetRequiredService<DialogService>(),
+            sp.GetRequiredService<IDesktop>()));
+        builder.Services.AddSingleton<IDialogService, DialogRouter>();
         builder.Services.AddSingleton<IWindowPlacementService, WindowPlacementService>();
         builder.Services.AddSingleton<InventoryHost>();
         builder.Services.AddSingleton<WpfOpenInteraction>();

@@ -35,25 +35,40 @@ public enum DialogKind
 }
 
 /// <summary>
-/// Queue of dialogs shown by the web page (<see cref="DialogHost"/>). Code on any thread asks with
-/// <see cref="AskAsync"/>; the page answers with <see cref="Answer"/>. One dialog shows at a time.
+/// Dialogs shown by the web page (<see cref="DialogHost"/>), as a stack: a dialog can open a question on top
+/// of itself. Code on any thread asks with <see cref="AskAsync"/> or opens a form with <see cref="Open"/>;
+/// the page answers with <see cref="Answer"/>, forms close with <see cref="Close"/>.
 /// </summary>
 public sealed class DialogCenter
 {
     private readonly object _gate = new();
-    private readonly List<(ChoiceDialog Dialog, TaskCompletionSource<string> Answer)> _pending = [];
+    private readonly List<object> _items = [];
+    // By reference: ChoiceDialog is a record, and two open questions may look alike.
+    private readonly Dictionary<ChoiceDialog, TaskCompletionSource<string>> _answers = new(ReferenceEqualityComparer.Instance);
 
-    /// <summary>Raised on any thread when the dialog to show changed.</summary>
+    /// <summary>Raised on any thread when dialogs were opened or closed.</summary>
     public event EventHandler? Changed;
 
-    /// <summary>The dialog to show now, or null.</summary>
-    public ChoiceDialog? Current
+    /// <summary>Open dialogs, bottom first (<see cref="ChoiceDialog"/> or <c>FormDialog</c>).</summary>
+    public IReadOnlyList<object> Items
     {
         get
         {
             lock (_gate)
             {
-                return _pending.Count == 0 ? null : _pending[0].Dialog;
+                return [.. _items];
+            }
+        }
+    }
+
+    /// <summary>The top dialog, or null.</summary>
+    public object? Current
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _items.Count == 0 ? null : _items[^1];
             }
         }
     }
@@ -64,42 +79,78 @@ public sealed class DialogCenter
         var answer = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
         lock (_gate)
         {
-            _pending.Add((dialog, answer));
+            _items.Add(dialog);
+            _answers[dialog] = answer;
         }
 
         Changed?.Invoke(this, EventArgs.Empty);
         return answer.Task;
     }
 
-    /// <summary>Answers the current dialog with a choice key.</summary>
+    /// <summary>Answers a question with a choice key.</summary>
     public void Answer(ChoiceDialog dialog, string key)
     {
-        TaskCompletionSource<string>? answer = null;
+        TaskCompletionSource<string>? answer;
         lock (_gate)
         {
-            var index = _pending.FindIndex(p => ReferenceEquals(p.Dialog, dialog));
-            if (index >= 0)
+            if (!_answers.Remove(dialog, out answer))
             {
-                answer = _pending[index].Answer;
-                _pending.RemoveAt(index);
+                return;
             }
+
+            RemoveItem(dialog);
         }
 
-        if (answer is not null)
+        answer.TrySetResult(key);
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>Shows a form until <see cref="Close"/> is called.</summary>
+    public void Open(object form)
+    {
+        ArgumentNullException.ThrowIfNull(form);
+        lock (_gate)
         {
-            answer.TrySetResult(key);
+            _items.Add(form);
+        }
+
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void Close(object form)
+    {
+        bool removed;
+        lock (_gate)
+        {
+            removed = RemoveItem(form);
+        }
+
+        if (removed)
+        {
             Changed?.Invoke(this, EventArgs.Empty);
         }
     }
 
-    /// <summary>Cancels every waiting dialog (e.g. the page is closing).</summary>
+    private bool RemoveItem(object item)
+    {
+        var index = _items.FindIndex(i => ReferenceEquals(i, item));
+        if (index >= 0)
+        {
+            _items.RemoveAt(index);
+        }
+
+        return index >= 0;
+    }
+
+    /// <summary>Cancels every question (e.g. the page is closing); forms are dismissed by their owners.</summary>
     public void CancelAll()
     {
         List<(ChoiceDialog Dialog, TaskCompletionSource<string> Answer)> pending;
         lock (_gate)
         {
-            pending = [.. _pending];
-            _pending.Clear();
+            pending = [.. _answers.Select(a => (a.Key, a.Value))];
+            _answers.Clear();
+            _items.RemoveAll(i => i is ChoiceDialog);
         }
 
         foreach (var (dialog, answer) in pending)

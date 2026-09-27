@@ -1,0 +1,266 @@
+@implements IDisposable
+@using System.ComponentModel
+
+@* Renders a FormDialog inside the modal frame. *@
+<Modal IsOpen="true" Title="@Form.Title" Width="@Form.Width" OnClose="Dismiss">
+    <ChildContent>
+        <div class="form">
+            @foreach (var group in Form.Sections)
+            {
+                <section class="form-section">
+                    @if (!string.IsNullOrEmpty(group.Title))
+                    {
+                        <h4 class="form-section-title">@group.Title</h4>
+                    }
+                    <div class="form-grid">
+                        @foreach (var item in group.Items.Where(i => (i.Visible?.Invoke() ?? true) && !IsEmpty(i)))
+                        {
+                            var error = item.Error?.Invoke() ?? string.Empty;
+                            <div class="field @(item.Wide || IsWideByNature(item) ? "is-wide" : null) @(error.Length > 0 ? "has-error" : null)">
+                                @switch (item)
+                                {
+                                    case TextField text:
+                                        <label>@text.Label</label>
+                                        <div class="field-row">
+                                            @if (text.Multiline)
+                                            {
+                                                <textarea class="input @(text.Mono ? "mono" : null)" rows="3" placeholder="@text.Placeholder" readonly="@(text.Set is null)"
+                                                          @oninput="e => text.Set?.Invoke(e.Value?.ToString() ?? string.Empty)">@text.Get()</textarea>
+                                            }
+                                            else
+                                            {
+                                                <input class="input @(text.Mono ? "mono" : null)" value="@text.Get()" placeholder="@text.Placeholder" readonly="@(text.Set is null)"
+                                                       autofocus="@text.AutoFocus" @oninput="e => text.Set?.Invoke(e.Value?.ToString() ?? string.Empty)"
+                                                       @onkeydown="OnKeyDown" />
+                                            }
+                                            @if (text.Browse is not null)
+                                            {
+                                                <button class="btn" type="button" @onclick="() => Run(text.Browse)">Browse…</button>
+                                            }
+                                        </div>
+                                        break;
+                                    case NumberField number:
+                                        <label>@number.Label</label>
+                                        <input class="input input-number" type="number" min="@number.Min" max="@number.Max" step="@number.Step" value="@number.Get()"
+                                               @onchange="e => SetNumber(number, e.Value)" @onkeydown="OnKeyDown" />
+                                        break;
+                                    case SelectField select:
+                                        <label>@select.Label</label>
+                                        <select class="input" value="@select.Get()" @onchange="e => select.Set(e.Value?.ToString() ?? string.Empty)">
+                                            @foreach (var option in select.Options)
+                                            {
+                                                <option value="@option.Value">@option.Label</option>
+                                            }
+                                        </select>
+                                        break;
+                                    case CheckField check:
+                                        <label class="check-row">
+                                            <input type="checkbox" checked="@check.Get()" disabled="@(!(check.Enabled?.Invoke() ?? true))"
+                                                   @onchange="e => check.Set(e.Value is true)" />
+                                            @check.Label
+                                        </label>
+                                        break;
+                                    case InfoField info:
+                                        <label>@info.Label</label>
+                                        <div class="info-value @(info.Mono ? "mono" : null)">@info.Get()</div>
+                                        break;
+                                    case NoteItem note:
+                                        @if (note.Text() is { Length: > 0 } noteText)
+                                        {
+                                            <div class="@(note.Tone is null ? "form-note" : $"banner is-{note.Tone}")">
+                                                @foreach (var paragraph in noteText.Split("\n\n"))
+                                                {
+                                                    <p>@paragraph</p>
+                                                }
+                                            </div>
+                                        }
+                                        break;
+                                    case ChecklistField list:
+                                        <div class="checklist-head">
+                                            <label>@list.Label</label>
+                                            @if (list.Add is not null)
+                                            {
+                                                <button class="link-btn" type="button" @onclick="() => Run(list.Add)">@list.AddLabel</button>
+                                            }
+                                        </div>
+                                        <div class="checklist">
+                                            @foreach (var entry in list.Entries())
+                                            {
+                                                <label class="checklist-row">
+                                                    <input type="checkbox" checked="@entry.Get()" @onchange="e => entry.Set(e.Value is true)" />
+                                                    <span class="checklist-text">
+                                                        <span class="mono strong">@entry.Title</span>
+                                                        <span class="muted small truncate">@entry.Subtitle</span>
+                                                    </span>
+                                                    @if (!string.IsNullOrEmpty(entry.Badge))
+                                                    {
+                                                        <span class="chip is-warning">@entry.Badge</span>
+                                                    }
+                                                </label>
+                                            }
+                                            @if (list.Entries().Count == 0)
+                                            {
+                                                <div class="muted small checklist-empty">@list.EmptyText</div>
+                                            }
+                                        </div>
+                                        break;
+                                    case LinesItem lines:
+                                        @if (lines.Lines() is { Count: > 0 } values)
+                                        {
+                                            <label>@lines.Label</label>
+                                            <ul class="lines">
+                                                @foreach (var line in values.Take(50))
+                                                {
+                                                    <li class="mono">@line</li>
+                                                }
+                                            </ul>
+                                        }
+                                        break;
+                                    case CodeItem snippet:
+                                        @if (snippet.Text() is { Length: > 0 } codeText)
+                                        {
+                                            <label>@snippet.Label</label>
+                                            <pre class="json">@codeText</pre>
+                                        }
+                                        break;
+                                }
+                                @if (!string.IsNullOrEmpty(item.Hint) && item is not CheckField)
+                                {
+                                    <div class="field-hint">@item.Hint</div>
+                                }
+                                else if (!string.IsNullOrEmpty(item.Hint))
+                                {
+                                    <div class="field-hint check-hint">@item.Hint</div>
+                                }
+                                @if (error.Length > 0)
+                                {
+                                    <div class="field-error">@error</div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </section>
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        @foreach (var button in Form.Buttons.Where(b => b.IsSecondary))
+        {
+            <button class="btn" type="button" disabled="@(!button.Command.CanExecute(null))" @onclick="() => Run(button.Command)">@button.Label</button>
+        }
+        <span class="footer-spacer"></span>
+        @foreach (var button in Form.Buttons.Where(b => !b.IsSecondary))
+        {
+            <button class="btn @StyleClass(button.Style)" type="button" disabled="@(!button.Command.CanExecute(null))" @onclick="() => Run(button.Command)">@button.Label</button>
+        }
+    </Footer>
+</Modal>
+
+@code {
+    private readonly List<object> _observed = [];
+
+    [Parameter, EditorRequired] public FormDialog Form { get; set; } = default!;
+
+    protected override void OnParametersSet()
+    {
+        Unobserve();
+        var sources = Form.Observed.Concat(Form.Buttons.Select(b => (object)b.Command))
+            .Concat(Form.Sections.SelectMany(s => s.Items).OfType<ChecklistField>().SelectMany(c => c.Entries()).Select(e => e.Source).OfType<object>());
+        foreach (var source in sources)
+        {
+            if (source is INotifyPropertyChanged npc)
+            {
+                npc.PropertyChanged += OnChanged;
+            }
+
+            if (source is System.Collections.Specialized.INotifyCollectionChanged ncc)
+            {
+                ncc.CollectionChanged += OnChanged;
+            }
+
+            if (source is ICommand command)
+            {
+                command.CanExecuteChanged += OnChanged;
+            }
+
+            _observed.Add(source);
+        }
+    }
+
+    public void Dispose() => Unobserve();
+
+    private void Unobserve()
+    {
+        foreach (var source in _observed)
+        {
+            if (source is INotifyPropertyChanged npc)
+            {
+                npc.PropertyChanged -= OnChanged;
+            }
+
+            if (source is System.Collections.Specialized.INotifyCollectionChanged ncc)
+            {
+                ncc.CollectionChanged -= OnChanged;
+            }
+
+            if (source is ICommand command)
+            {
+                command.CanExecuteChanged -= OnChanged;
+            }
+        }
+
+        _observed.Clear();
+    }
+
+    private void OnChanged(object? sender, EventArgs e) => _ = InvokeAsync(() =>
+    {
+        OnParametersSet(); // checklist entries may have been added
+        StateHasChanged();
+    });
+
+    private static bool IsWideByNature(FormItem item) =>
+        item is NoteItem or ChecklistField or LinesItem or CodeItem or CheckField || item is TextField { Multiline: true } || item is TextField { Browse: not null };
+
+    /// <summary>Notes, lists and details with nothing to show take no space.</summary>
+    private static bool IsEmpty(FormItem item) => item switch
+    {
+        NoteItem note => string.IsNullOrEmpty(note.Text()),
+        LinesItem lines => lines.Lines().Count == 0,
+        CodeItem snippet => string.IsNullOrEmpty(snippet.Text()),
+        _ => false,
+    };
+
+    private void Dismiss() => Form.Dismiss?.Invoke();
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && Form.DefaultButton is { } button)
+        {
+            await Run(button.Command);
+        }
+    }
+
+    private static async Task Run(ICommand command)
+    {
+        await Task.Yield(); // commands may open native pickers or nested dialogs (see ObservingComponentBase.Run)
+        if (command.CanExecute(null))
+        {
+            command.Execute(null);
+        }
+    }
+
+    private static void SetNumber(NumberField field, object? value)
+    {
+        if (int.TryParse(value?.ToString(), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var number))
+        {
+            field.Set(Math.Clamp(number, field.Min, field.Max));
+        }
+    }
+
+    private static string? StyleClass(DialogChoiceStyle style) => style switch
+    {
+        DialogChoiceStyle.Primary => "btn-primary",
+        DialogChoiceStyle.Danger => "btn-danger",
+        _ => null,
+    };
+}

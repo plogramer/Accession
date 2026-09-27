@@ -8,19 +8,20 @@ public sealed class DialogCenterTests
         new(title, "Message", [new DialogChoice("no", "No"), new DialogChoice("yes", "Yes")], "no");
 
     [Fact]
-    public async Task Answer_completes_the_question_and_shows_the_next_dialog()
+    public async Task Latest_dialog_is_on_top_and_answers_go_to_the_right_question()
     {
         var center = new DialogCenter();
         var first = Dialog("First");
-        var second = Dialog("Second");
+        var second = Dialog("First"); // looks the same: still a different question
         var firstAnswer = center.AskAsync(first);
         var secondAnswer = center.AskAsync(second);
 
-        Assert.Same(first, center.Current);
+        Assert.Same(second, center.Current);
         center.Answer(first, "yes");
 
         Assert.Equal("yes", await firstAnswer);
         Assert.Same(second, center.Current);
+        Assert.Single(center.Items);
         Assert.False(secondAnswer.IsCompleted);
     }
 

@@ -1,9 +1,20 @@
 @implements IDisposable
 
-@* Shows the DialogCenter's current dialog. *@
-@if (Center.Current is { } dialog)
+@* Shows the DialogCenter's dialogs; later ones on top. *@
+@foreach (var item in Center.Items)
 {
-    <Modal IsOpen="true" Title="@dialog.Title" OnClose="() => Center.Answer(dialog, dialog.CancelKey)" Width="500px">
+    if (item is Accession.UI.Forms.FormDialog form)
+    {
+        <Accession.UI.Forms.FormDialogView @key="form" Form="form" />
+        continue;
+    }
+
+    if (item is not ChoiceDialog dialog)
+    {
+        continue;
+    }
+
+    <Modal @key="dialog" IsOpen="true" Title="@dialog.Title" OnClose="() => Center.Answer(dialog, dialog.CancelKey)" Width="500px">
         <ChildContent>
             <div class="dialog-body">
                 <div class="dialog-icon is-@dialog.Kind.ToString().ToLowerInvariant()"><Icon Name="@IconFor(dialog.Kind)" Size="20" /></div>
