@@ -96,6 +96,8 @@
                 <Dropdown TriggerClass="icon-btn icon-btn-lg" Title="More">
                     <Trigger><Icon Name="more" /></Trigger>
                     <ChildContent>
+                        <MenuItem Icon="download" Text="Export to Excel…" Command="Model.ExportCommand" />
+                        <div class="menu-sep"></div>
                         <MenuItem Icon="info" Text="Inventory properties" Command="Model.ShowPropertiesCommand" />
                         <MenuItem Icon="folder-open" Text="Change root path" Command="Model.ChangeRootPathCommand" />
                         <MenuItem Icon="external" Text="Open matter link" Command="Model.OpenMatterLinkCommand" />

@@ -102,6 +102,7 @@ public sealed class RecordsPagesTests
         public Task SetPageSizeAsync(int pageSize) => Task.CompletedTask;
         public ICommand ApplyMediaFilterCommand { get; } = new RelayCommand(() => { });
         public ICommand ClearFiltersCommand { get; } = new RelayCommand(() => { });
+        public ICommand ExportCommand { get; } = new RelayCommand(() => { });
         public ICommand RefreshCommand { get; } = new RelayCommand(() => { });
     }
 }

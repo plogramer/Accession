@@ -81,5 +81,6 @@ internal sealed partial class FakeFiles : ObservableObject, IFilesModel
     public ICommand CopySha1Command { get; } = new RelayCommand(() => { });
     public ICommand OpenContainingFolderCommand { get; } = new RelayCommand(() => { });
     public ICommand ShowCopiesCommand { get; } = new RelayCommand(() => { });
+    public ICommand ExportViewCommand { get; } = new RelayCommand(() => { });
     public ICommand RefreshCommand { get; } = new RelayCommand(() => { });
 }

@@ -85,6 +85,9 @@ public sealed record SelectField(string Label, IReadOnlyList<SelectOption> Optio
 public sealed record CheckField(string Label, Func<bool> Get, Action<bool> Set) : FormItem(Label)
 {
     public Func<bool>? Enabled { get; init; }
+
+    /// <summary>Half width, so a group of short choices (e.g. sheets) sits two per row.</summary>
+    public bool Compact { get; init; }
 }
 
 /// <summary>A read-only value (facts about the inventory).</summary>

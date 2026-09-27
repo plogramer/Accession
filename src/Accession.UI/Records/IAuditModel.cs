@@ -37,4 +37,7 @@ public interface IAuditModel : INotifyPropertyChanged, IRefreshableScreen
 
     ICommand ApplyMediaFilterCommand { get; }
     ICommand ClearFiltersCommand { get; }
+
+    /// <summary>Exports the entries matching the filter to Excel (AUD-04).</summary>
+    ICommand ExportCommand { get; }
 }

@@ -40,4 +40,7 @@ public interface IMediaModel : INotifyPropertyChanged, IRefreshableScreen
     ICommand RetryFailedCommand { get; }
     ICommand OpenInExplorerCommand { get; }
     ICommand OpenFilesCommand { get; }
+
+    /// <summary>Export to Excel with the ticked media (all media when none is ticked).</summary>
+    ICommand ExportCommand { get; }
 }

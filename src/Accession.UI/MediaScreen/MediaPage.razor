@@ -8,6 +8,7 @@
         </div>
         <div class="page-actions">
             <button class="icon-btn icon-btn-lg" title="Refresh" @onclick="() => Run(Model.RefreshCommand)"><Icon Name="refresh" /></button>
+            <button class="btn" title="Export the ticked media (or all media) to Excel" disabled="@Disabled(Model.ExportCommand)" @onclick="() => Run(Model.ExportCommand)"><Icon Name="download" Size="16" /> Export</button>
             <button class="btn" disabled="@Disabled(Model.DiscoverCommand)" @onclick="() => Run(Model.DiscoverCommand)"><Icon Name="discover" Size="16" /> Discover</button>
             <button class="btn btn-primary" disabled="@Disabled(Model.AddMediaCommand)" @onclick="() => Run(Model.AddMediaCommand)"><Icon Name="plus" Size="16" /> Add media</button>
         </div>

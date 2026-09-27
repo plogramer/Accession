@@ -15,6 +15,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private readonly InventoryHost _host;
     private readonly InventoryWorkflows _workflows;
     private readonly MediaWorkflows _media;
+    private readonly ExportWorkflow _export;
 
     public MainWindowViewModel(
         InventoryHost host,
@@ -23,8 +24,10 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         ScanHost scans,
         IDialogService dialogs,
         BusyTracker busy,
-        IDesktop desktop)
+        IDesktop desktop,
+        ExportWorkflow export)
     {
+        _export = export;
         _desktop = desktop;
         _host = host;
         _workflows = workflows;
@@ -80,6 +83,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(HasSession))]
     private Task CloseInventory() => _workflows.CloseInventoryAsync();
 
+    [RelayCommand(CanExecute = nameof(HasSession))]
+    private Task Export() => _export.ExportAsync();
+
     [RelayCommand(CanExecute = nameof(CanPauseScan))]
     private void PauseScan() => Scans.Pause();
 
@@ -131,6 +137,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(HasSession));
         OnPropertyChanged(nameof(HasMatterUrl));
         CloseInventoryCommand.NotifyCanExecuteChanged();
+        ExportCommand.NotifyCanExecuteChanged();
         ShowPropertiesCommand.NotifyCanExecuteChanged();
         ChangeRootPathCommand.NotifyCanExecuteChanged();
         OpenMatterLinkCommand.NotifyCanExecuteChanged();

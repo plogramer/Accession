@@ -194,6 +194,7 @@ internal sealed partial class FakeShell : ObservableObject, IShellModel
     public ICommand OpenMatterLinkCommand { get; } = new RelayCommand(() => { });
     public ICommand OpenSettingsCommand { get; } = new RelayCommand(() => { });
     public ICommand CloseInventoryCommand { get; } = new RelayCommand(() => { });
+    public ICommand ExportCommand { get; } = new RelayCommand(() => { });
     public ICommand DismissNoticeCommand { get; } = new RelayCommand(() => { });
 }
 

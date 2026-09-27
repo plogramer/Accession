@@ -29,8 +29,11 @@ public sealed partial class AuditLogViewModel : ViewModelBase, IAuditModel, IDis
     private bool _loading;
     private readonly Dictionary<int, long?> _pageStarts = new() { [0] = null };
 
-    public AuditLogViewModel(InventoryHost host, ISettingsService settings, ILogger<AuditLogViewModel> logger)
+    private readonly ExportWorkflow? _export;
+
+    public AuditLogViewModel(InventoryHost host, ISettingsService settings, ILogger<AuditLogViewModel> logger, ExportWorkflow? export = null)
     {
+        _export = export;
         _host = host;
         _settings = settings;
         _logger = logger;
@@ -116,6 +119,8 @@ public sealed partial class AuditLogViewModel : ViewModelBase, IAuditModel, IDis
 
     ICommand IAuditModel.ClearFiltersCommand => ClearFiltersCommand;
 
+    ICommand IAuditModel.ExportCommand => ExportCommand;
+
     ICommand IRefreshableScreen.RefreshCommand => RefreshCommand;
 
     public Task GoToPageAsync(int pageIndex)
@@ -172,6 +177,11 @@ public sealed partial class AuditLogViewModel : ViewModelBase, IAuditModel, IDis
         LoadUsers();
         ResetNumberedPages();
     }
+
+    [RelayCommand(CanExecute = nameof(CanExport))]
+    private Task Export() => _export!.ExportAuditLogAsync(CurrentQuery() with { PageSize = 500 });
+
+    private bool CanExport() => _export is not null && _host.HasSession;
 
     [RelayCommand]
     private void ClearFilters()

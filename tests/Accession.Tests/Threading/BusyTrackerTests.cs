@@ -101,6 +101,33 @@ public class BusyTrackerTests
     }
 
     [Fact]
+    public async Task Work_can_update_its_message_while_visible()
+    {
+        var tracker = new BusyTracker(_time);
+        var release = new TaskCompletionSource();
+        Action<string>? report = null;
+
+        var run = tracker.RunAsync(async (_, update) =>
+        {
+            report = update;
+            update("Exporting… 0 %");
+            await release.Task;
+            return 1;
+        }, "Exporting…", cancellable: true);
+        await WaitUntil(() => report is not null);
+        Assert.False(tracker.IsBusy); // not shown before the delay, updates or not
+
+        _time.Advance(BusyTracker.DefaultShowDelay);
+        await WaitUntil(() => tracker.Message == "Exporting… 0 %");
+        report!("Exporting… 50 %");
+        Assert.Equal("Exporting… 50 %", tracker.Message);
+
+        release.SetResult();
+        Assert.Equal(1, await run);
+        Assert.False(tracker.IsBusy);
+    }
+
+    [Fact]
     public async Task Nested_operations_show_latest_message_and_restore_previous()
     {
         var tracker = new BusyTracker(_time);

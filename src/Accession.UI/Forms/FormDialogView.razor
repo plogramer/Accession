@@ -219,7 +219,7 @@
     });
 
     private static bool IsWideByNature(FormItem item) =>
-        item is NoteItem or ChecklistField or LinesItem or CodeItem or CheckField || item is TextField { Multiline: true } || item is TextField { Browse: not null };
+        item is NoteItem or ChecklistField or LinesItem or CodeItem or CheckField { Compact: false } || item is TextField { Multiline: true } || item is TextField { Browse: not null };
 
     /// <summary>Notes, lists and details with nothing to show take no space.</summary>
     private static bool IsEmpty(FormItem item) => item switch

@@ -47,13 +47,23 @@ public sealed class BusyTracker : INotifyPropertyChanged
         }, message, cancellable).ConfigureAwait(true);
     }
 
-    public async Task<T> RunAsync<T>(Func<CancellationToken, Task<T>> work, string message, bool cancellable = false)
+    public Task<T> RunAsync<T>(Func<CancellationToken, Task<T>> work, string message, bool cancellable = false)
+    {
+        ArgumentNullException.ThrowIfNull(work);
+        return RunAsync((token, _) => work(token), message, cancellable);
+    }
+
+    /// <summary>
+    /// Like <see cref="RunAsync{T}(Func{CancellationToken, Task{T}}, string, bool)"/>, and the work can update its message
+    /// (e.g. progress) through the <see cref="Action{T}"/> it is given. Updates may come from any thread.
+    /// </summary>
+    public async Task<T> RunAsync<T>(Func<CancellationToken, Action<string>, Task<T>> work, string message, bool cancellable = false)
     {
         ArgumentNullException.ThrowIfNull(work);
 
         using var cancellation = new CancellationTokenSource();
         var operation = new Operation(message, cancellable ? cancellation : null);
-        var workTask = Task.Run(() => work(cancellation.Token), CancellationToken.None);
+        var workTask = Task.Run(() => work(cancellation.Token, text => UpdateMessage(operation, text)), CancellationToken.None);
 
         using (var delayCancellation = new CancellationTokenSource())
         {
@@ -82,6 +92,21 @@ public sealed class BusyTracker : INotifyPropertyChanged
         lock (_gate)
         {
             _visible.LastOrDefault()?.Cancellation?.Cancel();
+        }
+    }
+
+    private void UpdateMessage(Operation operation, string message)
+    {
+        bool visible;
+        lock (_gate)
+        {
+            operation.Message = message;
+            visible = _visible.Contains(operation);
+        }
+
+        if (visible)
+        {
+            Refresh();
         }
     }
 
@@ -146,5 +171,10 @@ public sealed class BusyTracker : INotifyPropertyChanged
     private void OnPropertyChanged([CallerMemberName] string? name = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
-    private sealed record Operation(string Message, CancellationTokenSource? Cancellation);
+    private sealed class Operation(string message, CancellationTokenSource? cancellation)
+    {
+        public string Message { get; set; } = message;
+
+        public CancellationTokenSource? Cancellation { get; } = cancellation;
+    }
 }

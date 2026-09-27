@@ -177,6 +177,21 @@ public sealed class ExportServiceTests : IDisposable
     }
 
     [Fact]
+    public void Audit_log_export_holds_the_filtered_entries_and_is_audited()
+    {
+        _test.Session.Audit.Write(AuditAction.MediaDeleted, "123-123_009", new { Reason = "test" });
+
+        var workbook = _export.ExportAuditLog(_test.Session, new AuditQuery { Actions = [AuditAction.MediaDeleted] }, Out("audit.xlsx"));
+
+        var rows = XlsxReader.Read(Out("audit.xlsx")).Data("Audit Log");
+        var row = Assert.Single(rows);
+        Assert.Equal(["Media deleted", "123-123_009"], row.Skip(3).Take(2));
+        Assert.Equal(1, workbook.TotalRows);
+        var audit = _test.Session.Audit.Query(new AuditQuery { Actions = [AuditAction.ExportCreated] }).Single();
+        Assert.Contains("\"scope\":\"AuditLog\"", audit.Details, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Readable_sizes_follow_the_unit_setting()
     {
         _export.Export(_test.Session, new ExportRequest

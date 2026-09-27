@@ -54,7 +54,7 @@ public sealed class FormDialogTests
         Assert.Contains("btn btn-danger\" type=\"button\" disabled", html);
     }
 
-    private static async Task<string> Render(FormDialog form, string preview)
+    internal static async Task<string> Render(FormDialog form, string preview)
     {
         var app = new FakeApp(new FakeStart());
         app.Dialogs.Open(form);

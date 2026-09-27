@@ -82,4 +82,7 @@ public interface IFilesModel : INotifyPropertyChanged, IRefreshableScreen
     ICommand CopySha1Command { get; }
     ICommand OpenContainingFolderCommand { get; }
     ICommand ShowCopiesCommand { get; }
+
+    /// <summary>Export current view: the Export dialog with the current filter as its scope (BRW-05).</summary>
+    ICommand ExportViewCommand { get; }
 }

@@ -51,5 +51,8 @@ public interface IShellModel : INotifyPropertyChanged
     ICommand OpenMatterLinkCommand { get; }
     ICommand OpenSettingsCommand { get; }
     ICommand CloseInventoryCommand { get; }
+
+    /// <summary>Export to Excel… (the Export dialog).</summary>
+    ICommand ExportCommand { get; }
     ICommand DismissNoticeCommand { get; }
 }

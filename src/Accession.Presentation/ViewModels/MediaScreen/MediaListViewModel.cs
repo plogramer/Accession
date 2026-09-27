@@ -31,11 +31,13 @@ public sealed partial class MediaListViewModel : ViewModelBase, IMediaModel, IDi
     private readonly ILogger<MediaListViewModel> _logger;
     private readonly ScanHost _scans;
     private readonly FileBrowserNavigator _navigator;
+    private readonly ExportWorkflow? _export;
     private IReadOnlyList<MediaRowViewModel> _selectedRows = [];
 
     public MediaListViewModel(InventoryHost host, MediaWorkflows workflows, ScanHost scans, ISettingsService settings, ILogger<MediaListViewModel> logger, IUiDispatcher ui,
-        FileBrowserNavigator navigator)
+        FileBrowserNavigator navigator, ExportWorkflow? export = null)
     {
+        _export = export;
         _navigator = navigator;
         _ui = ui;
         _host = host;
@@ -138,6 +140,8 @@ public sealed partial class MediaListViewModel : ViewModelBase, IMediaModel, IDi
 
     ICommand IRefreshableScreen.RefreshCommand => RefreshCommand;
 
+    ICommand IMediaModel.ExportCommand => ExportCommand;
+
     /// <summary>Raised after the list was reloaded (the shell updates its badge).</summary>
     public event EventHandler? RowsReloaded;
 
@@ -155,6 +159,12 @@ public sealed partial class MediaListViewModel : ViewModelBase, IMediaModel, IDi
         _host.PropertyChanged -= OnHostChanged;
         _settings.SettingsChanged -= OnSettingsChanged;
     }
+
+    [RelayCommand(CanExecute = nameof(CanExport))]
+    private Task Export() =>
+        _export!.ExportAsync(_selectedRows.Count > 0 ? [.. _selectedRows.Select(r => r.Media.MediaKey)] : null);
+
+    private bool CanExport() => _export is not null && _host.HasSession && Rows.Count > 0;
 
     [RelayCommand(CanExecute = nameof(CanAddMedia))]
     private Task AddMedia() => _workflows.AddMediaAsync();
@@ -217,6 +227,7 @@ public sealed partial class MediaListViewModel : ViewModelBase, IMediaModel, IDi
 
     private void NotifyScanCommands()
     {
+        ExportCommand.NotifyCanExecuteChanged();
         ScanCommand.NotifyCanExecuteChanged();
         RescanCommand.NotifyCanExecuteChanged();
         ResumeCommand.NotifyCanExecuteChanged();

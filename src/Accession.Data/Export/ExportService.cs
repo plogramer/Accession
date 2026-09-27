@@ -123,6 +123,62 @@ public sealed class ExportService(
         return result;
     }
 
+    /// <summary>
+    /// Exports audit entries matching <paramref name="query"/> (the Audit Log screen's filter) to one "Audit Log" sheet,
+    /// newest first (AUD-04). Audited like any export.
+    /// </summary>
+    public ExportedWorkbook ExportAuditLog(InventorySession session, AuditQuery query, string path, IProgress<ExportProgress>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        ArgumentNullException.ThrowIfNull(query);
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        var total = session.Audit.Count(query with { BeforeAuditId = null, Offset = 0 });
+        ExportedWorkbook workbook;
+        using (var writer = XlsxWriter.Create(path, rows => progress?.Report(new ExportProgress(rows, total, Path.GetFileName(path))),
+                   cancellationToken))
+        {
+            writer.BeginSheet("Audit Log", [
+                new("Time (UTC)", XlsxCellType.DateTimeUtc, 20), new("User", Width: 22), new("Computer", Width: 16),
+                new("Action", Width: 24), new("Media ID", Width: 16), new("Details", Width: 80)]);
+            long? before = null;
+            while (true)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var page = session.Audit.Query(query with { BeforeAuditId = before, Offset = 0, PageSize = ErrorPageSize });
+                foreach (var entry in page)
+                {
+                    writer.BeginRow();
+                    writer.DateTimeUtc(entry.OccurredAtUtc);
+                    writer.Text(entry.UserName);
+                    writer.Text(entry.MachineName);
+                    writer.Text(Words(entry.Action.ToString()));
+                    writer.Text(entry.MediaId);
+                    writer.Text(entry.Details);
+                    writer.EndRow();
+                }
+
+                if (page.Count < ErrorPageSize)
+                {
+                    break;
+                }
+
+                before = page[^1].AuditId;
+            }
+
+            writer.Complete();
+            workbook = new ExportedWorkbook(Path.GetFullPath(path), writer.Sheets);
+        }
+
+        WriteAudit(session, new
+        {
+            Scope = "AuditLog",
+            Filter = new { query.From, query.To, Actions = query.Actions?.Select(a => a.ToString()).ToList(), query.UserName, query.MediaId },
+            Workbooks = new[] { new { workbook.Path, Sheets = workbook.Sheets.Select(s => new { s.Name, s.Rows }).ToList() } },
+        });
+        return workbook;
+    }
+
     /// <summary>"C:\x\ACME_Inventory.xlsx" + "123-123_001" → "C:\x\ACME_Inventory_123-123_001.xlsx".</summary>
     public static string PerMediaPath(string outputPath, string mediaId)
     {
@@ -385,6 +441,11 @@ public sealed class ExportService(
             request.OneWorkbookPerMedia,
             Workbooks = result.Workbooks.Select(w => new { w.Path, Sheets = w.Sheets.Select(s => new { s.Name, s.Rows }).ToList() }).ToList(),
         };
+        WriteAudit(session, details);
+    }
+
+    private void WriteAudit(InventorySession session, object details)
+    {
         try
         {
             if (session.IsReadOnly)

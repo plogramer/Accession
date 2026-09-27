@@ -22,6 +22,7 @@ public static class DialogForms
         DeleteMediaViewModel vm => DeleteMedia(vm, dismiss),
         SettingsViewModel vm => Settings(vm, dismiss),
         ErrorDialogViewModel vm => Error(vm, dismiss),
+        ExportViewModel vm => Export(vm, dismiss),
         _ => null,
     };
 
@@ -236,6 +237,56 @@ public static class DialogForms
             Dismiss = dismiss,
         };
     }
+
+    /// <summary>Export to Excel (section 8.15).</summary>
+    private static FormDialog Export(ExportViewModel vm, Action dismiss) => new(
+        "Export to Excel",
+        [
+            new FormSection(null,
+            [
+                new SelectField("Scope", [.. vm.ScopeOptions.Select(o => new SelectOption(o.Value, o.Label))], () => vm.ScopeValue, v => vm.ScopeValue = v)
+                {
+                    Wide = true,
+                },
+                new ChecklistField("Media", () => [.. vm.Media.Select(m => new ChecklistEntry(m.MediaId, string.Empty, () => m.IsChecked, v => m.IsChecked = v, m))])
+                {
+                    Visible = () => vm.IsSelectedScope, Wide = true, EmptyText = "This inventory has no media.",
+                },
+                new InfoField("Files view", () => vm.FilesViewText.Length == 0 ? "All files" : vm.FilesViewText)
+                {
+                    Visible = () => vm.IsViewScope, Wide = true, Hint = "The Files sheet holds exactly the files the Files screen shows.",
+                },
+            ]),
+            new FormSection("Sheets",
+            [
+                new CheckField("Summary", () => vm.SummarySheet, v => vm.SummarySheet = v) { Compact = true },
+                new CheckField("Media", () => vm.MediaSheet, v => vm.MediaSheet = v) { Compact = true },
+                new CheckField("Categories", () => vm.CategoriesSheet, v => vm.CategoriesSheet = v) { Compact = true },
+                new CheckField("Extensions", () => vm.ExtensionsSheet, v => vm.ExtensionsSheet = v) { Compact = true },
+                new CheckField("Files", () => vm.FilesSheet, v => vm.FilesSheet = v) { Compact = true },
+                new CheckField("Errors", () => vm.ErrorsSheet, v => vm.ErrorsSheet = v) { Compact = true },
+            ]),
+            new FormSection("Output",
+            [
+                new InfoField("Units", () => vm.UnitsText) { Wide = true },
+                new CheckField("One workbook per media", () => vm.OneWorkbookPerMedia, v => vm.OneWorkbookPerMedia = v)
+                {
+                    Wide = true, Hint = "Each workbook's name ends with its Media ID.",
+                },
+                new TextField("Workbook", () => vm.OutputPath, v => vm.OutputPath = v) { Mono = true, Browse = vm.BrowseCommand, Wide = true },
+                new NoteItem(() => vm.EstimateText) { Tone = "info", Wide = true },
+                new NoteItem(() => vm.ValidationError) { Tone = "danger", Wide = true, Visible = () => vm.ValidationError.Length > 0 },
+            ]),
+        ],
+        [
+            new FormButton("Cancel", vm.CancelCommand),
+            new FormButton("Export", vm.ExportCommand, DialogChoiceStyle.Primary) { IsDefault = true },
+        ])
+    {
+        Width = "640px",
+        Observed = [vm, vm.Media],
+        Dismiss = dismiss,
+    };
 
     private static FormDialog Error(ErrorDialogViewModel vm, Action dismiss) => new(
         vm.Title,

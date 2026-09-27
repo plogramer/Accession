@@ -48,6 +48,7 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
     private CancellationTokenSource? _cancel;
     private bool _suppressApply;
     private HashSet<long> _mediaKeys = [];
+    private readonly ExportWorkflow? _export;
     private IReadOnlyList<SelectOption> _mediaRootOptions = [];
     private IReadOnlyList<long>? _mediaSet;
 
@@ -55,8 +56,9 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
     public const string MediaSetValue = "set";
 
     public WebFilesViewModel(InventoryHost host, FileBrowserQueries queries, CategoryQueries categories, ISettingsService settings,
-        IDesktop desktop, IDialogService dialogs, ToastService toasts, ILogger<WebFilesViewModel> logger)
+        IDesktop desktop, IDialogService dialogs, ToastService toasts, ILogger<WebFilesViewModel> logger, ExportWorkflow? export = null)
     {
+        _export = export;
         _host = host;
         _queries = queries;
         _categories = categories;
@@ -187,6 +189,8 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
 
     ICommand IFilesModel.ShowCopiesCommand => ShowCopiesCommand;
 
+    ICommand IFilesModel.ExportViewCommand => ExportViewCommand;
+
     ICommand IRefreshableScreen.RefreshCommand => RefreshCommand;
 
     public void Dispose()
@@ -283,6 +287,12 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
         _suppressApply = false;
         Apply();
     }
+
+    [RelayCommand(CanExecute = nameof(CanExportView))]
+    private Task ExportView() =>
+        _export!.ExportAsync(filesView: _activeFilter, filesViewText: ActiveFilters.Count == 0 ? string.Empty : string.Join(" · ", ActiveFilters));
+
+    private bool CanExportView() => _export is not null && _host.HasSession;
 
     [RelayCommand]
     private Task Refresh()

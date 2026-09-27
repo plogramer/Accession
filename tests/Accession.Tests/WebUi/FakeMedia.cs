@@ -66,6 +66,7 @@ internal sealed partial class FakeMedia : ObservableObject, IMediaModel
     public ICommand RetryFailedCommand { get; } = new RelayCommand(() => { });
     public ICommand OpenInExplorerCommand { get; } = new RelayCommand(() => { });
     public ICommand OpenFilesCommand { get; } = new RelayCommand(() => { });
+    public ICommand ExportCommand { get; } = new RelayCommand(() => { });
     public ICommand RefreshCommand { get; } = new RelayCommand(() => { });
 
     private void Add(long key, string id, MediaStatus status, long files, long bytes, long hashed, long errors, int scans) =>

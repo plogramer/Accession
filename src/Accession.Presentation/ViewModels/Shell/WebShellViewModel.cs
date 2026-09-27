@@ -146,6 +146,8 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
 
     public ICommand CloseInventoryCommand => _main.CloseInventoryCommand;
 
+    public ICommand ExportCommand => _main.ExportCommand;
+
     ICommand IShellModel.ScanNowCommand => ScanNowCommand;
 
     ICommand IShellModel.DismissNoticeCommand => DismissNoticeCommand;
