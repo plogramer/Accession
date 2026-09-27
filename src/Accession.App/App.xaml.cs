@@ -107,6 +107,9 @@ public partial class App : Application
         builder.Services.AddSingleton<InventoryPropertiesService>();
         builder.Services.AddSingleton<MediaDiscoveryService>();
         builder.Services.AddSingleton<MediaService>();
+        builder.Services.AddSingleton(sp => new Accession.Data.Queries.DashboardQueries(
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), AppPaths.AppFolderName, "Queries", "Dashboard"),
+            sp.GetRequiredService<ILogger<Accession.Data.Queries.DashboardQueries>>()));
 
         // UI services
         builder.Services.AddSingleton<INavigationService, NavigationService>();
@@ -123,6 +126,7 @@ public partial class App : Application
         builder.Services.AddTransient<StartViewModel>();
         builder.Services.AddTransient<InventoryShellViewModel>();
         builder.Services.AddTransient<MediaListViewModel>();
+        builder.Services.AddTransient<Accession.App.ViewModels.Dashboard.DashboardViewModel>();
         builder.Services.AddTransient<Accession.App.ViewModels.Scanning.ScanQueueViewModel>();
         builder.Services.AddTransient<Accession.App.ViewModels.Scanning.ErrorsViewModel>();
         AddDialog<NewInventoryViewModel>(builder.Services);

@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using Accession.App.Mvvm;
 using Accession.App.Services;
+using Accession.App.ViewModels.Dashboard;
 using Accession.App.ViewModels.MediaScreen;
 using Accession.App.ViewModels.Scanning;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -24,6 +25,7 @@ public sealed partial class InventoryShellViewModel : ViewModelBase
 
     public InventoryShellViewModel(
         InventoryHost host,
+        DashboardViewModel dashboard,
         MediaListViewModel mediaList,
         ScanQueueViewModel scanQueue,
         ErrorsViewModel errors,
@@ -40,7 +42,7 @@ public sealed partial class InventoryShellViewModel : ViewModelBase
         _mediaItem = new NavItem("Media", mediaList);
         NavItems =
         [
-            new NavItem("Dashboard", new PlaceholderViewModel("Dashboard", "Totals by media, category and extension.", "Dashboard epic (#7)")),
+            new NavItem("Dashboard", dashboard),
             _mediaItem,
             new NavItem("Files", new PlaceholderViewModel("Files", "Browse and filter every inventoried file.", "File browser epic (#8)")),
             _scanQueueItem,

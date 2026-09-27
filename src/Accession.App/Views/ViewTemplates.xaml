@@ -4,6 +4,7 @@
                     xmlns:shell="clr-namespace:Accession.App.ViewModels.Shell"
                     xmlns:media="clr-namespace:Accession.App.ViewModels.MediaScreen"
                     xmlns:scan="clr-namespace:Accession.App.ViewModels.Scanning"
+                    xmlns:dash="clr-namespace:Accession.App.ViewModels.Dashboard"
                     xmlns:views="clr-namespace:Accession.App.Views">
     <!-- Maps each view model to its view. The navigation and dialog services rely on these. -->
 
@@ -22,6 +23,9 @@
         <views:MediaListView />
     </DataTemplate>
 
+    <DataTemplate DataType="{x:Type dash:DashboardViewModel}">
+        <views:DashboardView />
+    </DataTemplate>
     <DataTemplate DataType="{x:Type scan:ScanQueueViewModel}">
         <views:ScanQueueView />
     </DataTemplate>
