@@ -50,8 +50,11 @@ public partial class App : Application
 
             var mainWindow = _host.Services.GetRequiredService<MainWindow>();
             MainWindow = mainWindow;
-            _host.Services.GetRequiredService<MainWindowViewModel>().Initialize();
+
+            // Show the window before choosing the first screen: anything that asks or warns during start-up
+            // (e.g. a missing WebView2 runtime) then has a visible owner instead of hiding behind other windows.
             mainWindow.Show();
+            _host.Services.GetRequiredService<MainWindowViewModel>().Initialize();
         }
         catch (Exception ex)
         {

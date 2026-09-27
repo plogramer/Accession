@@ -4,11 +4,12 @@ using Accession.Presentation.Mvvm;
 using Accession.Presentation.Platform;
 using Accession.Presentation.Services;
 using Accession.Presentation.ViewModels;
+using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 
 namespace Accession.App.Services;
 
-public sealed class DialogService(IDesktop desktop) : IDialogService
+public sealed class DialogService(IDesktop desktop, ILogger<DialogService> logger) : IDialogService
 {
     public bool? ShowDialog(DialogViewModelBase viewModel)
     {
@@ -26,11 +27,17 @@ public sealed class DialogService(IDesktop desktop) : IDialogService
     public void ShowInfo(string title, string message) =>
         ShowMessage(title, message, MessageBoxButton.OK, MessageBoxImage.Information);
 
-    public void ShowWarning(string title, string message) =>
+    public void ShowWarning(string title, string message)
+    {
+        logger.LogWarning("Message shown: {Title}: {Message}", title, message);
         ShowMessage(title, message, MessageBoxButton.OK, MessageBoxImage.Warning);
+    }
 
-    public void ShowError(string title, string message, Exception? exception = null) =>
+    public void ShowError(string title, string message, Exception? exception = null)
+    {
+        logger.LogError(exception, "Error shown: {Title}: {Message}", title, message);
         ShowDialog(new ErrorDialogViewModel(title, message, exception, desktop));
+    }
 
     public bool Confirm(string title, string message) =>
         ShowMessage(title, message, MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes;
