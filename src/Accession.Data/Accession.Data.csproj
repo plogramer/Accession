@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Schema\*.sql" LogicalName="Accession.Data.Schema.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="Queries\Dashboard\*.sql" LogicalName="Accession.Data.Queries.Dashboard.%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>
