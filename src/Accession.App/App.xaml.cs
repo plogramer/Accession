@@ -140,6 +140,7 @@ public partial class App : Application
 
         // Web UI (preview)
         builder.Services.AddWpfBlazorWebView();
+        builder.Services.AddSingleton(sp => new Accession.UI.Components.ToastService(sp.GetRequiredService<TimeProvider>()));
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();
 #endif

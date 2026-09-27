@@ -1,0 +1,98 @@
+@using System.Globalization
+
+@* Page navigation for large result sets: rows per page, First/Previous/Next/Last and "go to page". *@
+<div class="pager" role="navigation" aria-label="Pages">
+    <span class="pager-summary">@Summary</span>
+
+    <label class="pager-size">
+        <span>Rows per page</span>
+        <select value="@PageSize" disabled="@IsBusy" @onchange="ChangePageSize">
+            @foreach (var size in PageSizes)
+            {
+                <option value="@size.ToString(CultureInfo.InvariantCulture)">@size.ToString("N0", CultureInfo.CurrentCulture)</option>
+            }
+        </select>
+    </label>
+
+    <div class="pager-nav">
+        @if (IsBusy)
+        {
+            <span class="spinner spinner-sm" aria-label="Loading"></span>
+        }
+        <button class="icon-btn" title="First page" disabled="@(IsBusy || PageIndex <= 0)" @onclick="() => GoTo(0)"><Icon Name="chevrons-left" Size="16" /></button>
+        <button class="icon-btn" title="Previous page" disabled="@(IsBusy || PageIndex <= 0)" @onclick="() => GoTo(PageIndex - 1)"><Icon Name="chevron-left" Size="16" /></button>
+        <span class="pager-page">
+            Page
+            <input type="number" min="1" max="@LastPageNumber" value="@(PageIndex + 1)" disabled="@IsBusy"
+                   aria-label="Page number" @onchange="GoToTyped" />
+            of @LastPageNumber.ToString("N0", CultureInfo.CurrentCulture)
+        </span>
+        <button class="icon-btn" title="Next page" disabled="@(IsBusy || PageIndex >= PageCount - 1)" @onclick="() => GoTo(PageIndex + 1)"><Icon Name="chevron-right" Size="16" /></button>
+        <button class="icon-btn" title="Last page" disabled="@(IsBusy || PageIndex >= PageCount - 1)" @onclick="() => GoTo(PageCount - 1)"><Icon Name="chevrons-right" Size="16" /></button>
+    </div>
+</div>
+
+@code {
+    /// <summary>Rows-per-page choices for the Files screen (default 1,000).</summary>
+    public static readonly IReadOnlyList<int> FilePageSizes = [1_000, 2_000, 5_000, 10_000, 50_000];
+
+    /// <summary>Zero-based current page.</summary>
+    [Parameter] public int PageIndex { get; set; }
+
+    [Parameter] public long TotalCount { get; set; }
+
+    [Parameter] public int PageSize { get; set; } = FilePageSizes[0];
+
+    [Parameter] public IReadOnlyList<int> PageSizes { get; set; } = FilePageSizes;
+
+    /// <summary>What is being paged, for the summary ("files", "errors").</summary>
+    [Parameter] public string ItemName { get; set; } = "items";
+
+    [Parameter] public bool IsBusy { get; set; }
+
+    /// <summary>Raised with the zero-based page to show.</summary>
+    [Parameter] public EventCallback<int> OnPageChange { get; set; }
+
+    [Parameter] public EventCallback<int> OnPageSizeChange { get; set; }
+
+    /// <summary>Number of pages; at least 1 so an empty result still reads "Page 1 of 1".</summary>
+    public int PageCount => CountPages(TotalCount, PageSize);
+
+    /// <summary>Pages needed for <paramref name="total"/> rows; at least 1.</summary>
+    public static int CountPages(long total, int pageSize) =>
+        (int)Math.Max(1, (total + Math.Max(1, pageSize) - 1) / Math.Max(1, pageSize));
+
+    private int LastPageNumber => PageCount;
+
+    private string Summary
+    {
+        get
+        {
+            var culture = CultureInfo.CurrentCulture;
+            if (TotalCount == 0)
+            {
+                return $"No {ItemName}";
+            }
+
+            var first = (long)PageIndex * PageSize + 1;
+            var last = Math.Min(TotalCount, first + PageSize - 1);
+            return $"Showing {first.ToString("N0", culture)}–{last.ToString("N0", culture)} of {TotalCount.ToString("N0", culture)} {ItemName}";
+        }
+    }
+
+    private Task GoTo(int page)
+    {
+        page = Math.Clamp(page, 0, PageCount - 1);
+        return page == PageIndex ? Task.CompletedTask : OnPageChange.InvokeAsync(page);
+    }
+
+    private Task GoToTyped(ChangeEventArgs e) =>
+        int.TryParse(e.Value?.ToString(), NumberStyles.Integer, CultureInfo.CurrentCulture, out var number)
+            ? GoTo(number - 1)
+            : Task.CompletedTask;
+
+    private Task ChangePageSize(ChangeEventArgs e) =>
+        int.TryParse(e.Value?.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var size) && size != PageSize
+            ? OnPageSizeChange.InvokeAsync(size)
+            : Task.CompletedTask;
+}

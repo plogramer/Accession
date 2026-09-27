@@ -8,7 +8,7 @@ using Accession.Data.Schema;
 using Accession.Presentation.Mvvm;
 using Accession.Presentation.Services;
 using Accession.Presentation.ViewModels.Dashboard;
-using Accession.UI.Dashboard;
+using Accession.UI.Components;
 using Accession.UI.Shell;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -42,8 +42,10 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
         ISettingsService settings,
         BusyTracker busy,
         FileBrowserNavigator navigator,
-        DashboardViewModel dashboard)
+        DashboardViewModel dashboard,
+        ToastService toasts)
     {
+        Toasts = toasts;
         _host = host;
         _scans = scans;
         _media = media;
@@ -53,18 +55,18 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
         _navigator = navigator;
         _dashboard = dashboard;
 
-        _filesItem = new ShellNavItem("Files", "files", false, "Inventory");
-        _queueItem = new ShellNavItem("Scan Queue", "queue", false, "Scanning");
-        _errorsItem = new ShellNavItem("Errors", "errors", false, "Scanning");
+        _filesItem = new ShellNavItem("Files", "files", "Inventory");
+        _queueItem = new ShellNavItem("Scan Queue", "queue", "Scanning");
+        _errorsItem = new ShellNavItem("Errors", "errors", "Scanning");
         NavItems =
         [
-            new ShellNavItem("Dashboard", "dashboard", true, "Overview"),
-            new ShellNavItem("Media", "media", false, "Inventory"),
+            new ShellNavItem("Dashboard", "dashboard", "Overview", dashboard),
+            new ShellNavItem("Media", "media", "Inventory"),
             _filesItem,
-            new ShellNavItem("Categories", "categories", false, "Inventory"),
+            new ShellNavItem("Categories", "categories", "Inventory"),
             _queueItem,
             _errorsItem,
-            new ShellNavItem("Audit Log", "audit", false, "Records"),
+            new ShellNavItem("Audit Log", "audit", "Records"),
         ];
         SelectedItem = NavItems[0];
         UpdateBadges();
@@ -120,7 +122,7 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
 
     public string PendingFilterText => _pendingFilter is { } filter && SelectedItem == _filesItem ? Describe(filter) : string.Empty;
 
-    public IDashboardModel Dashboard => _dashboard;
+    public ToastService Toasts { get; }
 
     public string Theme
     {

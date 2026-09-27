@@ -1,0 +1,25 @@
+@* Tab strip; the caller renders the active tab's content. *@
+<div class="tabs" role="tablist">
+    @foreach (var tab in Items)
+    {
+        var active = tab.Key == ActiveKey;
+        <button role="tab" class="tab @(active ? "is-active" : null)" aria-selected="@(active ? "true" : "false")"
+                @onclick="() => Select(tab.Key)">
+            @tab.Title
+            @if (!string.IsNullOrEmpty(tab.Badge))
+            {
+                <span class="tab-badge">@tab.Badge</span>
+            }
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<TabItem> Items { get; set; } = [];
+
+    [Parameter] public string? ActiveKey { get; set; }
+
+    [Parameter] public EventCallback<string> ActiveKeyChanged { get; set; }
+
+    private Task Select(string key) => key == ActiveKey ? Task.CompletedTask : ActiveKeyChanged.InvokeAsync(key);
+}

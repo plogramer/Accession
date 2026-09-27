@@ -1,0 +1,20 @@
+@* Shows the page for a navigation item's model. Each screen gets its own error boundary. *@
+<ScreenErrorBoundary @key="Item">
+    @switch (Item.Content)
+    {
+        case IDashboardModel dashboard:
+            <DashboardPage Model="dashboard" />
+            break;
+        default:
+            <ClassicOnlyPage Title="@Item.Key" Icon="@Item.Icon" FilterText="@PendingFilterText" OpenCommand="OpenInClassicCommand" />
+            break;
+    }
+</ScreenErrorBoundary>
+
+@code {
+    [Parameter, EditorRequired] public ShellNavItem Item { get; set; } = default!;
+
+    [Parameter] public string? PendingFilterText { get; set; }
+
+    [Parameter, EditorRequired] public ICommand OpenInClassicCommand { get; set; } = default!;
+}

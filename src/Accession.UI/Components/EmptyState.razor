@@ -1,0 +1,14 @@
+@* Centered message with an icon, used for empty screens and placeholders. *@
+<div class="empty-state">
+    <div class="empty-icon"><Icon Name="@Icon" Size="28" /></div>
+    <h2>@Title</h2>
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public string Icon { get; set; } = "info";
+
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

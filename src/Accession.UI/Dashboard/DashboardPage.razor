@@ -7,30 +7,24 @@
             <p class="muted">Everything received for this matter, by media, category, extension and year.</p>
         </div>
         <div class="page-actions">
-            <div class="menu-anchor">
-                <button class="btn" aria-haspopup="listbox" aria-expanded="@(_filterOpen ? "true" : "false")" @onclick="() => _filterOpen = !_filterOpen">
-                    <Icon Name="filter" Size="16" /> @Model.FilterText <Icon Name="chevron-down" Size="14" Class="muted" />
-                </button>
-                @if (_filterOpen)
-                {
-                    <div class="backdrop" @onclick="() => _filterOpen = false"></div>
-                    <div class="menu menu-wide">
-                        <div class="menu-header">
-                            <span>Media</span>
-                            <button class="link-btn" @onclick="() => Run(Model.SelectAllMediaCommand)">Select all</button>
-                        </div>
-                        <div class="menu-scroll">
-                            @foreach (var item in Model.MediaFilter)
-                            {
-                                <label class="check-row">
-                                    <input type="checkbox" checked="@item.IsChecked" @onchange="e => item.IsChecked = e.Value is true" />
-                                    <span class="mono">@item.MediaId</span>
-                                </label>
-                            }
-                        </div>
+            <Dropdown CloseOnClick="false" IsMenu="false" Wide="true">
+                <Trigger><Icon Name="filter" Size="16" /> @Model.FilterText <Icon Name="chevron-down" Size="14" Class="muted" /></Trigger>
+                <ChildContent>
+                    <div class="menu-header">
+                        <span>Media</span>
+                        <button class="link-btn" @onclick="() => Run(Model.SelectAllMediaCommand)">Select all</button>
                     </div>
-                }
-            </div>
+                    <div class="menu-scroll">
+                        @foreach (var item in Model.MediaFilter)
+                        {
+                            <label class="check-row">
+                                <input type="checkbox" checked="@item.IsChecked" @onchange="e => item.IsChecked = e.Value is true" />
+                                <span class="mono">@item.MediaId</span>
+                            </label>
+                        }
+                    </div>
+                </ChildContent>
+            </Dropdown>
             <button class="icon-btn icon-btn-lg" title="Refresh" @onclick="() => Run(Model.RefreshCommand)">
                 <Icon Name="refresh" Class="@(Model.IsLoading || Model.IsLoadingDetails ? "spin" : null)" />
             </button>
@@ -253,8 +247,6 @@
 </div>
 
 @code {
-    private bool _filterOpen;
-
     [Parameter, EditorRequired] public IDashboardModel Model { get; set; } = default!;
 
     private bool HasErrors => Model.ErrorCount is not ("0" or "—" or "");

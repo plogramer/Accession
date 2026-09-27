@@ -1,0 +1,67 @@
+@* Modal dialog frame: title, body, footer. Esc and the close button call OnClose; Enter calls OnSubmit. *@
+@if (IsOpen)
+{
+    <div class="overlay" @onclick="BackdropClick">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="@_titleId" style="width:@Width"
+             tabindex="-1" @ref="_dialog" @onclick:stopPropagation="true" @onkeydown="OnKeyDown">
+            <div class="modal-header">
+                <h2 id="@_titleId">@Title</h2>
+                <button class="icon-btn" title="Close" @onclick="() => OnClose.InvokeAsync()"><Icon Name="x" /></button>
+            </div>
+            <div class="modal-body">@ChildContent</div>
+            @if (Footer is not null)
+            {
+                <div class="modal-footer">@Footer</div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private readonly string _titleId = "modal-" + Guid.NewGuid().ToString("N")[..8];
+    private ElementReference _dialog;
+    private bool _focusPending;
+
+    [Parameter] public bool IsOpen { get; set; }
+
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+
+    [Parameter] public string Width { get; set; } = "520px";
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter] public RenderFragment? Footer { get; set; }
+
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    /// <summary>Enter key (outside multi-line inputs).</summary>
+    [Parameter] public EventCallback OnSubmit { get; set; }
+
+    [Parameter] public bool CloseOnBackdrop { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (IsOpen)
+        {
+            _focusPending = true;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusPending && IsOpen)
+        {
+            _focusPending = false;
+            await _dialog.FocusAsync(); // keyboard focus moves into the dialog
+        }
+    }
+
+    private Task BackdropClick() => CloseOnBackdrop ? OnClose.InvokeAsync() : Task.CompletedTask;
+
+    private Task OnKeyDown(KeyboardEventArgs e) => e.Key switch
+    {
+        "Escape" => OnClose.InvokeAsync(),
+        "Enter" when OnSubmit.HasDelegate => OnSubmit.InvokeAsync(),
+        _ => Task.CompletedTask,
+    };
+}

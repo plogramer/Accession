@@ -1,0 +1,13 @@
+@* Two panes: a fixed-width side pane (tree, list) and the main pane. *@
+<div class="split" style="--split-side:@SideWidth">
+    <div class="split-side">@Side</div>
+    <div class="split-main">@Main</div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public RenderFragment Side { get; set; } = default!;
+
+    [Parameter, EditorRequired] public RenderFragment Main { get; set; } = default!;
+
+    [Parameter] public string SideWidth { get; set; } = "300px";
+}

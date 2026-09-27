@@ -101,25 +101,18 @@
                     <Icon Name="plus" Size="16" /> Add media
                 </button>
 
-                <div class="menu-anchor">
-                    <button class="icon-btn icon-btn-lg" title="More" aria-haspopup="menu" aria-expanded="@(_menuOpen ? "true" : "false")"
-                            @onclick="() => _menuOpen = !_menuOpen">
-                        <Icon Name="more" />
-                    </button>
-                    @if (_menuOpen)
-                    {
-                        <div class="backdrop" @onclick="() => _menuOpen = false"></div>
-                        <div class="menu" role="menu">
-                            <MenuItem Icon="info" Text="Inventory properties" Command="Model.ShowPropertiesCommand" OnDone="CloseMenu" />
-                            <MenuItem Icon="folder-open" Text="Change root path" Command="Model.ChangeRootPathCommand" OnDone="CloseMenu" />
-                            <MenuItem Icon="external" Text="Open matter link" Command="Model.OpenMatterLinkCommand" OnDone="CloseMenu" />
-                            <MenuItem Icon="settings" Text="Settings" Command="Model.OpenSettingsCommand" OnDone="CloseMenu" />
-                            <div class="menu-sep"></div>
-                            <MenuItem Icon="classic" Text="Switch to classic UI" Command="Model.OpenInClassicCommand" OnDone="CloseMenu" />
-                            <MenuItem Icon="logout" Text="Close inventory" Command="Model.CloseInventoryCommand" OnDone="CloseMenu" />
-                        </div>
-                    }
-                </div>
+                <Dropdown TriggerClass="icon-btn icon-btn-lg" Title="More">
+                    <Trigger><Icon Name="more" /></Trigger>
+                    <ChildContent>
+                        <MenuItem Icon="info" Text="Inventory properties" Command="Model.ShowPropertiesCommand" />
+                        <MenuItem Icon="folder-open" Text="Change root path" Command="Model.ChangeRootPathCommand" />
+                        <MenuItem Icon="external" Text="Open matter link" Command="Model.OpenMatterLinkCommand" />
+                        <MenuItem Icon="settings" Text="Settings" Command="Model.OpenSettingsCommand" />
+                        <div class="menu-sep"></div>
+                        <MenuItem Icon="classic" Text="Switch to classic UI" Command="Model.OpenInClassicCommand" />
+                        <MenuItem Icon="logout" Text="Close inventory" Command="Model.CloseInventoryCommand" />
+                    </ChildContent>
+                </Dropdown>
             </div>
         </header>
 
@@ -140,15 +133,7 @@
         }
 
         <main class="content">
-            @if (Model.SelectedItem.Key == "Dashboard")
-            {
-                <DashboardPage Model="Model.Dashboard" />
-            }
-            else
-            {
-                <ClassicOnlyPage Title="@Model.SelectedItem.Key" Icon="@Model.SelectedItem.Icon"
-                                 FilterText="@Model.PendingFilterText" OpenCommand="Model.OpenInClassicCommand" />
-            }
+            <ScreenHost Item="Model.SelectedItem" PendingFilterText="@Model.PendingFilterText" OpenInClassicCommand="Model.OpenInClassicCommand" />
         </main>
 
         <footer class="statusbar">
@@ -161,6 +146,8 @@
             <span class="status-item">@Model.SchemaText</span>
         </footer>
     </div>
+
+    <ToastHost Service="Model.Toasts" />
 
     @if (Model.IsBusy)
     {
@@ -184,8 +171,6 @@
         ("dark", "moon", "Dark"),
         ("system", "monitor", "Match Windows"),
     ];
-
-    private bool _menuOpen;
 
     [Parameter, EditorRequired] public IShellModel Model { get; set; } = default!;
 
@@ -213,6 +198,4 @@
         Observe([Model, .. Model.NavItems, Model.ScanNowCommand, Model.PauseScanCommand, Model.ResumeScanCommand,
             Model.CancelScanCommand, Model.AddMediaCommand, Model.DiscoverMediaCommand]);
     }
-
-    private void CloseMenu() => _menuOpen = false;
 }

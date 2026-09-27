@@ -1,6 +1,6 @@
 using System.ComponentModel;
 using System.Windows.Input;
-using Accession.UI.Dashboard;
+using Accession.UI.Components;
 
 namespace Accession.UI.Shell;
 
@@ -38,7 +38,8 @@ public interface IShellModel : INotifyPropertyChanged
     /// <summary>Set when a Dashboard click-through targets a screen that is not in the web UI yet.</summary>
     string PendingFilterText { get; }
 
-    IDashboardModel Dashboard { get; }
+    /// <summary>Short notifications shown in the corner of the page.</summary>
+    ToastService Toasts { get; }
 
     /// <summary>"system", "light" or "dark".</summary>
     string Theme { get; set; }

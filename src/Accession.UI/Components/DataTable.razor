@@ -1,0 +1,136 @@
+@typeparam TItem
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+
+@* Table with sticky header, sortable columns, a selected row and optional row virtualization (large pages). *@
+<CascadingValue Value="this" IsFixed="true">@Columns</CascadingValue>
+
+<div class="table-wrap @(MaxHeight is null ? null : "table-scroll")" style="@(MaxHeight is null ? null : $"max-height:{MaxHeight}")">
+    <table class="table @Class" aria-busy="@(IsLoading ? "true" : "false")">
+        <thead>
+            <tr>
+                @foreach (var column in _columns)
+                {
+                    <th class="@column.Class @(column.Sortable ? "sortable" : null) @(IsSorted(column) ? "is-sorted" : null)"
+                        style="@(column.Width is null ? null : $"width:{column.Width}")"
+                        aria-sort="@AriaSort(column)" @onclick="() => SortBy(column)">
+                        <span class="th-content">
+                            @column.Title
+                            @if (IsSorted(column))
+                            {
+                                <Icon Name="@(SortDescending ? "arrow-down" : "arrow-up")" Size="13" />
+                            }
+                        </span>
+                    </th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @if (Items.Count == 0)
+            {
+                <tr><td colspan="@Math.Max(1, _columns.Count)" class="empty-row">@(IsLoading ? LoadingText : EmptyText)</td></tr>
+            }
+            else if (Virtualize)
+            {
+                <Virtualize TItem="TItem" Items="ItemCollection" Context="item" ItemSize="RowHeight" OverscanCount="30" SpacerElement="tr">
+                    @RenderRow(item)
+                </Virtualize>
+            }
+            else
+            {
+                foreach (var item in Items)
+                {
+                    @RenderRow(item)
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    private readonly List<Column<TItem>> _columns = [];
+
+    /// <summary>Column definitions (<see cref="Column{TItem}"/> components).</summary>
+    [Parameter, EditorRequired] public RenderFragment Columns { get; set; } = default!;
+
+    [Parameter, EditorRequired] public IReadOnlyList<TItem> Items { get; set; } = [];
+
+    [Parameter] public string? SortKey { get; set; }
+
+    [Parameter] public bool SortDescending { get; set; }
+
+    /// <summary>Raised with the column's sort key when a sortable header is clicked.</summary>
+    [Parameter] public EventCallback<string> OnSort { get; set; }
+
+    [Parameter] public TItem? SelectedItem { get; set; }
+
+    [Parameter] public EventCallback<TItem> SelectedItemChanged { get; set; }
+
+    [Parameter] public EventCallback<TItem> OnRowClick { get; set; }
+
+    [Parameter] public EventCallback<TItem> OnRowDoubleClick { get; set; }
+
+    /// <summary>Extra CSS class per row.</summary>
+    [Parameter] public Func<TItem, string?>? RowClass { get; set; }
+
+    /// <summary>Draw only the rows in view. Rows must have a fixed height (<see cref="RowHeight"/>).</summary>
+    [Parameter] public bool Virtualize { get; set; }
+
+    [Parameter] public float RowHeight { get; set; } = 41;
+
+    /// <summary>CSS max-height; the table scrolls inside with a sticky header.</summary>
+    [Parameter] public string? MaxHeight { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter] public bool IsLoading { get; set; }
+
+    [Parameter] public string EmptyText { get; set; } = "Nothing to show.";
+
+    [Parameter] public string LoadingText { get; set; } = "Loading…";
+
+    internal void AddColumn(Column<TItem> column)
+    {
+        _columns.Add(column);
+        StateHasChanged();
+    }
+
+    internal void RemoveColumn(Column<TItem> column)
+    {
+        if (_columns.Remove(column))
+        {
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>Virtualize needs an ICollection; lists and arrays already are one.</summary>
+    private ICollection<TItem> ItemCollection => Items as ICollection<TItem> ?? Items.ToList();
+
+    private bool Interactive => OnRowClick.HasDelegate || OnRowDoubleClick.HasDelegate || SelectedItemChanged.HasDelegate;
+
+    private RenderFragment RenderRow(TItem item) => __builder =>
+    {
+        var selected = SelectedItem is not null && EqualityComparer<TItem>.Default.Equals(item, SelectedItem);
+        <tr class="@(Interactive ? "clickable" : null) @(selected ? "is-selected" : null) @RowClass?.Invoke(item)"
+            aria-selected="@(SelectedItemChanged.HasDelegate ? (selected ? "true" : "false") : null)"
+            @onclick="() => ClickRow(item)" @ondblclick="() => OnRowDoubleClick.InvokeAsync(item)">
+            @foreach (var column in _columns)
+            {
+                <td class="@column.Class">@column.ChildContent?.Invoke(item)</td>
+            }
+        </tr>
+    };
+
+    private async Task ClickRow(TItem item)
+    {
+        await SelectedItemChanged.InvokeAsync(item);
+        await OnRowClick.InvokeAsync(item);
+    }
+
+    private bool IsSorted(Column<TItem> column) => column.Sortable && column.SortKey == SortKey && SortKey is not null;
+
+    private string? AriaSort(Column<TItem> column) =>
+        !column.Sortable ? null : !IsSorted(column) ? "none" : SortDescending ? "descending" : "ascending";
+
+    private Task SortBy(Column<TItem> column) =>
+        column.Sortable && column.SortKey is { } key ? OnSort.InvokeAsync(key) : Task.CompletedTask;
+}

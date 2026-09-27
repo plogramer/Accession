@@ -1,7 +1,4 @@
 using Accession.UI.Shell;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Accession.Tests.WebUi;
 
@@ -82,19 +79,12 @@ public sealed class WebUiRenderTests
 
     private static async Task<string> RenderAsync(IShellModel shell, string? previewName = null)
     {
-        await using var renderer = new HtmlRenderer(new EmptyServices(), NullLoggerFactory.Instance);
-        var html = await renderer.Dispatcher.InvokeAsync(async () =>
-        {
-            var output = await renderer.RenderComponentAsync<AppShell>(
-                ParameterView.FromDictionary(new Dictionary<string, object?> { [nameof(AppShell.Model)] = shell }));
-            return output.ToHtmlString();
-        });
-
+        var html = await WebUiRenderer.RenderAsync<AppShell>(new Dictionary<string, object?> { [nameof(AppShell.Model)] = shell });
         WritePreview(previewName, html);
         return html;
     }
 
-    private static void WritePreview(string? name, string body)
+    internal static void WritePreview(string? name, string body)
     {
         var folder = Environment.GetEnvironmentVariable("ACCESSION_UI_PREVIEW_DIR");
         if (name is null || string.IsNullOrEmpty(folder))
@@ -112,10 +102,5 @@ public sealed class WebUiRenderTests
         Directory.CreateDirectory(folder);
         File.WriteAllText(Path.Combine(folder, name + ".html"),
             $"<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\" /><link rel=\"stylesheet\" href=\"{css}\" /></head><body><div id=\"app\">{body}</div></body></html>");
-    }
-
-    private sealed class EmptyServices : IServiceProvider
-    {
-        public object? GetService(Type serviceType) => null;
     }
 }

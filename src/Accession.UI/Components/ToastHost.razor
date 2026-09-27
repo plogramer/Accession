@@ -1,0 +1,48 @@
+@implements IDisposable
+
+<div class="toasts" role="status" aria-live="polite">
+    @foreach (var toast in Service.Items)
+    {
+        <div class="toast is-@toast.Kind.ToString().ToLowerInvariant()">
+            <Icon Name="@IconFor(toast.Kind)" Size="16" />
+            <span>@toast.Message</span>
+            <button class="icon-btn" title="Dismiss" @onclick="() => Service.Dismiss(toast.Id)"><Icon Name="x" Size="14" /></button>
+        </div>
+    }
+</div>
+
+@code {
+    private ToastService? _subscribed;
+
+    [Parameter, EditorRequired] public ToastService Service { get; set; } = default!;
+
+    protected override void OnParametersSet()
+    {
+        if (!ReferenceEquals(_subscribed, Service))
+        {
+            Unsubscribe();
+            Service.Changed += OnChanged;
+            _subscribed = Service;
+        }
+    }
+
+    public void Dispose() => Unsubscribe();
+
+    private void Unsubscribe()
+    {
+        if (_subscribed is not null)
+        {
+            _subscribed.Changed -= OnChanged;
+            _subscribed = null;
+        }
+    }
+
+    private void OnChanged(object? sender, EventArgs e) => _ = InvokeAsync(StateHasChanged);
+
+    private static string IconFor(ToastKind kind) => kind switch
+    {
+        ToastKind.Success => "check",
+        ToastKind.Warning or ToastKind.Error => "errors",
+        _ => "info",
+    };
+}

@@ -1,0 +1,25 @@
+@typeparam TItem
+@implements IDisposable
+
+@code {
+    [CascadingParameter] public DataTable<TItem> Owner { get; set; } = default!;
+
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+
+    /// <summary>Key passed to <see cref="DataTable{TItem}.OnSort"/>; columns without one are not sortable.</summary>
+    [Parameter] public string? SortKey { get; set; }
+
+    /// <summary>CSS class for header and cells, e.g. "num" for right-aligned numbers.</summary>
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter] public string? Width { get; set; }
+
+    /// <summary>Cell content for an item.</summary>
+    [Parameter] public RenderFragment<TItem>? ChildContent { get; set; }
+
+    internal bool Sortable => SortKey is not null;
+
+    protected override void OnInitialized() => Owner.AddColumn(this);
+
+    public void Dispose() => Owner.RemoveColumn(this);
+}

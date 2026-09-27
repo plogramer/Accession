@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Windows.Input;
+using Accession.UI.Components;
 using Accession.UI.Dashboard;
 using Accession.UI.Shell;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -129,18 +130,17 @@ internal sealed partial class FakeShell : ObservableObject, IShellModel
 {
     public FakeShell(FakeDashboard dashboard, bool scanning = false, bool readOnly = false)
     {
-        Dashboard = dashboard;
         IsScanActive = scanning;
         IsReadOnly = readOnly;
         NavItems =
         [
-            new ShellNavItem("Dashboard", "dashboard", true, "Overview"),
-            new ShellNavItem("Media", "media", false, "Inventory"),
-            new ShellNavItem("Files", "files", false, "Inventory"),
-            new ShellNavItem("Categories", "categories", false, "Inventory"),
-            new ShellNavItem("Scan Queue", "queue", false, "Scanning") { Badge = scanning ? "2" : string.Empty },
-            new ShellNavItem("Errors", "errors", false, "Scanning") { Badge = "39" },
-            new ShellNavItem("Audit Log", "audit", false, "Records"),
+            new ShellNavItem("Dashboard", "dashboard", "Overview", dashboard),
+            new ShellNavItem("Media", "media", "Inventory"),
+            new ShellNavItem("Files", "files", "Inventory"),
+            new ShellNavItem("Categories", "categories", "Inventory"),
+            new ShellNavItem("Scan Queue", "queue", "Scanning") { Badge = scanning ? "2" : string.Empty },
+            new ShellNavItem("Errors", "errors", "Scanning") { Badge = "39" },
+            new ShellNavItem("Audit Log", "audit", "Records"),
         ];
         SelectedItem = NavItems[0];
     }
@@ -166,7 +166,7 @@ internal sealed partial class FakeShell : ObservableObject, IShellModel
     public partial ShellNavItem SelectedItem { get; set; }
 
     public string PendingFilterText { get; set; } = string.Empty;
-    public IDashboardModel Dashboard { get; }
+    public ToastService Toasts { get; } = new(TimeProvider.System);
     public string Theme { get; set; } = "light";
     public ICommand ScanNowCommand { get; } = new RelayCommand(() => { });
     public ICommand PauseScanCommand { get; } = new RelayCommand(() => { });

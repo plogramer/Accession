@@ -10,11 +10,8 @@
 
     [Parameter, EditorRequired] public ICommand Command { get; set; } = default!;
 
-    [Parameter] public EventCallback OnDone { get; set; }
-
     private async Task Execute()
     {
-        await OnDone.InvokeAsync();
         await Task.Yield(); // see ObservingComponentBase.Run
         if (Command.CanExecute(null))
         {

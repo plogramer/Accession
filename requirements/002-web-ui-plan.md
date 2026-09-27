@@ -29,20 +29,26 @@ between processes), WinUI 3/Avalonia (different native frameworks with no web lo
 ## 3. Architecture
 
 ```
-Accession.App (WPF, net10.0-windows, Razor SDK)
-  ├─ MainWindow → WebShellView (BlazorWebView, wwwroot/index.html)
-  ├─ WebShellViewModel : IShellModel     (navigation, top bar, scan controls; dialog commands delegate to MainWindowViewModel)
-  └─ DashboardViewModel : IDashboardModel (unchanged logic; also used by the classic Dashboard)
+Accession.App (WPF host, net10.0-windows, Razor SDK)
+  ├─ MainWindow → WebShellView (BlazorWebView, wwwroot/index.html); classic XAML views until #74
+  └─ Platform: WpfUiDispatcher : IUiDispatcher, WindowsDesktop : IDesktop, DialogService (native dialogs)
+Accession.Presentation (net10.0 – no WPF)
+  ├─ ViewModels: WebShellViewModel : IShellModel, DashboardViewModel : IDashboardModel, … (shared with the classic views)
+  ├─ Services: InventoryHost, ScanHost, InventoryWorkflows, MediaWorkflows, navigation
+  └─ Platform: IUiDispatcher (Post/Defer/Invoke), IDesktop (clipboard, Explorer, URLs, exit)
 Accession.UI (Razor class library, net10.0 – no WPF)
-  ├─ Shell/AppShell.razor, MenuItem, ClassicOnlyPage, IShellModel, ShellNavItem
-  ├─ Dashboard/DashboardPage.razor, IDashboardModel, row types
-  ├─ Components/Icon.razor (inline SVG icon set)
-  ├─ Infrastructure/ObservingComponentBase (re-renders on INotifyPropertyChanged / collection / CanExecute changes, batched)
+  ├─ Shell: AppShell, ScreenHost (page by model type, one error boundary per screen), MenuItem, ClassicOnlyPage
+  ├─ Dashboard: DashboardPage, IDashboardModel, row types
+  ├─ Components: DataTable/Column (sortable, selectable, virtualized), Pager, Dropdown, Tabs, SplitPanel,
+  │              EmptyState, Modal, ToastService/ToastHost, ScreenErrorBoundary, Icon
+  ├─ Infrastructure: ObservingComponentBase (re-renders on property/collection/CanExecute changes, batched)
   └─ wwwroot/css/accession.css (tokens, light/dark, layout, components)
 ```
 
 Rules the prototype set, which the rest of the migration follows:
 
+- **Screens are chosen by model type**: each navigation item carries its screen's model and `ScreenHost` maps it
+  to a page. The model outlives the page, so filters, selection and page number survive switching screens.
 - **Components know only interfaces** from Accession.UI. They never reference WPF, Data or the host. This keeps
   them testable on any OS. The tests render them with `HtmlRenderer`, which also produces the preview pages.
 - **Commands that may open a Windows dialog run after the web event returns** (`await Task.Yield()` in

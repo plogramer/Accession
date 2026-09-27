@@ -1,0 +1,14 @@
+@inherits ErrorBoundary
+
+@* Keeps a failing screen from taking down the whole page. The error is logged by the base class. *@
+@if (CurrentException is null)
+{
+    @ChildContent
+}
+else
+{
+    <EmptyState Icon="errors" Title="This screen ran into a problem">
+        <p>The details were written to the log. You can try again or switch to another screen.</p>
+        <button class="btn btn-primary" @onclick="Recover"><Icon Name="refresh" Size="16" /> Try again</button>
+    </EmptyState>
+}
