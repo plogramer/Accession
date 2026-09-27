@@ -357,6 +357,25 @@ public sealed class ScanCoordinatorTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task Resume_after_the_scan_finished_while_paused_keeps_the_final_status()
+    {
+        WriteFile("Single", "only.txt", "the only file");
+        var key = new MediaService(_test.Time).Add(_test.Session, [MediaPath("Single")]).Added[0].MediaKey;
+        using var hold = new ManualResetEventSlim(false);
+        _hasher.Before = (_, ct) => hold.Wait(ct);
+
+        _coordinator.Enqueue(key, ScanType.Full);
+        await WaitForAsync(() => !_hasher.Calls.IsEmpty);
+        _coordinator.Pause();
+        hold.Set();          // the in-flight (and last) file finishes while paused
+        await WaitIdleAsync();
+        _coordinator.Resume(); // must not overwrite the final status
+
+        Assert.Equal(MediaStatus.Completed, GetMedia(key).Status);
+        Assert.Equal(ScanOutcome.Completed, ScanLog(key)[0].Outcome);
+    }
+
+    [Fact]
     public async Task Cancel_leaves_media_incomplete_and_resume_finishes_without_rehashing()
     {
         var key = CreateMedia();

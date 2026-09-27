@@ -42,6 +42,9 @@ public sealed class ScanCoordinator : IAsyncDisposable
     private PauseGate? _pause;
     private ScanCounters? _counters;
     private ScanOutcome _cancelOutcome = ScanOutcome.Cancelled;
+
+    // Set (under _statusGate) once the running scan starts writing its final status; Pause/Resume then do nothing.
+    private bool _finishing;
     private readonly List<string> _notes = [];
 
     public ScanCoordinator(
@@ -229,6 +232,12 @@ public sealed class ScanCoordinator : IAsyncDisposable
 
         lock (_statusGate)
         {
+            if (_finishing)
+            {
+                pause.Resume();
+                return;
+            }
+
             var status = counters?.EnumerationDone == true || current.Type == ScanType.RetryFailed ? MediaStatus.Hashing : MediaStatus.Scanning;
             SetStatus(current.MediaKey, status, AuditAction.ScanResumed);
             pause.Resume();
@@ -308,7 +317,7 @@ public sealed class ScanCoordinator : IAsyncDisposable
             lock (_gate)
             {
                 current = _current;
-                if (current is null || _pause is null || _pause.IsPaused)
+                if (current is null || _pause is null || _pause.IsPaused || _finishing)
                 {
                     return;
                 }
@@ -358,6 +367,11 @@ public sealed class ScanCoordinator : IAsyncDisposable
                 _counters = new ScanCounters();
                 _cancelOutcome = ScanOutcome.Cancelled;
                 _notes.Clear();
+            }
+
+            lock (_statusGate)
+            {
+                _finishing = false;
             }
 
             StateChanged?.Invoke(this, EventArgs.Empty);
@@ -613,6 +627,15 @@ public sealed class ScanCoordinator : IAsyncDisposable
     }
 
     private void Finish(ScanQueueItem item, long scanId, bool cancelled, Exception? failed, ScanCounters counters)
+    {
+        lock (_statusGate)
+        {
+            _finishing = true;
+            FinishCore(item, scanId, cancelled, failed, counters);
+        }
+    }
+
+    private void FinishCore(ScanQueueItem item, long scanId, bool cancelled, Exception? failed, ScanCounters counters)
     {
         var now = _timeProvider.GetUtcNow();
         ScanOutcome outcome;
