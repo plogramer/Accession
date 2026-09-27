@@ -53,6 +53,15 @@ public sealed class ScanHost : ObservableObject
 
     public ScanProgressSnapshot? Progress { get; private set; }
 
+    public ScanQueueItem? Current => _coordinator?.Current;
+
+    public IReadOnlyList<ScanQueueItem> Waiting => _coordinator?.Waiting ?? [];
+
+    /// <summary>Running item plus waiting items.</summary>
+    public int QueueLength => (Current is null ? 0 : 1) + Waiting.Count;
+
+    public ScanOptions? CurrentOptions => Current is null ? null : _coordinator?.CurrentOptions;
+
     /// <summary>One line for the status bar, e.g. "Scanning 123-123_002 – Hashing 48 % – 182 MB/s".</summary>
     public string StatusText { get; private set; } = string.Empty;
 
@@ -85,6 +94,12 @@ public sealed class ScanHost : ObservableObject
 
         Refresh();
     }
+
+    public void MoveUp(long mediaKey) => Run(c => c.MoveUp(mediaKey));
+
+    public void MoveDown(long mediaKey) => Run(c => c.MoveDown(mediaKey));
+
+    public void Remove(long mediaKey) => Run(c => c.Remove(mediaKey));
 
     public void Pause() => Run(c => c.Pause());
 
@@ -123,7 +138,7 @@ public sealed class ScanHost : ObservableObject
         var shouldHave = _host.CanModify && _host.IsRootAvailable;
         if (shouldHave && _coordinator is null && _host.Session is { } session)
         {
-            var coordinator = new ScanCoordinator(session, _lister, _hasher, CurrentOptions, _appInfo, _timeProvider,
+            var coordinator = new ScanCoordinator(session, _lister, _hasher, BuildOptions, _appInfo, _timeProvider,
                 _loggerFactory.CreateLogger<ScanCoordinator>());
             coordinator.StateChanged += OnStateChanged;
             coordinator.ProgressChanged += OnProgress;
@@ -140,7 +155,7 @@ public sealed class ScanHost : ObservableObject
         Refresh();
     }
 
-    private ScanOptions CurrentOptions()
+    private ScanOptions BuildOptions()
     {
         var s = _settings.Current;
         return new ScanOptions(s.EnumerationThreads, s.HashingThreads, s.DbBatchSize);
@@ -182,7 +197,19 @@ public sealed class ScanHost : ObservableObject
 
     private void OnMediaStatusChanged(object? sender, MediaStatusChangedEventArgs e) => _host.NotifyMediaChanged();
 
-    private void OnScanFinished(object? sender, ScanFinishedEventArgs e) => _host.NotifyMediaChanged();
+    private void OnScanFinished(object? sender, ScanFinishedEventArgs e)
+    {
+        _host.NotifyMediaChanged();
+        var text = e.Outcome switch
+        {
+            ScanOutcome.Completed => $"Scan of {e.Item.MediaId} completed: {e.Totals.FileCount:N0} files.",
+            ScanOutcome.CompletedWithErrors => $"Scan of {e.Item.MediaId} completed with {e.Totals.ErrorCount:N0} error(s): {e.Totals.FileCount:N0} files. See Errors.",
+            ScanOutcome.Cancelled => $"Scan of {e.Item.MediaId} was cancelled. It can be resumed.",
+            ScanOutcome.Interrupted => $"Scan of {e.Item.MediaId} was interrupted. It can be resumed.",
+            _ => $"Scan of {e.Item.MediaId} failed: {e.Message}",
+        };
+        UiThread.Post(() => _host.SetNotice(text));
+    }
 
     private void OnAutoPaused(object? sender, string message) => UiThread.Post(() => _dialogs.ShowWarning("Scan paused", message));
 

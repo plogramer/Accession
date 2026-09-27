@@ -3,6 +3,7 @@
                     xmlns:vm="clr-namespace:Accession.App.ViewModels"
                     xmlns:shell="clr-namespace:Accession.App.ViewModels.Shell"
                     xmlns:media="clr-namespace:Accession.App.ViewModels.MediaScreen"
+                    xmlns:scan="clr-namespace:Accession.App.ViewModels.Scanning"
                     xmlns:views="clr-namespace:Accession.App.Views">
     <!-- Maps each view model to its view. The navigation and dialog services rely on these. -->
 
@@ -19,6 +20,13 @@
 
     <DataTemplate DataType="{x:Type media:MediaListViewModel}">
         <views:MediaListView />
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type scan:ScanQueueViewModel}">
+        <views:ScanQueueView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type scan:ErrorsViewModel}">
+        <views:ErrorsView />
     </DataTemplate>
 
     <!-- Dialogs -->

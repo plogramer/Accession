@@ -123,6 +123,8 @@ public partial class App : Application
         builder.Services.AddTransient<StartViewModel>();
         builder.Services.AddTransient<InventoryShellViewModel>();
         builder.Services.AddTransient<MediaListViewModel>();
+        builder.Services.AddTransient<Accession.App.ViewModels.Scanning.ScanQueueViewModel>();
+        builder.Services.AddTransient<Accession.App.ViewModels.Scanning.ErrorsViewModel>();
         AddDialog<NewInventoryViewModel>(builder.Services);
         AddDialog<SettingsViewModel>(builder.Services);
         AddDialog<InventoryPropertiesViewModel>(builder.Services);

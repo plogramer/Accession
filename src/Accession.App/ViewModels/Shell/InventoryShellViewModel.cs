@@ -2,6 +2,7 @@ using System.ComponentModel;
 using Accession.App.Mvvm;
 using Accession.App.Services;
 using Accession.App.ViewModels.MediaScreen;
+using Accession.App.ViewModels.Scanning;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -17,11 +18,24 @@ public sealed partial class InventoryShellViewModel : ViewModelBase
     private readonly ScanHost _scans;
     private readonly MediaWorkflows _media;
 
-    public InventoryShellViewModel(InventoryHost host, MediaListViewModel mediaList, ScanHost scans, MediaWorkflows media)
+    private readonly NavItem _scanQueueItem;
+    private readonly NavItem _errorsItem;
+    private readonly ErrorsViewModel _errors;
+
+    public InventoryShellViewModel(
+        InventoryHost host,
+        MediaListViewModel mediaList,
+        ScanQueueViewModel scanQueue,
+        ErrorsViewModel errors,
+        ScanHost scans,
+        MediaWorkflows media)
     {
         _host = host;
         _scans = scans;
         _media = media;
+        _errors = errors;
+        _scanQueueItem = new NavItem("Scan Queue", scanQueue);
+        _errorsItem = new NavItem("Errors", errors);
         _mediaList = mediaList;
         _mediaItem = new NavItem("Media", mediaList);
         NavItems =
@@ -29,14 +43,22 @@ public sealed partial class InventoryShellViewModel : ViewModelBase
             new NavItem("Dashboard", new PlaceholderViewModel("Dashboard", "Totals by media, category and extension.", "Dashboard epic (#7)")),
             _mediaItem,
             new NavItem("Files", new PlaceholderViewModel("Files", "Browse and filter every inventoried file.", "File browser epic (#8)")),
-            new NavItem("Scan Queue", new PlaceholderViewModel("Scan Queue", "Scan progress, pause, resume and cancel.", "Scan UI epic (#6)")),
-            new NavItem("Errors", new PlaceholderViewModel("Errors", "Access denied, locked files and other scan errors.", "Scan UI epic (#6)")),
+            _scanQueueItem,
+            _errorsItem,
             new NavItem("Categories", new PlaceholderViewModel("Categories", "File categories and their extensions.", "File browser epic (#8)")),
             new NavItem("Audit Log", new PlaceholderViewModel("Audit Log", "Who did what and when.", "File browser epic (#8)")),
         ];
         SelectedItem = NavItems[0];
         _mediaList.RowsReloaded += (_, _) => UpdateMediaBadge();
+        _errors.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ErrorsViewModel.ErrorCount))
+            {
+                UpdateBadges();
+            }
+        };
         UpdateMediaBadge();
+        UpdateBadges();
     }
 
     public IReadOnlyList<NavItem> NavItems { get; }
@@ -92,8 +114,18 @@ public sealed partial class InventoryShellViewModel : ViewModelBase
     [RelayCommand]
     private void ScanNow() => _media.ScanPendingMedia();
 
+    private void UpdateBadges()
+    {
+        _scanQueueItem.Badge = _scans.QueueLength > 0 ? _scans.QueueLength.ToString(System.Globalization.CultureInfo.CurrentCulture) : string.Empty;
+        _errorsItem.Badge = _errors.ErrorCount > 0 ? _errors.ErrorCount.ToString("N0", System.Globalization.CultureInfo.CurrentCulture) : string.Empty;
+    }
+
     private void UpdateMediaBadge() =>
         _mediaItem.Badge = _mediaList.Rows.Count > 0 ? _mediaList.Rows.Count.ToString(System.Globalization.CultureInfo.CurrentCulture) : string.Empty;
 
-    private void OnHostChanged(object? sender, PropertyChangedEventArgs e) => OnPropertyChanged(string.Empty);
+    private void OnHostChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        UpdateBadges();
+        OnPropertyChanged(string.Empty);
+    }
 }

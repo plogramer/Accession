@@ -103,6 +103,9 @@ public sealed class ScanCoordinator : IAsyncDisposable
         }
     }
 
+    /// <summary>Thread and batch settings of the running scan (null when idle).</summary>
+    public ScanOptions? CurrentOptions { get; private set; }
+
     public IReadOnlyList<ScanQueueItem> Waiting
     {
         get
@@ -403,6 +406,7 @@ public sealed class ScanCoordinator : IAsyncDisposable
     private async Task RunOneAsync(ScanQueueItem item, CancellationToken cancellationToken, PauseGate pause, ScanCounters counters)
     {
         var options = _options();
+        CurrentOptions = options;
         var root = _session.Config.RootPath;
         var mediaFolder = Path.Combine(root, item.MediaId);
         var started = _timeProvider.GetUtcNow();
