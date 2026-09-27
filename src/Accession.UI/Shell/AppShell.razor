@@ -57,13 +57,10 @@
             </div>
 
             <div class="topbar-status">
+                @* No chip while the user can edit (the normal case); read-only says who has the inventory. *@
                 @if (Model.IsReadOnly)
                 {
-                    <span class="chip is-warning"><Icon Name="eye" Size="14" /> Read-only</span>
-                }
-                else if (!string.IsNullOrEmpty(Model.LockStatus))
-                {
-                    <span class="chip is-success"><Icon Name="lock" Size="14" /> @Model.LockStatus</span>
+                    <span class="chip is-warning" title="@Model.ReadOnlyTooltip"><Icon Name="eye" Size="14" /> @Model.ReadOnlyText</span>
                 }
                 @if (Model.IsOffline)
                 {

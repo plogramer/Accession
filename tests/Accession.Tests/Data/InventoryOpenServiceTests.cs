@@ -131,6 +131,7 @@ public sealed class InventoryOpenServiceTests : IDisposable
         Assert.True(session.IsReadOnly);
         Assert.True(Assert.Single(interaction.LockQuestions).IsOtherWindowHere);
         Assert.Empty(session.OpenNotice);
+        Assert.Equal(interaction.LockQuestions[0].Holder.SessionGuid, session.ReadLockHolder()?.SessionGuid); // for the read-only chip
     }
 
     [Fact]

@@ -15,7 +15,8 @@ public sealed class WebUiRenderTests
         var html = await RenderAsync(new FakeShell(new FakeDashboard()), "dashboard-light");
 
         Assert.Contains("Northwind v. Contoso Ltd.", html);
-        Assert.Contains("Locked by you", html);
+        Assert.DoesNotContain("Locked by you", html);
+        Assert.DoesNotContain("Read-only", html); // no lock chip while the user can edit
         foreach (var heading in new[] { "By media", "By category", "By extension", "Files by year modified", "Largest files" })
         {
             Assert.Contains(heading, html);
@@ -98,9 +99,10 @@ public sealed class WebUiRenderTests
     [Fact]
     public async Task Read_only_inventory_shows_read_only_chip()
     {
-        var html = await RenderAsync(new FakeShell(new FakeDashboard(), readOnly: true));
+        var html = await RenderAsync(new FakeShell(new FakeDashboard(), readOnly: true), "read-only");
 
-        Assert.Contains("Read-only", html);
+        Assert.Contains("Read-only &#xB7; john.roe on LIT-PC12", html);
+        Assert.Contains("has this inventory open for editing on LIT-PC12", html);
         Assert.DoesNotContain("Locked by you", html);
     }
 

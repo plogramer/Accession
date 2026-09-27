@@ -171,7 +171,8 @@ internal sealed partial class FakeShell : ObservableObject, IShellModel
     public string UserName => @"LITSUPPORT\jane.doe";
     public string RootPath => @"\\evidence01\intake\NW-2026-0142";
     public string SchemaText => "Schema v1";
-    public string LockStatus => IsReadOnly ? "Read-only" : "Locked by you";
+    public string ReadOnlyText => "Read-only · john.roe on LIT-PC12";
+    public string ReadOnlyTooltip => @"LITSUPPORT\john.roe has this inventory open for editing on LIT-PC12.";
     public bool IsReadOnly { get; }
     public bool IsOffline => false;
     public string Notice => string.Empty;

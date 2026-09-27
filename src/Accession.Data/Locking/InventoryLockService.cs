@@ -120,6 +120,13 @@ public sealed class InventoryLockService : IDisposable
     public LockHolder? ReadHolder()
     {
         using var scope = _database.Open();
+        return ReadHolder(scope);
+    }
+
+    /// <summary>Who holds the lock of the inventory open in <paramref name="scope"/>, or null if it is free (also works read-only).</summary>
+    public static LockHolder? ReadHolder(DbScope scope)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
         var row = ReadRow(scope);
         return row.IsLocked ? row.Holder : null;
     }

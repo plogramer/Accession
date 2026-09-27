@@ -16,11 +16,18 @@ public interface IShellModel : INotifyPropertyChanged
 
     /// <summary>The matter's web link (http/https), or empty when there is none.</summary>
     string MatterUrl { get; }
+
     string UserName { get; }
     string RootPath { get; }
     string SchemaText { get; }
-    string LockStatus { get; }
     bool IsReadOnly { get; }
+
+    /// <summary>Read-only chip text, e.g. "Read-only · jane.doe on LIT-PC12" (only shown while read-only).</summary>
+    string ReadOnlyText { get; }
+
+    /// <summary>Why the inventory is read-only and how to edit it.</summary>
+    string ReadOnlyTooltip { get; }
+
     bool IsOffline { get; }
     string Notice { get; }
 

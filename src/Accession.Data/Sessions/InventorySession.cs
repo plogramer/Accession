@@ -93,6 +93,20 @@ public sealed class InventorySession : IDisposable
 
     public void Dispose() => Close();
 
+    /// <summary>Who has the inventory open for editing, or null if nobody (or it cannot be read now).</summary>
+    public LockHolder? ReadLockHolder()
+    {
+        try
+        {
+            using var scope = Database.Open();
+            return InventoryLockService.ReadHolder(scope);
+        }
+        catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or IOException)
+        {
+            return null;
+        }
+    }
+
     private void BecomeReadOnly()
     {
         IsReadOnly = true;
