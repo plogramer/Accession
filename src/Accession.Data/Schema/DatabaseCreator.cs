@@ -9,7 +9,7 @@ public static class DatabaseCreator
 {
     /// <summary>
     /// Creates <paramref name="path"/> and writes the schema, the <c>InventoryConfig</c> row, the unlocked
-    /// <c>InventoryLock</c> row and the <c>SchemaMigration</c> row. Nothing is left behind if creation fails.
+    /// <c>InventoryLock</c> row, the <c>SchemaMigration</c> row and the seeded file categories. Nothing is left behind if creation fails.
     /// </summary>
     /// <param name="config">Matter and creator details. <see cref="InventoryConfig.SchemaVersion"/> and
     /// <see cref="InventoryConfig.LastDbPath"/> are set by this method.</param>
@@ -50,6 +50,7 @@ public static class DatabaseCreator
                 """,
                 config,
                 transaction);
+            CategorySeeder.Seed(connection, transaction);
             transaction.Commit();
         }
         catch

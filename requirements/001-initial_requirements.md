@@ -810,4 +810,5 @@ Fields from section 5.11 grouped as **Display** (size unit, time zone), **Scanni
 
 Notes:
 - Each extension maps to exactly one category. Ambiguous extensions were placed where they usually belong in eDiscovery processing (e.g. `ts` → Video, `db` → Databases, `csv` → Spreadsheets).
+- Named extensions take priority over the generated split-part ranges, so `123` (Lotus 1-2-3) stays in Spreadsheets rather than Forensic Images.
 - Categories 19 and 20 exist in `FileCategory` but have no `ExtensionCategory` rows.
