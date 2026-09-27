@@ -8,7 +8,7 @@ namespace Accession.Data.Browsing;
 
 /// <summary>
 /// Folder tree and file queries for the File browser (requirements 5.8). Files are paged with keyset
-/// pagination (never OFFSET), so paging stays fast on millions of rows.
+/// pagination, so paging stays fast on millions of rows; only "go to page N" falls back to OFFSET.
 /// </summary>
 public sealed class FileBrowserQueries
 {
@@ -42,17 +42,60 @@ public sealed class FileBrowserQueries
             new { parentFolderId }).AsList();
     }
 
+    /// <summary>Rows after <paramref name="after"/> (or the first rows), in sort order. Keyset: fast at any depth.</summary>
     public FilePage Page(InventoryDatabase database, FileFilter filter, FileSortColumn sort, bool descending,
         FilePageCursor? after, int pageSize = DefaultPageSize, CancellationToken cancellationToken = default)
+    {
+        var items = Fetch(database, filter, sort, descending, after, backwards: false, pageSize, offset: 0, cancellationToken);
+        var next = items.Count == pageSize ? CursorOf(items[^1], sort) : null;
+        return new FilePage(items, next);
+    }
+
+    /// <summary>The <paramref name="pageSize"/> rows just before <paramref name="before"/>, in sort order. Keyset.</summary>
+    public IReadOnlyList<FileItem> PageBefore(InventoryDatabase database, FileFilter filter, FileSortColumn sort, bool descending,
+        FilePageCursor before, int pageSize, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(before);
+        var items = Fetch(database, filter, sort, descending, before, backwards: true, pageSize, offset: 0, cancellationToken);
+        items.Reverse();
+        return items;
+    }
+
+    /// <summary>The last <paramref name="count"/> rows, in sort order (read from the end, so it is fast).</summary>
+    public IReadOnlyList<FileItem> LastRows(InventoryDatabase database, FileFilter filter, FileSortColumn sort, bool descending,
+        int count, CancellationToken cancellationToken = default)
+    {
+        var items = Fetch(database, filter, sort, descending, boundary: null, backwards: true, count, offset: 0, cancellationToken);
+        items.Reverse();
+        return items;
+    }
+
+    /// <summary>Rows starting at <paramref name="offset"/>. Uses OFFSET: slower deep into large results; used for "go to page".</summary>
+    public IReadOnlyList<FileItem> PageAtOffset(InventoryDatabase database, FileFilter filter, FileSortColumn sort, bool descending,
+        long offset, int pageSize, CancellationToken cancellationToken = default) =>
+        Fetch(database, filter, sort, descending, boundary: null, backwards: false, pageSize, offset, cancellationToken);
+
+    /// <summary>Keyset cursor for continuing after <paramref name="item"/>.</summary>
+    public static FilePageCursor CursorOf(FileItem item, FileSortColumn sort)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        return new FilePageCursor(SortValue(item, sort), item.FileId);
+    }
+
+    private List<FileItem> Fetch(InventoryDatabase database, FileFilter filter, FileSortColumn sort, bool descending,
+        FilePageCursor? boundary, bool backwards, int limit, long offset, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(filter);
         using var scope = database.Open();
         var (where, parameters) = BuildWhere(scope, filter);
         var sortExpression = SortExpression(sort);
-        var direction = descending ? "DESC" : "ASC";
-        var comparison = descending ? "<" : ">";
 
-        if (after is not null)
+        // Reading backwards = the opposite order; callers reverse the rows afterwards.
+        var effectiveDescending = descending != backwards;
+        var direction = effectiveDescending ? "DESC" : "ASC";
+        var comparison = effectiveDescending ? "<" : ">";
+
+        if (boundary is not null)
         {
             if (sort == FileSortColumn.Default)
             {
@@ -61,13 +104,14 @@ public sealed class FileBrowserQueries
             else
             {
                 where.Append($" AND ({sortExpression} {comparison} @afterValue OR ({sortExpression} = @afterValue AND f.FileId {comparison} @afterId))");
-                parameters.Add("afterValue", after.SortValue);
+                parameters.Add("afterValue", boundary.SortValue);
             }
 
-            parameters.Add("afterId", after.FileId);
+            parameters.Add("afterId", boundary.FileId);
         }
 
-        parameters.Add("limit", pageSize);
+        parameters.Add("limit", limit);
+        parameters.Add("offset", offset);
         var order = sort == FileSortColumn.Default ? $"f.FileId {direction}" : $"{sortExpression} {direction}, f.FileId {direction}";
         var sql =
             $"""
@@ -80,18 +124,10 @@ public sealed class FileBrowserQueries
             {CategorySql.JoinCategory("f.Extension", "cat")}
             WHERE {where}
             ORDER BY {order}
-            LIMIT @limit
+            LIMIT @limit OFFSET @offset
             """;
 
-        var items = scope.Connection.Query<FileItem>(new CommandDefinition(sql, parameters, commandTimeout: 0, cancellationToken: cancellationToken)).AsList();
-        FilePageCursor? next = null;
-        if (items.Count == pageSize)
-        {
-            var last = items[^1];
-            next = new FilePageCursor(SortValue(last, sort), last.FileId);
-        }
-
-        return new FilePage(items, next);
+        return scope.Connection.Query<FileItem>(new CommandDefinition(sql, parameters, commandTimeout: 0, cancellationToken: cancellationToken)).AsList();
     }
 
     /// <summary>File count and total size matching <paramref name="filter"/> (for the footer).</summary>

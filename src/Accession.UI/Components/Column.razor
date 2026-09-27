@@ -14,6 +14,9 @@
 
     [Parameter] public string? Width { get; set; }
 
+    /// <summary>Position among the table's columns; columns shown later (column chooser) keep their place.</summary>
+    [Parameter] public int Order { get; set; }
+
     /// <summary>Cell content for an item.</summary>
     [Parameter] public RenderFragment<TItem>? ChildContent { get; set; }
 

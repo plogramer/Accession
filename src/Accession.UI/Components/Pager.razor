@@ -25,10 +25,10 @@
             Page
             <input type="number" min="1" max="@LastPageNumber" value="@(PageIndex + 1)" disabled="@IsBusy"
                    aria-label="Page number" @onchange="GoToTyped" />
-            of @LastPageNumber.ToString("N0", CultureInfo.CurrentCulture)
+            of @(IsCounting ? "…" : LastPageNumber.ToString("N0", CultureInfo.CurrentCulture))
         </span>
-        <button class="icon-btn" title="Next page" disabled="@(IsBusy || PageIndex >= PageCount - 1)" @onclick="() => GoTo(PageIndex + 1)"><Icon Name="chevron-right" Size="16" /></button>
-        <button class="icon-btn" title="Last page" disabled="@(IsBusy || PageIndex >= PageCount - 1)" @onclick="() => GoTo(PageCount - 1)"><Icon Name="chevrons-right" Size="16" /></button>
+        <button class="icon-btn" title="Next page" disabled="@(IsBusy || !CanGoNext)" @onclick="() => GoTo(PageIndex + 1)"><Icon Name="chevron-right" Size="16" /></button>
+        <button class="icon-btn" title="Last page" disabled="@(IsBusy || IsCounting || PageIndex >= PageCount - 1)" @onclick="() => GoTo(PageCount - 1)"><Icon Name="chevrons-right" Size="16" /></button>
     </div>
 </div>
 
@@ -50,6 +50,15 @@
 
     [Parameter] public bool IsBusy { get; set; }
 
+    /// <summary>The total is still being counted: Next follows <see cref="HasMore"/>, Last waits for the count.</summary>
+    [Parameter] public bool IsCounting { get; set; }
+
+    /// <summary>While counting: the current page was full, so there may be more.</summary>
+    [Parameter] public bool HasMore { get; set; }
+
+    /// <summary>Rows on the current page (for the summary while counting).</summary>
+    [Parameter] public int RowsOnPage { get; set; }
+
     /// <summary>Raised with the zero-based page to show.</summary>
     [Parameter] public EventCallback<int> OnPageChange { get; set; }
 
@@ -64,11 +73,21 @@
 
     private int LastPageNumber => PageCount;
 
+    private bool CanGoNext => IsCounting ? HasMore : PageIndex < PageCount - 1;
+
     private string Summary
     {
         get
         {
             var culture = CultureInfo.CurrentCulture;
+            if (IsCounting)
+            {
+                var from = (long)PageIndex * PageSize + 1;
+                return RowsOnPage == 0
+                    ? $"Counting {ItemName}…"
+                    : $"Showing {from.ToString("N0", culture)}–{(from + RowsOnPage - 1).ToString("N0", culture)} · counting {ItemName}…";
+            }
+
             if (TotalCount == 0)
             {
                 return $"No {ItemName}";
@@ -82,7 +101,7 @@
 
     private Task GoTo(int page)
     {
-        page = Math.Clamp(page, 0, PageCount - 1);
+        page = IsCounting ? Math.Max(0, page) : Math.Clamp(page, 0, PageCount - 1);
         return page == PageIndex ? Task.CompletedTask : OnPageChange.InvokeAsync(page);
     }
 

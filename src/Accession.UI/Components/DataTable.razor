@@ -90,7 +90,8 @@
 
     internal void AddColumn(Column<TItem> column)
     {
-        _columns.Add(column);
+        var index = _columns.FindIndex(c => c.Order > column.Order);
+        _columns.Insert(index < 0 ? _columns.Count : index, column);
         StateHasChanged();
     }
 
