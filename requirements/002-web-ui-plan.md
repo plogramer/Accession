@@ -1,6 +1,6 @@
 # 002 – Web-style UI (Blazor Hybrid) – plan
 
-Status: **prototype built** (shell + Dashboard). This plan becomes the new epic's tickets after review.
+Status: **prototype built** (shell + Dashboard, #65). Tracked by epic #64.
 
 ## 1. Goal
 
@@ -96,26 +96,26 @@ The web Files screen uses **pages** instead of an endless scrolling grid.
   and the current page stays where it is.
 - Row actions: copy path, copy SHA-1, open containing folder, show all copies (same SHA-1). Column chooser is kept.
 
-## 6. Proposed epic and tickets
+## 6. Epic and tickets
 
-**Epic: Web UI (Blazor Hybrid)**
+**Epic #64: Web UI (Blazor Hybrid)**. Prototype: #65.
 
-1. **Presentation layer**: move the view models to a WPF-free project (replace the static `UiThread` with an
+1. **Presentation layer** (#66): move the view models to a WPF-free project (replace the static `UiThread` with an
    `IUiDispatcher`), add a UI interface per screen, and log unhandled page errors (blazor-error-ui).
-2. **Start screen**: recent inventories, New/Open, and lock-conflict/root-unreachable prompts as web dialogs.
-3. **Media screen**: media table, detail panel with scan history, Add/Delete/Scan actions, missing-media state.
-4. **Files screen**: folder tree, filter bar, **paged table with rows-per-page** (section 5), row menu, columns.
-5. **Scan Queue and Errors screens**: live progress, reorder/remove, retry failed, error filters.
-6. **Categories and Audit Log screens**.
-7. **Dialogs in the web UI**: New inventory, Add media, Delete media, Settings, Properties, Change root path.
+2. **Start screen** (#67): recent inventories, New/Open, and lock-conflict/root-unreachable prompts as web dialogs.
+3. **Media screen** (#68): media table, detail panel with scan history, Add/Delete/Scan actions, missing-media state.
+4. **Files screen** (#69): folder tree, filter bar, **paged table with rows-per-page** (section 5), row menu, columns.
+5. **Scan Queue and Errors screens** (#70): live progress, reorder/remove, retry failed, error filters.
+6. **Categories and Audit Log screens** (#71).
+7. **Dialogs in the web UI** (#72): New inventory, Add media, Delete media, Settings, Properties, Change root path.
    The folder picker stays the native Windows dialog.
-8. **Keyboard and accessibility**: shortcuts (Ctrl+O, F5, Ctrl+F), focus order, screen-reader labels,
+8. **Keyboard and accessibility** (#73): shortcuts (Ctrl+O, F5, Ctrl+F), focus order, screen-reader labels,
    Windows high-contrast, and text scaling.
-9. **Switch-over**: make the web UI the default, remove the classic XAML views and the View menu toggle, and
+9. **Switch-over** (#74): make the web UI the default, remove the classic XAML views and the View menu toggle, and
    update docs. The installer (#59) checks for or bundles the WebView2 Evergreen runtime.
 
 Excel export (#9) and Quality (#10) continue in parallel. The export options dialog is built as a web
-dialog once ticket 7 is in.
+dialog once #72 is in.
 
 ## 7. Risks and open points
 
