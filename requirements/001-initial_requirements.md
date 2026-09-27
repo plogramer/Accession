@@ -1,4 +1,4 @@
-# 001 – Initial Requirements: Minventory (Media Inventory for eDiscovery)
+# 001 – Initial Requirements: Accession (Media Inventory for eDiscovery)
 
 | Item | Value |
 |---|---|
@@ -20,7 +20,7 @@ eDiscovery vendors receive data from many sources. Each delivery ("media") is as
     123-123_003\
 ```
 
-**Minventory** is a Windows desktop application that scans these media folders and records every folder and file (with metadata and SHA-1 hash) into a single SQLite database file, called an **Inventory**. It provides a dashboard of totals by media, category and extension, and exports the inventory to Excel so it can be sent back to the party that produced the data.
+**Accession** is a Windows desktop application that scans these media folders and records every folder and file (with metadata and SHA-1 hash) into a single SQLite database file, called an **Inventory**. It provides a dashboard of totals by media, category and extension, and exports the inventory to Excel so it can be sent back to the party that produced the data.
 
 The application is **read-only toward the evidence**: it must never modify source files or their metadata.
 
@@ -71,7 +71,7 @@ The application is **read-only toward the evidence**: it must never modify sourc
 | TECH-02 | **C# / WPF** on **.NET 10 (LTS)**, published self-contained for `win-x64`. *(.NET 8 LTS support ends Nov 2026, so .NET 10 is recommended.)* |
 | TECH-03 | Distributed as an **installed application** (MSI built with WiX Toolset). Installs per machine to `Program Files`, creates a Start-menu shortcut and associates nothing by default. |
 | TECH-04 | Database access via `Microsoft.Data.Sqlite`. Recommended helpers: Dapper (queries), CommunityToolkit.Mvvm (MVVM), a streaming Excel writer (MiniExcel or Open XML SDK `OpenXmlWriter`), a WPF chart library (LiveCharts2 or ScottPlot), Serilog (application log). Final library choice is a design decision; all must have licences allowing commercial use. |
-| TECH-05 | Application settings (per Windows user) stored in `%APPDATA%\Minventory\settings.json`. Application log in `%LOCALAPPDATA%\Minventory\logs\`. |
+| TECH-05 | Application settings (per Windows user) stored in `%APPDATA%\Accession\settings.json`. Application log in `%LOCALAPPDATA%\Accession\logs\`. |
 | TECH-06 | The application must support paths longer than 260 characters (UNC and local) – long paths are normal in eDiscovery data. |
 
 ## 5. Functional Requirements
@@ -530,7 +530,7 @@ Start Window
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│  MINVENTORY                                                  │
+│  Accession                                                  │
 │                                                              │
 │   [ + New Inventory ]     [ Open Inventory... ]              │
 │                                                              │
@@ -570,7 +570,7 @@ Validation: required fields, valid URL, root exists, save location writable and 
 ### 8.4 Main window shell
 
 ```
-┌─ Minventory – ACME Corporation / Smith v. ACME (2026-001) ────────────── [_][□][X] ┐
+┌─ Accession – ACME Corporation / Smith v. ACME (2026-001) ────────────── [_][□][X] ┐
 │ File  Inventory  Media  Scan  Export  Help                                         │
 ├───────────────┬────────────────────────────────────────────────────────────────────┤
 │ ▣ Dashboard   │                                                                    │
@@ -774,7 +774,7 @@ Fields from section 5.11 grouped as **Display** (size unit, time zone), **Scanni
 | Q7 | Last-access time | Best-effort preservation (SCN-42); captured value always taken before hashing. |
 | Q8 | Root-level exclusions | `$RECYCLE.BIN`, `System Volume Information` ignored during discovery only. |
 | Q9 | Chat category | Chat exports (Slack/Teams) are usually JSON/HTML and will be classified under Text/Web by extension; only dedicated formats such as `rsmf` map to Chat. |
-| Q10 | App name | "Minventory" (from the repository name). |
+| Q10 | App name | "Accession" |
 
 ---
 
