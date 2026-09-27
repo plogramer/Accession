@@ -547,10 +547,11 @@ public sealed class ScanCoordinatorTests : IAsyncDisposable
     {
         var key = CreateMedia();
         await ScanAsync(key);
+        long unfinishedScanId;
         using (var scope = _test.Session.Database.Open())
         {
             new MediaRepository(scope).SetStatus(key, MediaStatus.Hashing);
-            new ScanLogRepository(scope).Start(new ScanLogEntry
+            unfinishedScanId = new ScanLogRepository(scope).Start(new ScanLogEntry
             {
                 MediaKey = key, MediaId = "M1", ScanType = ScanType.Full, StartedAtUtc = _test.Time.GetUtcNow(),
                 UserName = "u", MachineName = "m", AppVersion = "0.1.0", EnumThreads = 1, HashThreads = 1,
@@ -560,6 +561,8 @@ public sealed class ScanCoordinatorTests : IAsyncDisposable
         }
 
         Assert.Equal(MediaStatus.Incomplete, GetMedia(key).Status);
-        Assert.Equal(ScanOutcome.Interrupted, ScanLog(key)[0].Outcome);
+        // Select by id: the rows mix fake-clock and real-clock start times, so their order is not stable.
+        Assert.Equal(ScanOutcome.Interrupted, ScanLog(key).Single(l => l.ScanId == unfinishedScanId).Outcome);
+        Assert.Equal(ScanOutcome.Completed, ScanLog(key).Single(l => l.ScanId != unfinishedScanId).Outcome);
     }
 }
