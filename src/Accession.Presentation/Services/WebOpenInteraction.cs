@@ -24,12 +24,26 @@ public sealed class WebOpenInteraction(DialogCenter dialogs, IDialogService nati
         [new DialogChoice(Cancel, "Cancel"), new DialogChoice("upgrade", "Back up and upgrade", DialogChoiceStyle.Primary)],
         Cancel)) == "upgrade";
 
-    public LockConflictChoice ResolveLockConflict(LockHolder holder, bool isStale)
+    public LockConflictChoice ResolveLockConflict(LockConflict conflict)
     {
+        var holder = conflict.Holder;
         var zone = settings.Current.DisplayTimeZone;
         var staleMinutes = ((int)InventoryLockService.StaleAfter.TotalMinutes).ToString(CultureInfo.CurrentCulture);
+
+        // Another Accession window of this user on this computer: two writable windows would both write to the file.
+        if (conflict.IsOtherWindowHere)
+        {
+            return Ask(new ChoiceDialog(
+                "Inventory already open",
+                "This inventory is already open in another Accession window on this computer. Do you want to open it read-only here?",
+                [new DialogChoice(Cancel, "Cancel"), new DialogChoice("readonly", "Open read-only", DialogChoiceStyle.Primary)],
+                Cancel) { Kind = DialogKind.Info }) == "readonly"
+                ? LockConflictChoice.OpenReadOnly
+                : LockConflictChoice.Cancel;
+        }
+
         List<DialogChoice> choices = [new(Cancel, "Cancel")];
-        if (isStale)
+        if (conflict.IsStale)
         {
             choices.Add(new DialogChoice("takeover", "Take over lock", DialogChoiceStyle.Danger));
         }
@@ -37,22 +51,22 @@ public sealed class WebOpenInteraction(DialogCenter dialogs, IDialogService nati
         choices.Add(new DialogChoice("readonly", "Open read-only", DialogChoiceStyle.Primary));
 
         var answer = Ask(new ChoiceDialog(
-            "Inventory in use",
-            "Another user has this inventory open. You can open it read-only to browse and export.",
+            "Inventory is locked",
+            $"{holder.UserName} has this inventory open on {holder.MachineName}. Do you want to open it read-only? You can browse and export, but not change it.",
             choices,
             Cancel)
         {
             Kind = DialogKind.Warning,
             Facts =
             [
-                new DialogFact("User", holder.UserName),
+                new DialogFact("Locked by", holder.UserName),
                 new DialogFact("Computer", holder.MachineName),
                 new DialogFact("Opened", TimeFormatter.Format(holder.LockedAtUtc, zone)),
                 new DialogFact("Last activity", TimeFormatter.Format(holder.HeartbeatAtUtc, zone)),
             ],
-            Note = isStale
-                ? $"There has been no activity for more than {staleMinutes} minutes, so you can take over the lock."
-                : $"Take over becomes possible after {staleMinutes} minutes without activity.",
+            Note = conflict.IsStale
+                ? $"There has been no activity for more than {staleMinutes} minutes. If {holder.MachineName} crashed or was switched off, you can take over the lock."
+                : null,
         });
 
         switch (answer)

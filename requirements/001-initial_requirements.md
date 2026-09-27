@@ -105,6 +105,7 @@ The application is **read-only toward the evidence**: it must never modify sourc
 | LCK-04 | If the inventory is locked by someone else, show a dialog with who/where/since/last heartbeat and options: **Open Read-Only**, **Cancel**, and – only if the heartbeat is older than 10 minutes (stale) – **Take Over Lock**. Taking over is confirmed and audited (`LockForced`) with the previous holder's details. |
 | LCK-05 | **Read-only mode** allows Dashboard, File browser, Errors, Audit log and Export. All modifying actions are disabled and the title bar shows "READ-ONLY". |
 | LCK-06 | The lock is released on close, including normal app exit. After a crash the lock becomes stale and can be taken over per LCK-04. |
+| LCK-07 | **Own lock after a crash:** if the lock holder is the same user on the same computer and its process is no longer a running Accession, the session was not closed properly. The lock is taken back without asking, audited (`LockRecovered`) with the old holder's details, and the inventory opens normally with a notice: "The last session on this computer was not closed properly". If that Accession process is still running (another window), the user is told the inventory is already open in another window and may open it read-only (no take over). |
 
 ### 5.3 Open sequence and media discovery
 

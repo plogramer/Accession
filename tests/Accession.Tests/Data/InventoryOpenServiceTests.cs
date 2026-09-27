@@ -42,7 +42,7 @@ public sealed class InventoryOpenServiceTests : IDisposable
         public Queue<LockConflictChoice> LockAnswers { get; } = new();
         public Queue<Func<string, RootUnreachableResolution>> RootAnswers { get; } = new();
         public int UpgradeQuestions { get; private set; }
-        public List<(LockHolder Holder, bool IsStale)> LockQuestions { get; } = [];
+        public List<LockConflict> LockQuestions { get; } = [];
         public int RootQuestions { get; private set; }
 
         public bool ConfirmUpgrade(int fromVersion, int toVersion)
@@ -51,9 +51,9 @@ public sealed class InventoryOpenServiceTests : IDisposable
             return UpgradeAnswer;
         }
 
-        public LockConflictChoice ResolveLockConflict(LockHolder holder, bool isStale)
+        public LockConflictChoice ResolveLockConflict(LockConflict conflict)
         {
-            LockQuestions.Add((holder, isStale));
+            LockQuestions.Add(conflict);
             return LockAnswers.Count > 0 ? LockAnswers.Dequeue() : LockConflictChoice.Cancel;
         }
 
@@ -64,13 +64,13 @@ public sealed class InventoryOpenServiceTests : IDisposable
         }
     }
 
-    private InventoryOpenService Service(string user = @"CORP\jdoe", string machine = "WS-114") =>
-        new(new InventorySessionFactory(new User(user, machine), _time, NullLoggerFactory.Instance),
+    private InventoryOpenService Service(string user = @"CORP\jdoe", string machine = "WS-114", IProcessProbe? processes = null) =>
+        new(new InventorySessionFactory(new User(user, machine), _time, NullLoggerFactory.Instance, processes),
             new App(), new RootPathService(), NullLogger<InventoryOpenService>.Instance);
 
-    private InventorySession? Open(Interaction interaction, string user = @"CORP\jdoe", string machine = "WS-114")
+    private InventorySession? Open(Interaction interaction, string user = @"CORP\jdoe", string machine = "WS-114", IProcessProbe? processes = null)
     {
-        var session = Service(user, machine).Open(_inventory.DbPath, interaction);
+        var session = Service(user, machine, processes).Open(_inventory.DbPath, interaction);
         if (session is not null)
         {
             _sessions.Add(session);
@@ -97,6 +97,53 @@ public sealed class InventoryOpenServiceTests : IDisposable
         Assert.Equal([AuditAction.LockAcquired, AuditAction.InventoryOpened], AuditActions());
         Assert.Equal(0, interaction.UpgradeQuestions);
         Assert.Empty(interaction.LockQuestions);
+    }
+
+    private sealed class Processes(bool running) : IProcessProbe
+    {
+        public bool IsAccessionRunning(int processId) => running;
+    }
+
+    [Fact]
+    public void Own_lock_left_by_a_session_that_is_gone_is_recovered_and_opens_normally()
+    {
+        Open(new Interaction())!.LockService!.Dispose(); // same user and computer; the app "crashed" without releasing
+        var interaction = new Interaction();
+
+        var session = Open(interaction, processes: new Processes(running: false))!;
+
+        Assert.False(session.IsReadOnly);
+        Assert.True(session.LockService!.IsHeld);
+        Assert.Empty(interaction.LockQuestions);
+        Assert.Contains("not closed properly", session.OpenNotice, StringComparison.Ordinal);
+        Assert.Contains(AuditAction.LockRecovered, AuditActions());
+    }
+
+    [Fact]
+    public void Own_lock_held_by_another_running_window_asks_for_read_only()
+    {
+        Open(new Interaction());
+        var interaction = new Interaction();
+        interaction.LockAnswers.Enqueue(LockConflictChoice.OpenReadOnly);
+
+        var session = Open(interaction, processes: new Processes(running: true))!;
+
+        Assert.True(session.IsReadOnly);
+        Assert.True(Assert.Single(interaction.LockQuestions).IsOtherWindowHere);
+        Assert.Empty(session.OpenNotice);
+    }
+
+    [Fact]
+    public void Lock_of_the_same_user_on_another_computer_is_someone_else()
+    {
+        Open(new Interaction(), machine: "LAPTOP-7")!.LockService!.Dispose();
+        var interaction = new Interaction();
+
+        Assert.Null(Open(interaction, processes: new Processes(running: false)));
+
+        var question = Assert.Single(interaction.LockQuestions);
+        Assert.False(question.IsOtherWindowHere);
+        Assert.Equal("LAPTOP-7", question.Holder.MachineName);
     }
 
     [Fact]

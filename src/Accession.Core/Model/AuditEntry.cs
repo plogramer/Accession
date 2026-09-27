@@ -10,6 +10,9 @@ public enum AuditAction
     LockAcquired,
     LockReleased,
     LockForced,
+
+    /// <summary>The lock left by the same user's earlier session on the same computer (not closed properly) was taken back.</summary>
+    LockRecovered,
     SchemaUpgraded,
     ConfigUpdated,
     RootPathChanged,

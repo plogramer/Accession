@@ -27,9 +27,17 @@ public sealed class WpfOpenInteraction : IOpenInteraction
         $"It must be upgraded to version {toVersion} before it can be opened.\n\n" +
         "A backup copy of the inventory file is made first. Upgrade now?"));
 
-    public LockConflictChoice ResolveLockConflict(LockHolder holder, bool isStale) => _ui.Invoke(() =>
+    public LockConflictChoice ResolveLockConflict(LockConflict conflict) => _ui.Invoke(() =>
     {
-        var viewModel = new LockConflictViewModel(holder, isStale, _dialogs, _settings.Current.DisplayTimeZone);
+        if (conflict.IsOtherWindowHere)
+        {
+            return _dialogs.Confirm("Inventory already open",
+                "This inventory is already open in another Accession window on this computer.\n\nOpen it read-only here?")
+                ? LockConflictChoice.OpenReadOnly
+                : LockConflictChoice.Cancel;
+        }
+
+        var viewModel = new LockConflictViewModel(conflict.Holder, conflict.IsStale, _dialogs, _settings.Current.DisplayTimeZone);
         _dialogs.ShowDialog(viewModel);
         return viewModel.Choice;
     });

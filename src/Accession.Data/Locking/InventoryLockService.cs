@@ -23,6 +23,7 @@ public sealed class InventoryLockService : IDisposable
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<InventoryLockService> _logger;
     private readonly int _processId;
+    private readonly IProcessProbe _processes;
     private readonly Lock _gate = new();
     private ITimer? _heartbeat;
 
@@ -33,8 +34,10 @@ public sealed class InventoryLockService : IDisposable
         TimeProvider timeProvider,
         ILogger<InventoryLockService> logger,
         Guid sessionGuid,
-        int processId)
+        int processId,
+        IProcessProbe? processes = null)
     {
+        _processes = processes ?? SystemProcessProbe.Instance;
         _database = database;
         _user = user;
         _audit = audit;
@@ -53,7 +56,11 @@ public sealed class InventoryLockService : IDisposable
     /// <summary>Raised (on a timer thread) when the heartbeat finds that another session has taken the lock.</summary>
     public event EventHandler? LockLost;
 
-    /// <summary>Acquires the lock if it is free or already ours; otherwise reports the other holder.</summary>
+    /// <summary>
+    /// Acquires the lock if it is free or already ours. A lock left by this user on this computer by a session that is
+    /// no longer running (the app was not closed properly) is taken back (<see cref="LockAcquireStatus.Recovered"/>).
+    /// Otherwise reports the other holder.
+    /// </summary>
     public LockAcquireResult TryAcquire()
     {
         using var scope = _database.Open();
@@ -61,7 +68,18 @@ public sealed class InventoryLockService : IDisposable
         var current = ReadRow(scope);
         if (current.IsLocked && current.Holder is { } holder && holder.SessionGuid != SessionGuid)
         {
-            return new LockAcquireResult(LockAcquireStatus.LockedByOther, holder, IsStale(holder));
+            var mine = IsThisUserHere(holder);
+            if (mine && !_processes.IsAccessionRunning(holder.ProcessId))
+            {
+                WriteOwnLock(scope);
+                _audit.Write(scope, AuditAction.LockRecovered, details: new { SessionGuid, ProcessId = _processId, PreviousHolder = holder });
+                transaction.Commit();
+                IsHeld = true;
+                _logger.LogWarning("Recovered the lock left by an earlier session (process {ProcessId}) that was not closed properly", holder.ProcessId);
+                return new LockAcquireResult(LockAcquireStatus.Recovered, holder, IsStale: false);
+            }
+
+            return new LockAcquireResult(LockAcquireStatus.LockedByOther, holder, IsStale(holder), IsOtherWindowHere: mine);
         }
 
         WriteOwnLock(scope);
@@ -182,6 +200,10 @@ public sealed class InventoryLockService : IDisposable
             _heartbeat = null;
         }
     }
+
+    private bool IsThisUserHere(LockHolder holder) =>
+        string.Equals(holder.UserName, _user.UserName, StringComparison.OrdinalIgnoreCase)
+        && string.Equals(holder.MachineName, _user.MachineName, StringComparison.OrdinalIgnoreCase);
 
     private bool IsStale(LockHolder holder) => _timeProvider.GetUtcNow() - holder.HeartbeatAtUtc > StaleAfter;
 

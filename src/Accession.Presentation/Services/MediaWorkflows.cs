@@ -199,7 +199,7 @@ public sealed class MediaWorkflows
         if (requests.Count > 0)
         {
             _scans.Enqueue(requests);
-            _host.SetNotice(string.Empty);
+            _host.SetNotice(_host.Session?.OpenNotice ?? string.Empty);
         }
     }
 
@@ -272,6 +272,11 @@ public sealed class MediaWorkflows
     private void UpdateNotice(DiscoveryResult result)
     {
         var parts = new List<string>();
+        if (_host.Session?.OpenNotice is { Length: > 0 } openNotice)
+        {
+            parts.Add(openNotice); // e.g. "the last session was not closed properly" stays visible
+        }
+
         if (result.NeverScanned.Count > 0)
         {
             parts.Add($"{result.NeverScanned.Count:N0} media not scanned yet");

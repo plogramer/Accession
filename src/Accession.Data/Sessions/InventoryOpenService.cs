@@ -75,16 +75,18 @@ public sealed class InventoryOpenService
     {
         var (database, audit, lockService) = _factory.CreateWritableParts(path);
         var acquired = false;
+        LockHolder? recoveredFrom = null;
         while (!acquired)
         {
             var result = lockService.TryAcquire();
-            if (result.Status == LockAcquireStatus.Acquired)
+            if (result.Status is LockAcquireStatus.Acquired or LockAcquireStatus.Recovered)
             {
+                recoveredFrom = result.Status == LockAcquireStatus.Recovered ? result.Holder : null;
                 acquired = true;
                 continue;
             }
 
-            switch (interaction.ResolveLockConflict(result.Holder!, result.IsStale))
+            switch (interaction.ResolveLockConflict(new LockConflict(result.Holder!, result.IsStale, result.IsOtherWindowHere)))
             {
                 case LockConflictChoice.Cancel:
                     lockService.Dispose();
@@ -114,13 +116,14 @@ public sealed class InventoryOpenService
                 audit.Write(AuditAction.SchemaUpgraded, details: upgrade);
             }
 
+            int interruptedScans;
             using (var scope = database.Open())
             using (var transaction = scope.BeginTransaction())
             {
-                var recovered = Scanning.ScanRecovery.Recover(scope, _factory.TimeProvider.GetUtcNow());
-                if (recovered > 0)
+                interruptedScans = Scanning.ScanRecovery.Recover(scope, _factory.TimeProvider.GetUtcNow());
+                if (interruptedScans > 0)
                 {
-                    _logger.LogWarning("{Count} media had an unfinished scan and were marked Incomplete", recovered);
+                    _logger.LogWarning("{Count} media had an unfinished scan and were marked Incomplete", interruptedScans);
                 }
 
                 new InventoryConfigRepository(scope).UpdateLastOpened(_factory.TimeProvider.GetUtcNow(), _factory.User.UserName, path);
@@ -128,7 +131,14 @@ public sealed class InventoryOpenService
                 transaction.Commit();
             }
 
-            return _factory.CreateLocked(database, audit, lockService);
+            var session = _factory.CreateLocked(database, audit, lockService);
+            if (recoveredFrom is not null)
+            {
+                session.OpenNotice = "The last session on this computer was not closed properly, so the inventory was opened normally." +
+                    (interruptedScans > 0 ? $" {interruptedScans:N0} interrupted scan(s) can be resumed from the Media screen." : string.Empty);
+            }
+
+            return session;
         }
         catch
         {

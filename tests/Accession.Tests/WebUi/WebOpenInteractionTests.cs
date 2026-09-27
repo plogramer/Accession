@@ -19,7 +19,7 @@ public sealed class WebOpenInteractionTests
     {
         var (interaction, center) = Create();
 
-        var result = Task.Run(() => interaction.ResolveLockConflict(Holder, isStale: false));
+        var result = Task.Run(() => interaction.ResolveLockConflict(new LockConflict(Holder, false, IsOtherWindowHere: false)));
         var dialog = await WaitForDialog(center);
 
         Assert.DoesNotContain(dialog.Choices, c => c.Key == "takeover"); // not stale: no take over
@@ -33,7 +33,7 @@ public sealed class WebOpenInteractionTests
     {
         var (interaction, center) = Create();
 
-        var result = Task.Run(() => interaction.ResolveLockConflict(Holder, isStale: true));
+        var result = Task.Run(() => interaction.ResolveLockConflict(new LockConflict(Holder, true, IsOtherWindowHere: false)));
         var first = await WaitForDialog(center);
         center.Answer(first, "takeover");
         var confirm = await WaitForDialog(center, notSame: first);
@@ -47,13 +47,42 @@ public sealed class WebOpenInteractionTests
     {
         var (interaction, center) = Create();
 
-        var result = Task.Run(() => interaction.ResolveLockConflict(Holder, isStale: true));
+        var result = Task.Run(() => interaction.ResolveLockConflict(new LockConflict(Holder, true, IsOtherWindowHere: false)));
         var first = await WaitForDialog(center);
         center.Answer(first, "takeover");
         var confirm = await WaitForDialog(center, notSame: first);
         center.Answer(confirm, confirm.CancelKey);
 
         Assert.Equal(LockConflictChoice.Cancel, await result);
+    }
+
+    [Fact]
+    public async Task Lock_message_names_the_user_and_computer()
+    {
+        var (interaction, center) = Create();
+
+        var result = Task.Run(() => interaction.ResolveLockConflict(new LockConflict(Holder, false, IsOtherWindowHere: false)));
+        var dialog = await WaitForDialog(center);
+
+        Assert.Equal("Inventory is locked", dialog.Title);
+        Assert.Contains(@"LITSUPPORT\john.roe has this inventory open on LIT-WS-042", dialog.Message, StringComparison.Ordinal);
+        Assert.Contains("open it read-only", dialog.Message, StringComparison.Ordinal);
+        center.Answer(dialog, dialog.CancelKey);
+        Assert.Equal(LockConflictChoice.Cancel, await result);
+    }
+
+    [Fact]
+    public async Task Another_window_on_this_computer_offers_read_only_without_take_over()
+    {
+        var (interaction, center) = Create();
+
+        var result = Task.Run(() => interaction.ResolveLockConflict(new LockConflict(Holder, IsStale: true, IsOtherWindowHere: true)));
+        var dialog = await WaitForDialog(center);
+
+        Assert.Equal("Inventory already open", dialog.Title);
+        Assert.DoesNotContain(dialog.Choices, c => c.Key == "takeover");
+        center.Answer(dialog, "readonly");
+        Assert.Equal(LockConflictChoice.OpenReadOnly, await result);
     }
 
     [Fact]

@@ -11,9 +11,11 @@ public sealed class InventorySessionFactory
     private readonly IUserContext _user;
     private readonly TimeProvider _timeProvider;
     private readonly ILoggerFactory _loggerFactory;
+    private readonly IProcessProbe _processes;
 
-    public InventorySessionFactory(IUserContext user, TimeProvider timeProvider, ILoggerFactory loggerFactory)
+    public InventorySessionFactory(IUserContext user, TimeProvider timeProvider, ILoggerFactory loggerFactory, IProcessProbe? processes = null)
     {
+        _processes = processes ?? SystemProcessProbe.Instance;
         _user = user;
         _timeProvider = timeProvider;
         _loggerFactory = loggerFactory;
@@ -29,7 +31,7 @@ public sealed class InventorySessionFactory
         var database = new InventoryDatabase(path);
         var audit = new AuditService(database, _user, _timeProvider);
         var lockService = new InventoryLockService(database, _user, audit, _timeProvider,
-            _loggerFactory.CreateLogger<InventoryLockService>(), Guid.NewGuid(), Environment.ProcessId);
+            _loggerFactory.CreateLogger<InventoryLockService>(), Guid.NewGuid(), Environment.ProcessId, _processes);
         return (database, audit, lockService);
     }
 

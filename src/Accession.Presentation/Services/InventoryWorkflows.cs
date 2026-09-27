@@ -224,6 +224,7 @@ public sealed class InventoryWorkflows
     private void Activate(InventorySession session)
     {
         _host.Open(session);
+        _host.SetNotice(session.OpenNotice);
         _settings.AddRecentInventory(session.DbPath, $"{session.Config.ClientName} – {session.Config.MatterName}");
     }
 }

@@ -1,5 +1,4 @@
 using Accession.Core.Settings;
-using Accession.Data.Locking;
 using Accession.Data.Sessions;
 using Accession.Presentation.Services;
 
@@ -12,7 +11,7 @@ public sealed class OpenInteractionRouter(WebOpenInteraction web, WpfOpenInterac
 
     public bool ConfirmUpgrade(int fromVersion, int toVersion) => Current.ConfirmUpgrade(fromVersion, toVersion);
 
-    public LockConflictChoice ResolveLockConflict(LockHolder holder, bool isStale) => Current.ResolveLockConflict(holder, isStale);
+    public LockConflictChoice ResolveLockConflict(LockConflict conflict) => Current.ResolveLockConflict(conflict);
 
     public RootUnreachableResolution ResolveRootUnreachable(string rootPath) => Current.ResolveRootUnreachable(rootPath);
 }

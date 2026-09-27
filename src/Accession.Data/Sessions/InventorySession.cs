@@ -34,6 +34,9 @@ public sealed class InventorySession : IDisposable
 
     public string DbPath => Database.Path;
 
+    /// <summary>Something the user should know about this open, shown as a notice (e.g. the last session was not closed properly).</summary>
+    public string OpenNotice { get; internal set; } = string.Empty;
+
     public IAuditService Audit { get; }
 
     /// <summary>The lock this session holds; null for read-only sessions.</summary>
