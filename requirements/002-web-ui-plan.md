@@ -84,8 +84,11 @@ Screenshots are rendered from the components with sample data (see
 
 The web Files screen uses **pages** instead of an endless scrolling grid.
 
-- **Rows per page**: 50 / 100 (default) / 250 / 500 / 1,000, remembered in settings.
-- **Pager**: First · Previous · *Page N of M* · Next · Last, a "Go to page" box, and "Showing 201–300 of 738,639 files".
+- **Rows per page**: 1,000 (default) / 2,000 / 5,000 / 10,000 / 50,000, remembered between sessions (settings).
+- **Pager**: First · Previous · *Page N of M* · Next · Last, a "Go to page" box, and "Showing 1,001–2,000 of 738,639 files".
+- **Large pages stay responsive**: the table draws only the rows in view (Blazor `Virtualize` over the loaded
+  page), so a 50,000-row page doesn't build 50,000 table rows. The header stays fixed and the scrollbar covers
+  the whole page. Rows load in the background with a spinner.
 - **Fast paging on 10M+ rows**:
   - *Next/Previous* use the existing keyset query (`FileBrowserQueries.Page` with `FilePageCursor`, no OFFSET).
   - *Last* runs the same query with the sort order reversed.
