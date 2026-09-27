@@ -20,6 +20,12 @@ public sealed class InventoryHost : ObservableObject
 
     public InventoryConfig? Config => Session?.Config;
 
+    /// <summary>Non-blocking notice shown at the top of the inventory shell (e.g. "2 media not scanned yet"); empty hides it.</summary>
+    public string Notice { get; private set; } = string.Empty;
+
+    /// <summary>Raised on the UI thread after media were added, deleted or re-discovered.</summary>
+    public event EventHandler? MediaChanged;
+
     /// <summary>Raised after an inventory was opened or closed.</summary>
     public event EventHandler? SessionChanged;
 
@@ -46,6 +52,7 @@ public sealed class InventoryHost : ObservableObject
 
         session.BecameReadOnly -= OnBecameReadOnly;
         Session = null;
+        Notice = string.Empty;
         try
         {
             session.Close();
@@ -56,6 +63,14 @@ public sealed class InventoryHost : ObservableObject
             SessionChanged?.Invoke(this, EventArgs.Empty);
         }
     }
+
+    public void SetNotice(string notice)
+    {
+        Notice = notice;
+        OnPropertyChanged(nameof(Notice));
+    }
+
+    public void NotifyMediaChanged() => UiThread.Post(() => MediaChanged?.Invoke(this, EventArgs.Empty));
 
     /// <summary>Notifies bindings after the session's config or state changed.</summary>
     public void Refresh() => OnPropertyChanged(string.Empty);

@@ -1,0 +1,43 @@
+<UserControl x:Class="Accession.App.Views.AddMediaView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Width="560">
+    <DockPanel Margin="16">
+        <DockPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+            <Button Content="Browse for folder…" Command="{Binding BrowseCommand}" Padding="10,4" DockPanel.Dock="Left" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Command="{Binding AddCommand}" IsDefault="True" Style="{StaticResource DialogButton}">
+                    <TextBlock Text="{Binding CheckedCount, StringFormat=Add ({0})}" />
+                </Button>
+                <Button Content="{Binding CancelText}" Command="{Binding CancelCommand}" IsCancel="True" Style="{StaticResource DialogButton}" />
+            </StackPanel>
+        </DockPanel>
+
+        <StackPanel DockPanel.Dock="Top">
+            <TextBlock Style="{StaticResource HintText}">
+                <Run Text="Root:" />
+                <Run Text="{Binding RootPath, Mode=OneWay}" />
+            </TextBlock>
+            <TextBlock Text="Folders under the root that are not in this inventory yet:" Margin="0,10,0,6"
+                       Visibility="{Binding HasCandidates, Converter={StaticResource BoolToVisibility}}" />
+            <TextBlock Text="All folders under the root are already in this inventory. Use Browse to pick a folder."
+                       Margin="0,10,0,6" Style="{StaticResource HintText}"
+                       Visibility="{Binding HasCandidates, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}" />
+        </StackPanel>
+
+        <ListBox ItemsSource="{Binding Candidates}" MinHeight="120" MaxHeight="320"
+                 Visibility="{Binding HasCandidates, Converter={StaticResource BoolToVisibility}}">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Orientation="Horizontal" Margin="2,3">
+                        <CheckBox IsChecked="{Binding IsChecked}" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding MediaId}" />
+                        </CheckBox>
+                        <TextBlock Text="(previously deleted)" Margin="8,0,0,0" Style="{StaticResource HintText}"
+                                   Visibility="{Binding PreviouslyDeleted, Converter={StaticResource BoolToVisibility}}" />
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </DockPanel>
+</UserControl>

@@ -3,10 +3,13 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Width="640">
     <DockPanel Margin="16">
-        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
-            <Button Content="Create" Command="{Binding CreateCommand}" IsDefault="True" Style="{StaticResource DialogButton}" />
-            <Button Content="Cancel" Command="{Binding CancelCommand}" IsCancel="True" Style="{StaticResource DialogButton}" />
-        </StackPanel>
+        <DockPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+            <CheckBox Content="Show discovered media after creating" IsChecked="{Binding ShowDiscoveredMedia}" VerticalAlignment="Center" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Create" Command="{Binding CreateCommand}" IsDefault="True" Style="{StaticResource DialogButton}" />
+                <Button Content="Cancel" Command="{Binding CancelCommand}" IsCancel="True" Style="{StaticResource DialogButton}" />
+            </StackPanel>
+        </DockPanel>
 
         <Grid>
             <Grid.ColumnDefinitions>

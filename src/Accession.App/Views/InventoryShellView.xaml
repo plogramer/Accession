@@ -47,6 +47,16 @@
             </ListBox>
         </Border>
 
+        <!-- Notice banner (e.g. media not scanned yet) -->
+        <Border DockPanel.Dock="Top" Background="#FFF4CE" BorderBrush="#E8D48A" BorderThickness="0,0,0,1" Padding="12,6"
+                Visibility="{Binding HasNotice, Converter={StaticResource BoolToVisibility}}">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="Dismiss" Command="{Binding DismissNoticeCommand}" Padding="8,2" Margin="8,0,0,0" />
+                <Button DockPanel.Dock="Right" Content="Show media" Command="{Binding ShowMediaCommand}" Padding="8,2" Margin="8,0,0,0" />
+                <TextBlock Text="{Binding Notice}" VerticalAlignment="Center" TextWrapping="Wrap" Foreground="#3B3000" />
+            </DockPanel>
+        </Border>
+
         <!-- Selected screen -->
         <ContentControl Content="{Binding SelectedItem.Content}" Focusable="False" />
     </DockPanel>

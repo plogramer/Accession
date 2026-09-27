@@ -18,14 +18,14 @@
             <MenuItem Header="_Inventory">
                 <MenuItem Header="_Properties…" Command="{Binding ShowPropertiesCommand}" />
                 <MenuItem Header="_Change Root Path…" Command="{Binding ChangeRootPathCommand}" />
-                <MenuItem Header="_Discover Media" IsEnabled="False" ToolTip="Coming with media management" />
+                <MenuItem Header="_Discover Media" Command="{Binding DiscoverMediaCommand}" />
                 <Separator />
                 <MenuItem Header="Open _Matter Link" Command="{Binding OpenMatterLinkCommand}" />
             </MenuItem>
             <MenuItem Header="_Media" IsEnabled="{Binding HasSession}">
-                <MenuItem Header="_Add Media…" IsEnabled="False" ToolTip="Coming with media management" />
+                <MenuItem Header="_Add Media…" Command="{Binding AddMediaCommand}" />
                 <MenuItem Header="_Scan" IsEnabled="False" ToolTip="Coming with the scan engine" />
-                <MenuItem Header="_Delete Media…" IsEnabled="False" ToolTip="Coming with media management" />
+                <MenuItem Header="_Delete Media…" IsEnabled="False" ToolTip="Select a media on the Media screen and use Delete there" />
             </MenuItem>
             <MenuItem Header="_Scan" IsEnabled="{Binding HasSession}">
                 <MenuItem Header="_Pause" IsEnabled="False" />

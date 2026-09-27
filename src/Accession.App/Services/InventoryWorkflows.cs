@@ -27,6 +27,7 @@ public sealed class InventoryWorkflows
     private readonly Func<InventoryPropertiesViewModel> _properties;
     private readonly Func<ChangeRootPathViewModel> _changeRoot;
     private readonly ILogger<InventoryWorkflows> _logger;
+    private readonly MediaWorkflows _media;
 
     public InventoryWorkflows(
         InventoryHost host,
@@ -40,8 +41,10 @@ public sealed class InventoryWorkflows
         Func<SettingsViewModel> settingsDialog,
         Func<InventoryPropertiesViewModel> properties,
         Func<ChangeRootPathViewModel> changeRoot,
+        MediaWorkflows media,
         ILogger<InventoryWorkflows> logger)
     {
+        _media = media;
         _host = host;
         _dialogs = dialogs;
         _busy = busy;
@@ -70,6 +73,7 @@ public sealed class InventoryWorkflows
         {
             var session = await _busy.RunAsync(_ => Task.FromResult(_creation.Create(request)), "Creating inventory…");
             Activate(session);
+            await _media.RunDiscoveryAsync(dialog.ShowDiscoveredMedia ? DiscoveryMode.OnOpen : DiscoveryMode.Silent);
         }
         catch (InventoryValidationException ex)
         {
@@ -113,6 +117,7 @@ public sealed class InventoryWorkflows
             if (session is not null)
             {
                 Activate(session);
+                await _media.RunDiscoveryAsync(DiscoveryMode.OnOpen);
             }
         }
         catch (Exception ex) when (ex is NotAnInventoryException or SchemaTooNewException or InventoryInUseException)
@@ -143,19 +148,26 @@ public sealed class InventoryWorkflows
 
     public void OpenSettings() => _dialogs.ShowDialog(_settingsDialog());
 
-    public void ShowProperties()
+    public async Task ShowPropertiesAsync()
     {
-        if (_host.HasSession)
+        if (!_host.HasSession)
         {
-            _dialogs.ShowDialog(_properties());
+            return;
+        }
+
+        var rootBefore = _host.Config?.RootPath;
+        _dialogs.ShowDialog(_properties());
+        if (!string.Equals(rootBefore, _host.Config?.RootPath, StringComparison.Ordinal))
+        {
+            await _media.RunDiscoveryAsync(DiscoveryMode.OnOpen);
         }
     }
 
-    public void ChangeRootPath()
+    public async Task ChangeRootPathAsync()
     {
-        if (_host.CanModify)
+        if (_host.CanModify && _dialogs.ShowDialog(_changeRoot()) == true)
         {
-            _dialogs.ShowDialog(_changeRoot());
+            await _media.RunDiscoveryAsync(DiscoveryMode.OnOpen);
         }
     }
 

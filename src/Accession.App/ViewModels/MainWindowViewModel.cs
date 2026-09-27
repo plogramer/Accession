@@ -14,17 +14,20 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private readonly InventoryHost _host;
     private readonly InventoryWorkflows _workflows;
     private readonly IDialogService _dialogs;
+    private readonly MediaWorkflows _media;
 
     public MainWindowViewModel(
         INavigationService navigation,
         InventoryHost host,
         InventoryWorkflows workflows,
+        MediaWorkflows media,
         IDialogService dialogs,
         BusyTracker busy)
     {
         _navigation = navigation;
         _host = host;
         _workflows = workflows;
+        _media = media;
         _dialogs = dialogs;
         Busy = busy;
         _navigation.CurrentChanged += (_, _) => OnPropertyChanged(nameof(CurrentScreen));
@@ -81,13 +84,19 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private void OpenSettings() => _workflows.OpenSettings();
 
     [RelayCommand(CanExecute = nameof(HasSession))]
-    private void ShowProperties() => _workflows.ShowProperties();
+    private Task ShowProperties() => _workflows.ShowPropertiesAsync();
 
     [RelayCommand(CanExecute = nameof(CanModify))]
-    private void ChangeRootPath() => _workflows.ChangeRootPath();
+    private Task ChangeRootPath() => _workflows.ChangeRootPathAsync();
 
     [RelayCommand(CanExecute = nameof(HasMatterUrl))]
     private void OpenMatterLink() => _workflows.OpenMatterLink();
+
+    [RelayCommand(CanExecute = nameof(CanDiscover))]
+    private Task DiscoverMedia() => _media.RunDiscoveryAsync(DiscoveryMode.Manual);
+
+    [RelayCommand(CanExecute = nameof(CanAddMedia))]
+    private Task AddMedia() => _media.AddMediaAsync();
 
     [RelayCommand]
     private void CancelBusy() => Busy.Cancel();
@@ -101,6 +110,10 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         throw new InvalidOperationException("Test exception from the Help menu (debug builds only).");
 
     private bool CanModify() => _host.CanModify;
+
+    private bool CanDiscover() => _media.CanDiscover;
+
+    private bool CanAddMedia() => _media.CanAddMedia;
 
     private void ShowScreenForSession()
     {
@@ -123,5 +136,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         ShowPropertiesCommand.NotifyCanExecuteChanged();
         ChangeRootPathCommand.NotifyCanExecuteChanged();
         OpenMatterLinkCommand.NotifyCanExecuteChanged();
+        DiscoverMediaCommand.NotifyCanExecuteChanged();
+        AddMediaCommand.NotifyCanExecuteChanged();
     }
 }

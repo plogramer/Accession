@@ -6,7 +6,9 @@ using Accession.App.ViewModels;
 using Accession.Core.Runtime;
 using Accession.Core.Settings;
 using Accession.Core.Threading;
+using Accession.App.ViewModels.MediaScreen;
 using Accession.App.ViewModels.Shell;
+using Accession.Data.MediaManagement;
 using Accession.Data.Sessions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -98,6 +100,8 @@ public partial class App : Application
         builder.Services.AddSingleton<InventoryOpenService>();
         builder.Services.AddSingleton<RootPathService>();
         builder.Services.AddSingleton<InventoryPropertiesService>();
+        builder.Services.AddSingleton<MediaDiscoveryService>();
+        builder.Services.AddSingleton<MediaService>();
 
         // UI services
         builder.Services.AddSingleton<INavigationService, NavigationService>();
@@ -106,11 +110,13 @@ public partial class App : Application
         builder.Services.AddSingleton<InventoryHost>();
         builder.Services.AddSingleton<IOpenInteraction, WpfOpenInteraction>();
         builder.Services.AddSingleton<InventoryWorkflows>();
+        builder.Services.AddSingleton<MediaWorkflows>();
 
         // View models and windows
         builder.Services.AddSingleton<MainWindowViewModel>();
         builder.Services.AddTransient<StartViewModel>();
         builder.Services.AddTransient<InventoryShellViewModel>();
+        builder.Services.AddTransient<MediaListViewModel>();
         AddDialog<NewInventoryViewModel>(builder.Services);
         AddDialog<SettingsViewModel>(builder.Services);
         AddDialog<InventoryPropertiesViewModel>(builder.Services);

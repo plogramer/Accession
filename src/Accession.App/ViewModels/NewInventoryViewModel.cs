@@ -50,6 +50,10 @@ public sealed partial class NewInventoryViewModel : DialogViewModelBase
     [ObservableProperty]
     public partial string SavePath { get; set; } = string.Empty;
 
+    /// <summary>Show the New Media Found dialog after creating (section 8.3).</summary>
+    [ObservableProperty]
+    public partial bool ShowDiscoveredMedia { get; set; } = true;
+
     /// <summary>E.g. "12 subfolders found (candidate media)".</summary>
     [ObservableProperty]
     public partial string RootInfo { get; set; } = string.Empty;
