@@ -1,11 +1,12 @@
 using System.ComponentModel;
 using System.Windows.Input;
+using Accession.UI.Shell;
 using Accession.UI.FilesScreen;
 
 namespace Accession.UI.ScanScreens;
 
 /// <summary>Errors screen (requirements SCN-53, section 8.11): paged scan errors with filters.</summary>
-public interface IErrorsModel : INotifyPropertyChanged
+public interface IErrorsModel : INotifyPropertyChanged, IRefreshableScreen
 {
     IReadOnlyList<SelectOption> MediaFilterOptions { get; }
     string MediaFilterValue { get; set; }
@@ -35,5 +36,4 @@ public interface IErrorsModel : INotifyPropertyChanged
     /// <summary>Hash again the failed files of the filtered media (or the selected error's media).</summary>
     ICommand RetryFailedCommand { get; }
 
-    ICommand RefreshCommand { get; }
 }

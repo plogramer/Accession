@@ -50,7 +50,7 @@
                 {
                     <div class="search">
                         <Icon Name="search" Size="15" />
-                        <input type="search" placeholder="Find" value="@_search" @oninput="e => _search = e.Value?.ToString() ?? string.Empty" />
+                        <input type="search" data-shortcut-search placeholder="Find" value="@_search" @oninput="e => _search = e.Value?.ToString() ?? string.Empty" />
                     </div>
                 }
             </div>

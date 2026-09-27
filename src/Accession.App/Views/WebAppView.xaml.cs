@@ -38,6 +38,17 @@ public partial class WebAppView : UserControl
             HostPage = @"wwwroot\index.html",
             Services = App.Services,
         };
+        webView.BlazorWebViewInitialized += (_, e) =>
+        {
+            // The page handles its own shortcuts: no browser reload (F5), find (Ctrl+F), print or zoom reset keys.
+            var settings = e.WebView.CoreWebView2.Settings;
+            settings.AreBrowserAcceleratorKeysEnabled = false;
+            settings.IsStatusBarEnabled = false;
+#if !DEBUG
+            settings.AreDefaultContextMenusEnabled = false; // no "Reload" / "Inspect"; copy and paste keys still work
+            settings.AreDevToolsEnabled = false;
+#endif
+        };
         webView.RootComponents.Add(new RootComponent
         {
             Selector = "#app",

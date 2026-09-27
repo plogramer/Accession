@@ -1,11 +1,12 @@
 using System.ComponentModel;
 using System.Windows.Input;
+using Accession.UI.Shell;
 using Accession.UI.FilesScreen;
 
 namespace Accession.UI.Records;
 
 /// <summary>Audit Log screen (requirement AUD-04, section 8.13): read-only, newest first, paged.</summary>
-public interface IAuditModel : INotifyPropertyChanged
+public interface IAuditModel : INotifyPropertyChanged, IRefreshableScreen
 {
     IReadOnlyList<SelectOption> ActionFilterOptions { get; }
     string ActionFilterValue { get; set; }
@@ -36,5 +37,4 @@ public interface IAuditModel : INotifyPropertyChanged
 
     ICommand ApplyMediaFilterCommand { get; }
     ICommand ClearFiltersCommand { get; }
-    ICommand RefreshCommand { get; }
 }

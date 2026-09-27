@@ -43,7 +43,7 @@
                         <button class="link-btn card-header-end" @onclick="CheckAll">Select all</button>
                     }
                 </div>
-                <DataTable TItem="MediaRowViewModel" Items="Sorted" SortKey="@_sortKey" SortDescending="_descending" OnSort="Sort"
+                <DataTable TItem="MediaRowViewModel" Items="Sorted" Label="Media" SortKey="@_sortKey" SortDescending="_descending" OnSort="Sort"
                            SelectedItem="Model.SelectedRow" SelectedItemChanged="Select" RowClass="RowClass" MaxHeight="calc(100vh - 290px)">
                     <Columns>
                         <Column TItem="MediaRowViewModel" Title="" Width="44px" Class="check-cell">
@@ -112,7 +112,8 @@
                         <div class="live-box">
                             <div class="live-head"><span class="pulse"></span> Scan running</div>
                             <div class="small">@Model.LiveProgressText</div>
-                            <div class="progress @(Model.LiveProgressRatio is null ? "is-indeterminate" : null)">
+                            <div class="progress @(Model.LiveProgressRatio is null ? "is-indeterminate" : null)" role="progressbar" aria-label="Scan progress"
+                                 aria-valuetext="@Model.LiveProgressText">
                                 <div class="progress-bar" style="width:@(Model.LiveProgressRatio is { } r ? Percent(r) : "35%")"></div>
                             </div>
                         </div>

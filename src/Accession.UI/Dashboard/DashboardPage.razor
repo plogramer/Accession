@@ -62,7 +62,7 @@
         <div class="kpi">
             <div class="kpi-label"><Icon Name="lock" Size="15" /> Hashed (SHA-1)</div>
             <div class="kpi-value">@Model.HashedPercent</div>
-            <div class="progress"><div class="progress-bar" style="width:@HashedWidth"></div></div>
+            <div class="progress" role="progressbar" aria-label="Hashed" aria-valuemin="0" aria-valuemax="100" aria-valuetext="@Model.HashedPercent"><div class="progress-bar" style="width:@HashedWidth"></div></div>
         </div>
         <button class="kpi kpi-link" @onclick="() => Run(Model.OpenDuplicatesCommand)" title="@DuplicateTitle">
             <div class="kpi-label"><Icon Name="copy" Size="15" /> Duplicates</div>
@@ -155,7 +155,7 @@
                 <span class="card-header-spacer"></span>
                 <div class="search">
                     <Icon Name="search" Size="15" />
-                    <input type="search" placeholder="Find extension" value="@Model.ExtensionSearch"
+                    <input type="search" data-shortcut-search placeholder="Find extension" value="@Model.ExtensionSearch"
                            @oninput="e => Model.ExtensionSearch = e.Value?.ToString() ?? string.Empty" />
                 </div>
             </div>
@@ -193,10 +193,10 @@
             </div>
             @if (Model.ByYear.Count > 0)
             {
-                <div class="columns">
+                <div class="columns" role="list" aria-label="Files by year modified">
                     @foreach (var row in Model.ByYear)
                     {
-                        <button class="column" title="@row.Label: @row.Files files, @row.Size" @onclick="() => Run(Model.OpenYearCommand, row)">
+                        <button class="column" role="listitem" title="@row.Label: @row.Files files, @row.Size" aria-label="@row.Label: @row.Files files" @onclick="() => Run(Model.OpenYearCommand, row)">
                             <span class="column-track">
                                 <span class="column-value">@Compact(row.FileCount)</span>
                                 <span class="column-fill" style="height:@BarHeight(row)"></span>

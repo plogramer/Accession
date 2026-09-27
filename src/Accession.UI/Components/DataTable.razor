@@ -1,10 +1,14 @@
 @typeparam TItem
 @using Microsoft.AspNetCore.Components.Web.Virtualization
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
 
 @* Table with sticky header, sortable columns, a selected row and optional row virtualization (large pages). *@
 <CascadingValue Value="this" IsFixed="true">@Columns</CascadingValue>
 
-<div class="table-wrap @(MaxHeight is null ? null : "table-scroll")" style="@(MaxHeight is null ? null : $"max-height:{MaxHeight}")">
+<div class="table-wrap @(MaxHeight is null ? null : "table-scroll")" style="@(MaxHeight is null ? null : $"max-height:{MaxHeight}")"
+     @ref="_container" tabindex="@(KeyboardNavigation ? "0" : null)" data-keynav="@(KeyboardNavigation ? "true" : null)"
+     role="@(KeyboardNavigation ? "grid" : null)" aria-label="@Label" @onkeydown="OnKeyDown">
     <table class="table @Class" aria-busy="@(IsLoading ? "true" : "false")">
         <thead>
             <tr>
@@ -48,6 +52,7 @@
 
 @code {
     private readonly List<Column<TItem>> _columns = [];
+    private ElementReference _container;
 
     /// <summary>Column definitions (<see cref="Column{TItem}"/> components).</summary>
     [Parameter, EditorRequired] public RenderFragment Columns { get; set; } = default!;
@@ -90,6 +95,56 @@
     [Parameter] public string EmptyText { get; set; } = "Nothing to show.";
 
     [Parameter] public string LoadingText { get; set; } = "Loading…";
+
+    /// <summary>Accessible name of the table.</summary>
+    [Parameter] public string? Label { get; set; }
+
+    private bool KeyboardNavigation => SelectedItemChanged.HasDelegate && Items.Count > 0;
+
+    /// <summary>Arrow keys move the selection; Enter opens the row (double-click action, else click action).</summary>
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (!KeyboardNavigation)
+        {
+            return;
+        }
+
+        var current = SelectedItem is null ? -1 : IndexOf(SelectedItem);
+        var page = Math.Max(1, (int)(400 / RowHeight));
+        var next = e.Key switch
+        {
+            "ArrowDown" => Math.Min(Items.Count - 1, current + 1),
+            "ArrowUp" => Math.Max(0, current - 1),
+            "PageDown" => Math.Min(Items.Count - 1, current + page),
+            "PageUp" => Math.Max(0, current - page),
+            "Home" => 0,
+            "End" => Items.Count - 1,
+            _ => -2,
+        };
+
+        if (next >= 0 && next != current)
+        {
+            await SelectedItemChanged.InvokeAsync(Items[next]);
+            await JS.InvokeVoidAsync("accession.scrollRowIntoView", _container, next, RowHeight, 38);
+        }
+        else if (e.Key == "Enter" && SelectedItem is { } item)
+        {
+            await (OnRowDoubleClick.HasDelegate ? OnRowDoubleClick.InvokeAsync(item) : OnRowClick.InvokeAsync(item));
+        }
+    }
+
+    private int IndexOf(TItem item)
+    {
+        for (var i = 0; i < Items.Count; i++)
+        {
+            if (EqualityComparer<TItem>.Default.Equals(Items[i], item))
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
 
     internal void AddColumn(Column<TItem> column)
     {

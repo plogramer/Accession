@@ -1,11 +1,12 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows.Input;
+using Accession.UI.Shell;
 
 namespace Accession.UI.Dashboard;
 
 /// <summary>What the Dashboard page shows and can do (requirements 5.7, section 8.5). Implemented by the host application.</summary>
-public interface IDashboardModel : INotifyPropertyChanged
+public interface IDashboardModel : INotifyPropertyChanged, IRefreshableScreen
 {
     // Filter
     ObservableCollection<MediaFilterItem> MediaFilter { get; }
@@ -40,7 +41,6 @@ public interface IDashboardModel : INotifyPropertyChanged
     ObservableCollection<LargeFileRowVm> LargestFiles { get; }
 
     // Commands
-    ICommand RefreshCommand { get; }
     ICommand SelectAllMediaCommand { get; }
     ICommand ClearCategoryCommand { get; }
     ICommand OpenMediaCommand { get; }

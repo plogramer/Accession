@@ -1,11 +1,12 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows.Input;
+using Accession.UI.Shell;
 
 namespace Accession.UI.FilesScreen;
 
 /// <summary>The Files screen (requirements 5.8, section 8.10): folder tree, filters and a paged file table.</summary>
-public interface IFilesModel : INotifyPropertyChanged
+public interface IFilesModel : INotifyPropertyChanged, IRefreshableScreen
 {
     // ---- Tree ----
     ObservableCollection<FolderTreeNode> Folders { get; }
@@ -81,5 +82,4 @@ public interface IFilesModel : INotifyPropertyChanged
     ICommand CopySha1Command { get; }
     ICommand OpenContainingFolderCommand { get; }
     ICommand ShowCopiesCommand { get; }
-    ICommand RefreshCommand { get; }
 }

@@ -37,7 +37,7 @@
             }
         </div>
 
-        <DataTable TItem="ErrorRow" Items="Model.PageRows" Virtualize="true" MaxHeight="calc(100vh - 360px)"
+        <DataTable TItem="ErrorRow" Items="Model.PageRows" Label="Errors" Virtualize="true" MaxHeight="calc(100vh - 360px)"
                    SelectedItem="Model.SelectedRow" SelectedItemChanged="row => Model.SelectedRow = row"
                    EmptyText="No errors match the filter.">
             <Columns>

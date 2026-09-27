@@ -100,7 +100,7 @@ internal sealed class FakeDashboard : ObservableObject, IDashboardModel
     public string ExtensionHeader => SelectedCategory is { } c ? $"By extension – {c.Label}" : "By extension";
     public ObservableCollection<BarRow> ByYear { get; } = [];
     public ObservableCollection<LargeFileRowVm> LargestFiles { get; } = [];
-    public ICommand RefreshCommand { get; } = new RelayCommand(() => { });
+    public ICommand RefreshCommand { get; init; } = new RelayCommand(() => { });
     public ICommand SelectAllMediaCommand { get; } = new RelayCommand(() => { });
     public ICommand ClearCategoryCommand { get; } = new RelayCommand(() => { });
     public ICommand OpenMediaCommand { get; } = new RelayCommand<object?>(_ => { });
@@ -195,6 +195,9 @@ internal sealed partial class FakeApp(object screen) : ObservableObject, IAppMod
     public bool CanCancelBusy => false;
     public ICommand CancelBusyCommand { get; } = new RelayCommand(() => { });
     public ICommand SwitchToClassicCommand { get; } = new RelayCommand(() => { });
+    public ICommand NewInventoryCommand { get; } = new RelayCommand(() => { });
+    public ICommand OpenInventoryCommand { get; } = new RelayCommand(() => { });
+    public ICommand OpenSettingsCommand { get; } = new RelayCommand(() => { });
 }
 
 internal sealed class FakeStart : ObservableObject, IStartModel

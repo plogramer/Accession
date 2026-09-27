@@ -16,6 +16,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dapper;
 using Microsoft.Extensions.Logging;
+using Accession.UI.Shell;
 
 namespace Accession.Presentation.ViewModels.Scanning;
 
@@ -113,7 +114,7 @@ public sealed partial class ErrorsViewModel : ViewModelBase, IErrorsModel, IDisp
 
     ICommand IErrorsModel.RetryFailedCommand => RetryFailedCommand;
 
-    ICommand IErrorsModel.RefreshCommand => RefreshCommand;
+    ICommand IRefreshableScreen.RefreshCommand => RefreshCommand;
 
     public Task GoToPageAsync(int pageIndex)
     {

@@ -1,4 +1,7 @@
 @inherits ObservingComponentBase
+@implements IAsyncDisposable
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
 
 @* Root component of the web page: theme, current screen, notifications, busy overlay and dialogs. *@
 <CascadingValue Value="Model" IsFixed="true">
@@ -30,13 +33,67 @@
         }
 
         <DialogHost Center="Model.Dialogs" />
+
+        @if (_helpOpen)
+        {
+            <Modal IsOpen="true" Title="Keyboard shortcuts" Width="480px" OnClose="() => _helpOpen = false">
+                <table class="shortcuts">
+                    @foreach (var (keys, action) in Shortcuts.Help)
+                    {
+                        <tr><td>@foreach (var key in keys.Split(' ')) { <kbd>@key</kbd> }</td><td>@action</td></tr>
+                    }
+                </table>
+            </Modal>
+        }
     </div>
 </CascadingValue>
 
 @code {
+    private DotNetObjectReference<AppRoot>? _self;
+    private bool _helpOpen;
+
     [Parameter, EditorRequired] public IAppModel Model { get; set; } = default!;
 
     private string? ThemeAttribute => Model.Theme is "light" or "dark" ? Model.Theme : null;
 
     protected override void OnParametersSet() => Observe(Model);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _self = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("accession.registerShortcuts", _self);
+        }
+    }
+
+    /// <summary>Called by accession.js for the page's keyboard shortcuts.</summary>
+    [JSInvokable]
+    public async Task OnShortcut(string key)
+    {
+        if (await Shortcuts.HandleAsync(Model, key))
+        {
+            _helpOpen = !_helpOpen;
+        }
+
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Dispose(); // stop observing (the renderer calls only DisposeAsync when both exist)
+        if (_self is not null)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("accession.unregisterShortcuts");
+            }
+            catch (JSDisconnectedException)
+            {
+                // the page is already gone
+            }
+
+            _self.Dispose();
+        }
+    }
 }

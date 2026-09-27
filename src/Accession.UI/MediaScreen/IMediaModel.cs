@@ -1,11 +1,12 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows.Input;
+using Accession.UI.Shell;
 
 namespace Accession.UI.MediaScreen;
 
 /// <summary>The Media screen (requirements 8.6): registered media, details, scan history and actions.</summary>
-public interface IMediaModel : INotifyPropertyChanged
+public interface IMediaModel : INotifyPropertyChanged, IRefreshableScreen
 {
     ObservableCollection<MediaRowViewModel> Rows { get; }
 
@@ -39,5 +40,4 @@ public interface IMediaModel : INotifyPropertyChanged
     ICommand RetryFailedCommand { get; }
     ICommand OpenInExplorerCommand { get; }
     ICommand OpenFilesCommand { get; }
-    ICommand RefreshCommand { get; }
 }

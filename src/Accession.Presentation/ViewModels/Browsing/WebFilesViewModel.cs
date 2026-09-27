@@ -16,6 +16,7 @@ using Accession.UI.FilesScreen;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using Accession.UI.Shell;
 
 namespace Accession.Presentation.ViewModels.Browsing;
 
@@ -181,7 +182,7 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
 
     ICommand IFilesModel.ShowCopiesCommand => ShowCopiesCommand;
 
-    ICommand IFilesModel.RefreshCommand => RefreshCommand;
+    ICommand IRefreshableScreen.RefreshCommand => RefreshCommand;
 
     public void Dispose()
     {

@@ -15,6 +15,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using Accession.UI.MediaScreen;
+using Accession.UI.Shell;
 
 namespace Accession.Presentation.ViewModels.Dashboard;
 
@@ -138,7 +139,7 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDashboardModel,
 
     public ObservableCollection<LargeFileRowVm> LargestFiles { get; } = [];
 
-    ICommand IDashboardModel.RefreshCommand => RefreshCommand;
+    ICommand IRefreshableScreen.RefreshCommand => RefreshCommand;
     ICommand IDashboardModel.SelectAllMediaCommand => SelectAllMediaCommand;
     ICommand IDashboardModel.ClearCategoryCommand => ClearCategoryCommand;
     ICommand IDashboardModel.OpenMediaCommand => OpenMediaCommand;

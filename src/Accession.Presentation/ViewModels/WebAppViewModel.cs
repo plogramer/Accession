@@ -73,6 +73,12 @@ public sealed class WebAppViewModel : ViewModelBase, IAppModel
 
     public ICommand SwitchToClassicCommand => _main.LeaveWebUiCommand;
 
+    public ICommand NewInventoryCommand => _main.NewInventoryCommand;
+
+    public ICommand OpenInventoryCommand => _main.OpenInventoryCommand;
+
+    public ICommand OpenSettingsCommand => _main.OpenSettingsCommand;
+
     public override void OnNavigatedTo()
     {
         _host.SessionChanged += OnSessionChanged;

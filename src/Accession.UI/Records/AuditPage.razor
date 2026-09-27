@@ -26,14 +26,14 @@
                         <option value="@option.Value">@option.Label</option>
                     }
                 </select>
-                <input class="input input-ext" placeholder="Media ID" title="Media ID (press Enter)" value="@Model.MediaIdText"
+                <input class="input input-ext" data-shortcut-search placeholder="Media ID" title="Media ID (press Enter)" value="@Model.MediaIdText"
                        @oninput="e => Model.MediaIdText = e.Value?.ToString() ?? string.Empty" @onkeydown="OnMediaKey" />
                 <input class="input" type="date" title="From" value="@Model.FromDateText" @onchange="e => Model.FromDateText = e.Value?.ToString() ?? string.Empty" />
                 <span class="range-to">to</span>
                 <input class="input" type="date" title="To" value="@Model.ToDateText" @onchange="e => Model.ToDateText = e.Value?.ToString() ?? string.Empty" />
                 <button class="link-btn" @onclick="() => Run(Model.ClearFiltersCommand)">Clear</button>
             </div>
-            <DataTable TItem="AuditRowVm" Items="Model.PageRows" Virtualize="true" MaxHeight="calc(100vh - 360px)"
+            <DataTable TItem="AuditRowVm" Items="Model.PageRows" Label="Audit log" Virtualize="true" MaxHeight="calc(100vh - 360px)"
                        SelectedItem="Model.SelectedRow" SelectedItemChanged="row => Model.SelectedRow = row" EmptyText="No entries match the filters.">
                 <Columns>
                     <Column TItem="AuditRowVm" Title="Time" Class="muted nowrap">@context.Time</Column>

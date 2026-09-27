@@ -11,7 +11,7 @@
     <div class="master-detail has-detail detail-wide">
         <section class="card">
             <div class="card-header"><h3>All categories</h3><span class="muted small">@Model.Categories.Count(c => c.FileCount > 0) with files</span></div>
-            <DataTable TItem="CategoryRowVm" Items="Model.Categories" SelectedItem="Model.SelectedCategory"
+            <DataTable TItem="CategoryRowVm" Items="Model.Categories" Label="Categories" SelectedItem="Model.SelectedCategory"
                        SelectedItemChanged="row => Model.SelectedCategory = row" RowClass="@(c => c.FileCount == 0 ? "is-empty" : null)">
                 <Columns>
                     <Column TItem="CategoryRowVm" Title="Category" Class="strong">@context.Name</Column>

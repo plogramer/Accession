@@ -13,6 +13,7 @@ using Accession.UI.Records;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using Accession.UI.Shell;
 
 namespace Accession.Presentation.ViewModels.Browsing;
 
@@ -120,7 +121,7 @@ public sealed partial class AuditLogViewModel : ViewModelBase, IAuditModel, IDis
 
     ICommand IAuditModel.ClearFiltersCommand => ClearFiltersCommand;
 
-    ICommand IAuditModel.RefreshCommand => RefreshCommand;
+    ICommand IRefreshableScreen.RefreshCommand => RefreshCommand;
 
     public Task GoToPageAsync(int pageIndex)
     {

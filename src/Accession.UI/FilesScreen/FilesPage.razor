@@ -34,7 +34,7 @@
                 <div class="filter-row" @onkeydown="OnFilterKey">
                     <div class="search search-wide">
                         <Icon Name="search" Size="15" />
-                        <input type="search" placeholder="File name contains…" value="@Model.NameContains"
+                        <input type="search" data-shortcut-search placeholder="File name contains…" value="@Model.NameContains"
                                @oninput="e => Model.NameContains = e.Value?.ToString() ?? string.Empty" />
                     </div>
                     <input class="input input-ext" placeholder="Extension" title="Extension without the dot; (none) for files without one"
@@ -141,7 +141,7 @@
                     </Dropdown>
                 </div>
 
-                <DataTable TItem="FileRow" Items="Model.Rows" Virtualize="true" MaxHeight="calc(100vh - 470px)" Class="files-table"
+                <DataTable TItem="FileRow" Items="Model.Rows" Label="Files" Virtualize="true" MaxHeight="calc(100vh - 470px)" Class="files-table"
                            SortKey="@Model.SortKey" SortDescending="Model.SortDescending" OnSort="Model.SortByAsync"
                            SelectedItem="Model.SelectedRow" SelectedItemChanged="row => Model.SelectedRow = row"
                            IsLoading="Model.IsLoading" EmptyText="No files match these filters.">

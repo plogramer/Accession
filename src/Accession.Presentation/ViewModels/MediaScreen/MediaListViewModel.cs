@@ -17,6 +17,7 @@ using Accession.UI.MediaScreen;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using Accession.UI.Shell;
 
 namespace Accession.Presentation.ViewModels.MediaScreen;
 
@@ -135,7 +136,7 @@ public sealed partial class MediaListViewModel : ViewModelBase, IMediaModel, IDi
 
     ICommand IMediaModel.OpenFilesCommand => OpenFilesCommand;
 
-    ICommand IMediaModel.RefreshCommand => RefreshCommand;
+    ICommand IRefreshableScreen.RefreshCommand => RefreshCommand;
 
     /// <summary>Raised after the list was reloaded (the shell updates its badge).</summary>
     public event EventHandler? RowsReloaded;

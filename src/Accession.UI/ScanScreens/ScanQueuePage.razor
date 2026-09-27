@@ -52,7 +52,8 @@
                 </div>
                 <div class="scan-percent">@(Model.IsIndeterminate ? "—" : $"{Model.Percent:0} %")</div>
             </div>
-            <div class="progress progress-lg @(Model.IsIndeterminate ? "is-indeterminate" : null)">
+            <div class="progress progress-lg @(Model.IsIndeterminate ? "is-indeterminate" : null)" role="progressbar" aria-label="Scan progress"
+                 aria-valuemin="0" aria-valuemax="100" aria-valuenow="@(Model.IsIndeterminate ? null : Math.Round(Model.Percent).ToString(System.Globalization.CultureInfo.InvariantCulture))">
                 <div class="progress-bar is-live" style="width:@(Model.IsIndeterminate ? "35%" : Width(Model.Percent))"></div>
             </div>
             <div class="scan-stats">
