@@ -21,7 +21,8 @@ Requirements: [`requirements/001-initial_requirements.md`](requirements/001-init
 
 - Windows 10/11 x64
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
-- Visual Studio 2026 (or 2022 17.14+) with the *.NET desktop development* workload, or VS Code / Rider
+- Visual Studio 2026 with the *.NET desktop development* workload (Visual Studio 2022 does not support .NET 10), or Rider / VS Code with the C# Dev Kit
+- `Accession.App` is the startup project (first in the solution); if Visual Studio shows another one in bold, right-click `Accession.App` → **Set as Startup Project**
 
 ## Build, test, run
 
