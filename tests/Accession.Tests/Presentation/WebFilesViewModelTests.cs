@@ -24,6 +24,8 @@ public sealed class WebFilesViewModelTests : IDisposable
     {
         using (var scope = _test.Session.Database.Open())
         {
+            // One transaction: thousands of single-row commits are slow on Windows (synchronous=FULL).
+            using var transaction = scope.BeginTransaction();
             var media = new MediaRepository(scope);
             _m1 = media.Insert("M1", @"\M1\", _test.Time.GetUtcNow(), "u");
             _m2 = media.Insert("M2", @"\M2\", _test.Time.GetUtcNow(), "u");
@@ -40,6 +42,8 @@ public sealed class WebFilesViewModelTests : IDisposable
             {
                 ScanRows.AddFile(scope, _m2, root2, $"copy_{i:000}.xlsx", size: 5);
             }
+
+            transaction.Commit();
         }
 
         _host.Open(_test.Session);

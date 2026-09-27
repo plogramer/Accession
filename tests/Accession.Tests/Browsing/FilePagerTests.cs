@@ -15,6 +15,7 @@ public sealed class FilePagerTests : IDisposable
     public FilePagerTests()
     {
         using var scope = _inventory.Database.Open();
+        using var transaction = scope.BeginTransaction();
         var media = new MediaRepository(scope).Insert("M1", @"\M1\", TestInventory.CreatedAt, "u");
         var root = ScanRows.AddFolder(scope, media, @"\M1\");
         var sub = ScanRows.AddFolder(scope, media, @"\M1\sub\", root);
@@ -23,6 +24,8 @@ public sealed class FilePagerTests : IDisposable
             // Sizes repeat (ties) so the FileId tiebreak is exercised; names are not in FileId order.
             ScanRows.AddFile(scope, media, i % 3 == 0 ? sub : root, $"file_{(i * 37) % FileCount:000}.txt", size: (i % 7) * 100);
         }
+
+        transaction.Commit();
     }
 
     public void Dispose() => _inventory.Dispose();
