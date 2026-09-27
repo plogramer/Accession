@@ -1,4 +1,6 @@
 @* Modal dialog frame: title, body, footer. Esc and the close button call OnClose; Enter calls OnSubmit. *@
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
 @if (IsOpen)
 {
     <div class="overlay" @onclick="BackdropClick">
@@ -21,6 +23,7 @@
     private readonly string _titleId = "modal-" + Guid.NewGuid().ToString("N")[..8];
     private ElementReference _dialog;
     private bool _focusPending;
+    private bool _wasOpen;
 
     [Parameter] public bool IsOpen { get; set; }
 
@@ -41,10 +44,14 @@
 
     protected override void OnParametersSet()
     {
-        if (IsOpen)
+        // Only when the dialog opens: parameters are set again on every redraw (e.g. each keystroke in a field),
+        // and moving focus then would take it away from the field being typed in.
+        if (IsOpen && !_wasOpen)
         {
             _focusPending = true;
         }
+
+        _wasOpen = IsOpen;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -52,7 +59,14 @@
         if (_focusPending && IsOpen)
         {
             _focusPending = false;
-            await _dialog.FocusAsync(); // keyboard focus moves into the dialog
+            try
+            {
+                await JS.InvokeVoidAsync("accession.focusFirst", _dialog); // the first field, else the dialog itself
+            }
+            catch (JSException)
+            {
+                await _dialog.FocusAsync();
+            }
         }
     }
 

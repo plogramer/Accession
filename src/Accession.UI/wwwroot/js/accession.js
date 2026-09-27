@@ -114,6 +114,19 @@
         },
         focus: function (element) {
             element && element.focus();
+        },
+        // Focuses a dialog's [autofocus] field, else its first editable field, else the dialog.
+        focusFirst: function (dialog) {
+            if (!dialog) {
+                return;
+            }
+
+            const field = dialog.querySelector("[autofocus]:not([disabled]):not([readonly])")
+                || dialog.querySelector("input:not([disabled]):not([readonly]):not([type=checkbox]), textarea:not([disabled]):not([readonly]), select:not([disabled])");
+            (field || dialog).focus();
+            if (field && field.select && field.tagName === "INPUT") {
+                field.select();
+            }
         }
     };
 })();
