@@ -31,7 +31,7 @@ between processes), WinUI 3/Avalonia (different native frameworks with no web lo
 ## 3. Architecture
 
 ```
-Accession.App (WPF host, net10.0-windows, Razor SDK)
+Accession.App (WPF host, net10.0-windows10.0.17763.0, Razor SDK)
   ├─ MainWindow → WebShellView (BlazorWebView, wwwroot/index.html); classic XAML views until #74
   └─ Platform: WpfUiDispatcher : IUiDispatcher, WindowsDesktop : IDesktop, DialogService (native dialogs)
 Accession.Presentation (net10.0 – no WPF)

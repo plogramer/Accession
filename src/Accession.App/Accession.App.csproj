@@ -2,7 +2,10 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <!-- A Windows version is needed: the web view's WebView2 control uses the Windows SDK projection
+         (Microsoft.Windows.SDK.NET), which is only included for versioned Windows targets. 17763 = Windows 10 1809. -->
+    <TargetFramework>net10.0-windows10.0.17763.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     <UseWPF>true</UseWPF>
     <AssemblyName>Accession</AssemblyName>
     <RootNamespace>Accession.App</RootNamespace>

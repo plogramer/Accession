@@ -12,7 +12,7 @@ Requirements: [`requirements/001-initial_requirements.md`](requirements/001-init
 
 | Project | Purpose |
 |---|---|
-| `src/Accession.App` | WPF host and classic screens (`net10.0-windows`, x64); hosts the web UI in a BlazorWebView |
+| `src/Accession.App` | WPF host and classic screens (`net10.0-windows10.0.17763.0`, x64); hosts the web UI in a BlazorWebView |
 | `src/Accession.UI` | Web UI (Blazor components and CSS), no WPF references – see `requirements/002-web-ui-plan.md` |
 | `src/Accession.Core` | Services, scanning, models – no UI references |
 | `src/Accession.Data` | SQLite data access |
