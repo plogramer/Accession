@@ -63,3 +63,5 @@ dotnet_naming_style.pascal.capitalization = pascal_case
 [tests/**/*.cs]
 # Test method names use snake_case sentences.
 dotnet_diagnostic.CA1707.severity = none
+# Passing TestContext.Current.CancellationToken everywhere adds noise; keep it as a hint.
+dotnet_diagnostic.xUnit1051.severity = suggestion
