@@ -59,7 +59,10 @@ Rules the prototype set, which the rest of the migration follows:
   clicked inside the page that is being replaced.
 - **The WebView2 profile** is kept in `%LOCALAPPDATA%\Accession\WebView2`, because the default location next to the
   exe is read-only under Program Files.
-- **WPF can't draw over the WebView2 control**, so the page draws its own busy overlay (from `BusyTracker`).
+- **The page draws its own busy overlay** (from `BusyTracker`), below its dialogs. The window's WPF overlay is hidden
+  while the web UI shows: the .NET 10 web view is composited by WPF, so that overlay would cover the page's dialogs.
+- **The app targets Windows 10 1809+** (`net10.0-windows10.0.17763.0`): the web view's WebView2 composition control
+  needs the Windows SDK projection, which is only included for versioned Windows targets.
 - **Themes**: `system` (follows Windows), `light` or `dark`. This is stored in settings (`WebTheme`).
 
 ## 4. Prototype (this change)

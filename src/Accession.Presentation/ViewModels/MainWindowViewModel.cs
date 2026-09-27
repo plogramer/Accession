@@ -52,10 +52,12 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         };
         _dialogs = dialogs;
         Busy = busy;
+        Busy.PropertyChanged += (_, _) => OnPropertyChanged(nameof(IsClassicBusyVisible));
         _navigation.CurrentChanged += (_, _) =>
         {
             OnPropertyChanged(nameof(CurrentScreen));
             OnPropertyChanged(nameof(IsClassicMenuVisible));
+            OnPropertyChanged(nameof(IsClassicBusyVisible));
         };
         _host.PropertyChanged += OnHostChanged;
         _host.SessionChanged += (_, _) => ShowScreenForSession();
@@ -88,6 +90,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     /// <summary>The web shell draws its own top bar and menus.</summary>
     public bool IsClassicMenuVisible => CurrentScreen is not WebAppViewModel;
+
+    /// <summary>The window's busy overlay; the web UI draws its own (under its dialogs), so this one stays hidden there.</summary>
+    public bool IsClassicBusyVisible => Busy.IsBusy && CurrentScreen is not WebAppViewModel;
 
     /// <summary>Shows the web UI (preview) while an inventory is open.</summary>
     public bool UseWebUi

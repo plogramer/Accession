@@ -20,7 +20,7 @@ public interface IAppModel : INotifyPropertyChanged
 
     DialogCenter Dialogs { get; }
 
-    // Busy overlay (WPF overlays cannot draw over the web view, so the page draws its own)
+    // Busy overlay drawn by the page, below its dialogs (the window's own overlay would cover them)
     bool IsBusy { get; }
     string BusyMessage { get; }
     bool CanCancelBusy { get; }
