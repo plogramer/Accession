@@ -28,6 +28,7 @@ public sealed class InventoryWorkflows
     private readonly Func<ChangeRootPathViewModel> _changeRoot;
     private readonly ILogger<InventoryWorkflows> _logger;
     private readonly MediaWorkflows _media;
+    private readonly ScanHost _scans;
 
     public InventoryWorkflows(
         InventoryHost host,
@@ -42,9 +43,11 @@ public sealed class InventoryWorkflows
         Func<InventoryPropertiesViewModel> properties,
         Func<ChangeRootPathViewModel> changeRoot,
         MediaWorkflows media,
+        ScanHost scans,
         ILogger<InventoryWorkflows> logger)
     {
         _media = media;
+        _scans = scans;
         _host = host;
         _dialogs = dialogs;
         _busy = busy;
@@ -68,7 +71,11 @@ public sealed class InventoryWorkflows
         }
 
         var request = dialog.BuildRequest();
-        CloseInventory();
+        if (!await CloseInventoryAsync())
+        {
+            return;
+        }
+
         try
         {
             var session = await _busy.RunAsync(_ => Task.FromResult(_creation.Create(request)), "Creating inventory…");
@@ -110,7 +117,11 @@ public sealed class InventoryWorkflows
             return; // already open
         }
 
-        CloseInventory();
+        if (!await CloseInventoryAsync())
+        {
+            return;
+        }
+
         try
         {
             var session = await _busy.RunAsync(_ => Task.FromResult(_opener.Open(path, _interaction)), "Opening inventory…");
@@ -131,8 +142,33 @@ public sealed class InventoryWorkflows
         }
     }
 
-    /// <summary>Closes the open inventory (audit + release lock). Safe to call when none is open.</summary>
-    public void CloseInventory()
+    /// <summary>
+    /// Closes the open inventory (audit + release lock). If a scan is running the user is asked first; the scan
+    /// is interrupted and can be resumed later. Returns false if the user chose to keep the inventory open.
+    /// </summary>
+    public async Task<bool> CloseInventoryAsync()
+    {
+        if (!_host.HasSession)
+        {
+            return true;
+        }
+
+        if (_scans.IsBusy)
+        {
+            if (!_dialogs.Confirm("Scan in progress",
+                    "A scan is running. Closing the inventory interrupts it; the media stays incomplete and can be resumed later.\n\nClose anyway?"))
+            {
+                return false;
+            }
+        }
+
+        await _busy.RunAsync(_ => _scans.ShutdownAsync(), "Stopping scan…");
+        CloseInventory();
+        return true;
+    }
+
+    /// <summary>Closes the open inventory without asking (scan must already be stopped). Safe when none is open.</summary>
+    private void CloseInventory()
     {
         try
         {

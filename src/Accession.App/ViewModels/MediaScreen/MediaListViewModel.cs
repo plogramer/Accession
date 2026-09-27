@@ -4,6 +4,7 @@ using System.Globalization;
 using Accession.App.Mvvm;
 using Accession.App.Services;
 using Accession.Core.Formatting;
+using Accession.Core.Model;
 using Accession.Core.Settings;
 using Accession.Data.MediaManagement;
 using Accession.Data.Repositories;
@@ -20,10 +21,14 @@ public sealed partial class MediaListViewModel : ViewModelBase, IDisposable
     private readonly MediaWorkflows _workflows;
     private readonly ISettingsService _settings;
     private readonly ILogger<MediaListViewModel> _logger;
+    private readonly ScanHost _scans;
+    private IReadOnlyList<MediaRowViewModel> _selectedRows = [];
 
-    public MediaListViewModel(InventoryHost host, MediaWorkflows workflows, ISettingsService settings, ILogger<MediaListViewModel> logger)
+    public MediaListViewModel(InventoryHost host, MediaWorkflows workflows, ScanHost scans, ISettingsService settings, ILogger<MediaListViewModel> logger)
     {
         _host = host;
+        _scans = scans;
+        _scans.PropertyChanged += OnHostChanged;
         _workflows = workflows;
         _settings = settings;
         _logger = logger;
@@ -54,8 +59,16 @@ public sealed partial class MediaListViewModel : ViewModelBase, IDisposable
     /// <summary>Raised after the list was reloaded (the shell updates its badge).</summary>
     public event EventHandler? RowsReloaded;
 
+    /// <summary>Called by the view when the grid's (multi-)selection changes.</summary>
+    public void SetSelectedRows(IEnumerable<MediaRowViewModel> rows)
+    {
+        _selectedRows = rows.ToList();
+        NotifyScanCommands();
+    }
+
     public void Dispose()
     {
+        _scans.PropertyChanged -= OnHostChanged;
         _host.MediaChanged -= OnMediaChanged;
         _host.PropertyChanged -= OnHostChanged;
         _settings.SettingsChanged -= OnSettingsChanged;
@@ -70,6 +83,18 @@ public sealed partial class MediaListViewModel : ViewModelBase, IDisposable
     [RelayCommand(CanExecute = nameof(CanDelete))]
     private Task Delete() => SelectedRow is { } row ? _workflows.DeleteMediaAsync(row.Media) : Task.CompletedTask;
 
+    [RelayCommand(CanExecute = nameof(CanScanSelected))]
+    private void Scan() => _workflows.Scan(Selected(m => m.Status is MediaStatus.New or MediaStatus.Incomplete or MediaStatus.Completed or MediaStatus.CompletedWithErrors), null);
+
+    [RelayCommand(CanExecute = nameof(CanRescanSelected))]
+    private void Rescan() => _workflows.Scan(Selected(IsRescannable), ScanType.Full);
+
+    [RelayCommand(CanExecute = nameof(CanResumeSelected))]
+    private void Resume() => _workflows.Scan(Selected(m => m.Status == MediaStatus.Incomplete), ScanType.Resume);
+
+    [RelayCommand(CanExecute = nameof(CanRetrySelected))]
+    private void RetryFailed() => _workflows.Scan(Selected(IsRetryable), ScanType.RetryFailed);
+
     [RelayCommand(CanExecute = nameof(HasSelection))]
     private void OpenInExplorer()
     {
@@ -82,6 +107,31 @@ public sealed partial class MediaListViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private void Refresh() => Load();
 
+    private static bool IsRescannable(Media m) => m.Status is MediaStatus.Completed or MediaStatus.CompletedWithErrors or MediaStatus.Incomplete;
+
+    private static bool IsRetryable(Media m) => m.Status is MediaStatus.CompletedWithErrors or MediaStatus.Incomplete;
+
+    private List<Media> Selected(Func<Media, bool> predicate) =>
+        (_selectedRows.Count > 0 ? _selectedRows : SelectedRow is { } row ? [row] : [])
+            .Select(r => r.Media).Where(predicate).ToList();
+
+    private bool CanScanSelected() => _scans.CanScan && Selected(m => m.Status is MediaStatus.New or MediaStatus.Incomplete or MediaStatus.Completed or MediaStatus.CompletedWithErrors).Count > 0;
+
+    private bool CanRescanSelected() => _scans.CanScan && Selected(IsRescannable).Count > 0;
+
+    private bool CanResumeSelected() => _scans.CanScan && Selected(m => m.Status == MediaStatus.Incomplete).Count > 0;
+
+    private bool CanRetrySelected() => _scans.CanScan && Selected(IsRetryable).Count > 0;
+
+    private void NotifyScanCommands()
+    {
+        ScanCommand.NotifyCanExecuteChanged();
+        RescanCommand.NotifyCanExecuteChanged();
+        ResumeCommand.NotifyCanExecuteChanged();
+        RetryFailedCommand.NotifyCanExecuteChanged();
+        DeleteCommand.NotifyCanExecuteChanged();
+    }
+
     private bool CanAddMedia() => _workflows.CanAddMedia;
 
     private bool CanDiscover() => _workflows.CanDiscover;
@@ -91,12 +141,14 @@ public sealed partial class MediaListViewModel : ViewModelBase, IDisposable
     partial void OnSelectedRowChanged(MediaRowViewModel? value)
     {
         OnPropertyChanged(nameof(HasSelection));
+        NotifyScanCommands();
         LoadDetails();
     }
 
     private void Load()
     {
         var selectedKey = SelectedRow?.Media.MediaKey;
+        _selectedRows = [];
         Rows.Clear();
         if (_host.Session is { } session)
         {
@@ -162,6 +214,6 @@ public sealed partial class MediaListViewModel : ViewModelBase, IDisposable
     {
         AddMediaCommand.NotifyCanExecuteChanged();
         DiscoverCommand.NotifyCanExecuteChanged();
-        DeleteCommand.NotifyCanExecuteChanged();
+        NotifyScanCommands();
     }
 }

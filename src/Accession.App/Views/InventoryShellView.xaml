@@ -18,6 +18,10 @@
             <StatusBarItem>
                 <TextBlock Text="{Binding SchemaText}" />
             </StatusBarItem>
+            <Separator Visibility="{Binding HasScanStatus, Converter={StaticResource BoolToVisibility}}" />
+            <StatusBarItem Visibility="{Binding HasScanStatus, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Text="{Binding ScanStatus}" FontWeight="SemiBold" />
+            </StatusBarItem>
         </StatusBar>
 
         <!-- Left navigation -->
@@ -53,6 +57,9 @@
             <DockPanel>
                 <Button DockPanel.Dock="Right" Content="Dismiss" Command="{Binding DismissNoticeCommand}" Padding="8,2" Margin="8,0,0,0" />
                 <Button DockPanel.Dock="Right" Content="Show media" Command="{Binding ShowMediaCommand}" Padding="8,2" Margin="8,0,0,0" />
+                <Button DockPanel.Dock="Right" Content="Scan now" Command="{Binding ScanNowCommand}" Padding="8,2" Margin="8,0,0,0"
+                        Visibility="{Binding CanScanNow, Converter={StaticResource BoolToVisibility}}"
+                        ToolTip="Scan media that were never scanned and resume incomplete scans" />
                 <TextBlock Text="{Binding Notice}" VerticalAlignment="Center" TextWrapping="Wrap" Foreground="#3B3000" />
             </DockPanel>
         </Border>

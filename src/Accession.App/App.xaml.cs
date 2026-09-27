@@ -58,6 +58,11 @@ public partial class App : Application
         try
         {
             // Normally closed by the main window; this covers other shutdown paths.
+            if (_host?.Services.GetService<ScanHost>() is { } scans)
+            {
+                Task.Run(scans.ShutdownAsync).Wait(TimeSpan.FromSeconds(30));
+            }
+
             _host?.Services.GetService<InventoryHost>()?.Close();
 
             if (_host is not null)
@@ -111,6 +116,7 @@ public partial class App : Application
         builder.Services.AddSingleton<IOpenInteraction, WpfOpenInteraction>();
         builder.Services.AddSingleton<InventoryWorkflows>();
         builder.Services.AddSingleton<MediaWorkflows>();
+        builder.Services.AddSingleton<ScanHost>();
 
         // View models and windows
         builder.Services.AddSingleton<MainWindowViewModel>();

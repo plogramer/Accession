@@ -24,13 +24,13 @@
             </MenuItem>
             <MenuItem Header="_Media" IsEnabled="{Binding HasSession}">
                 <MenuItem Header="_Add Media…" Command="{Binding AddMediaCommand}" />
-                <MenuItem Header="_Scan" IsEnabled="False" ToolTip="Coming with the scan engine" />
+                <MenuItem Header="_Scan" IsEnabled="False" ToolTip="Select media on the Media screen and use Scan there" />
                 <MenuItem Header="_Delete Media…" IsEnabled="False" ToolTip="Select a media on the Media screen and use Delete there" />
             </MenuItem>
             <MenuItem Header="_Scan" IsEnabled="{Binding HasSession}">
-                <MenuItem Header="_Pause" IsEnabled="False" />
-                <MenuItem Header="_Resume" IsEnabled="False" />
-                <MenuItem Header="_Cancel" IsEnabled="False" />
+                <MenuItem Header="_Pause" Command="{Binding PauseScanCommand}" />
+                <MenuItem Header="_Resume" Command="{Binding ResumeScanCommand}" />
+                <MenuItem Header="_Cancel" Command="{Binding CancelScanCommand}" />
             </MenuItem>
             <MenuItem Header="_Export" IsEnabled="{Binding HasSession}">
                 <MenuItem Header="Export to _Excel…" IsEnabled="False" ToolTip="Coming with Excel export" />

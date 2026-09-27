@@ -18,8 +18,10 @@ public sealed partial class AddMediaViewModel : DialogViewModelBase
     private readonly MediaService _media;
     private readonly IDialogService _dialogs;
 
-    public AddMediaViewModel(string title, InventorySession session, IEnumerable<DiscoveredFolder> folders, MediaService media, IDialogService dialogs)
+    public AddMediaViewModel(string title, InventorySession session, IEnumerable<DiscoveredFolder> folders, MediaService media, IDialogService dialogs, bool canScan)
     {
+        CanScan = canScan;
+        StartScanning = canScan;
         Title = title;
         _session = session;
         _media = media;
@@ -33,6 +35,14 @@ public sealed partial class AddMediaViewModel : DialogViewModelBase
     }
 
     public string RootPath { get; }
+
+    public bool CanScan { get; }
+
+    [ObservableProperty]
+    public partial bool StartScanning { get; set; }
+
+    /// <summary>Media added when the dialog closed with OK.</summary>
+    public IReadOnlyList<Accession.Core.Model.Media> Added { get; private set; } = [];
 
     public bool IsNewMediaFound { get; }
 
@@ -97,6 +107,7 @@ public sealed partial class AddMediaViewModel : DialogViewModelBase
 
         if (result.Added.Count > 0)
         {
+            Added = result.Added;
             Close(true);
         }
     }

@@ -21,6 +21,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         InventoryHost host,
         InventoryWorkflows workflows,
         MediaWorkflows media,
+        ScanHost scans,
         IDialogService dialogs,
         BusyTracker busy)
     {
@@ -28,6 +29,13 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         _host = host;
         _workflows = workflows;
         _media = media;
+        Scans = scans;
+        Scans.PropertyChanged += (_, _) =>
+        {
+            PauseScanCommand.NotifyCanExecuteChanged();
+            ResumeScanCommand.NotifyCanExecuteChanged();
+            CancelScanCommand.NotifyCanExecuteChanged();
+        };
         _dialogs = dialogs;
         Busy = busy;
         _navigation.CurrentChanged += (_, _) => OnPropertyChanged(nameof(CurrentScreen));
@@ -56,6 +64,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     public BusyTracker Busy { get; }
 
+    public ScanHost Scans { get; }
+
     public bool HasSession => _host.HasSession;
 
     public bool HasMatterUrl => !string.IsNullOrWhiteSpace(_host.Config?.MatterUrl);
@@ -68,8 +78,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     public void Initialize() => ShowScreenForSession();
 
-    /// <summary>Called when the main window is closing: closes the inventory (audit + release lock).</summary>
-    public void OnClosing() => _workflows.CloseInventory();
+    /// <summary>
+    /// Called when the main window is asked to close. Closes the inventory (asking first if a scan is running).
+    /// Returns false to keep the window open.
+    /// </summary>
+    public Task<bool> PrepareCloseAsync() => _workflows.CloseInventoryAsync();
 
     [RelayCommand]
     private Task NewInventory() => _workflows.NewInventoryAsync();
@@ -78,7 +91,16 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private Task OpenInventory() => _workflows.OpenInventoryAsync();
 
     [RelayCommand(CanExecute = nameof(HasSession))]
-    private void CloseInventory() => _workflows.CloseInventory();
+    private Task CloseInventory() => _workflows.CloseInventoryAsync();
+
+    [RelayCommand(CanExecute = nameof(CanPauseScan))]
+    private void PauseScan() => Scans.Pause();
+
+    [RelayCommand(CanExecute = nameof(CanResumeScan))]
+    private void ResumeScan() => Scans.Resume();
+
+    [RelayCommand(CanExecute = nameof(CanCancelScan))]
+    private void CancelScan() => Scans.Cancel();
 
     [RelayCommand]
     private void OpenSettings() => _workflows.OpenSettings();
@@ -112,6 +134,12 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private bool CanModify() => _host.CanModify;
 
     private bool CanDiscover() => _media.CanDiscover;
+
+    private bool CanPauseScan() => Scans.CanPause;
+
+    private bool CanResumeScan() => Scans.CanResume;
+
+    private bool CanCancelScan() => Scans.CanCancel;
 
     private bool CanAddMedia() => _media.CanAddMedia;
 

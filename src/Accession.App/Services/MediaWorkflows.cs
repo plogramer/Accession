@@ -31,6 +31,7 @@ public sealed class MediaWorkflows
     private readonly MediaService _media;
     private readonly ISettingsService _settings;
     private readonly ILogger<MediaWorkflows> _logger;
+    private readonly ScanHost _scans;
 
     public MediaWorkflows(
         InventoryHost host,
@@ -39,8 +40,10 @@ public sealed class MediaWorkflows
         MediaDiscoveryService discovery,
         MediaService media,
         ISettingsService settings,
+        ScanHost scans,
         ILogger<MediaWorkflows> logger)
     {
+        _scans = scans;
         _host = host;
         _dialogs = dialogs;
         _busy = busy;
@@ -172,6 +175,59 @@ public sealed class MediaWorkflows
         await RunDiscoveryAsync(DiscoveryMode.Silent);
     }
 
+    /// <summary>Notice bar "Scan now": full scan for never-scanned media, resume for incomplete ones (DSC-04).</summary>
+    public void ScanPendingMedia()
+    {
+        if (_host.Session is not { } session)
+        {
+            return;
+        }
+
+        IReadOnlyList<Media> media;
+        using (var scope = session.Database.Open())
+        {
+            media = new Accession.Data.Repositories.MediaRepository(scope).ListActive();
+        }
+
+        var requests = media
+            .Where(m => m.Status is MediaStatus.New or MediaStatus.Incomplete)
+            .Select(m => (m, m.Status == MediaStatus.New ? ScanType.Full : ScanType.Resume))
+            .ToList();
+        if (requests.Count > 0)
+        {
+            _scans.Enqueue(requests);
+            _host.SetNotice(string.Empty);
+        }
+    }
+
+    /// <summary>
+    /// Media screen scan actions. <paramref name="type"/> null = "Scan": New → full scan, Incomplete → resume,
+    /// already scanned → rescan after confirmation.
+    /// </summary>
+    public void Scan(IReadOnlyCollection<Media> media, ScanType? type)
+    {
+        if (media.Count == 0)
+        {
+            return;
+        }
+
+        var requests = media.Select(m => (m, type ?? (m.Status switch
+        {
+            MediaStatus.Incomplete => ScanType.Resume,
+            _ => ScanType.Full,
+        }))).ToList();
+
+        var rescans = requests.Where(r => r.Item2 == ScanType.Full && r.m.Status is MediaStatus.Completed or MediaStatus.CompletedWithErrors).ToList();
+        if (rescans.Count > 0 && !_dialogs.Confirm("Rescan",
+                $"Rescanning replaces the existing results of {rescans.Count:N0} media " +
+                $"({string.Join(", ", rescans.Take(5).Select(r => r.m.MediaId))}{(rescans.Count > 5 ? ", …" : string.Empty)}). Continue?"))
+        {
+            return;
+        }
+
+        _scans.Enqueue(requests);
+    }
+
     public void OpenInExplorer(Media media)
     {
         ArgumentNullException.ThrowIfNull(media);
@@ -197,10 +253,15 @@ public sealed class MediaWorkflows
             return;
         }
 
-        var dialog = new AddMediaViewModel(title, session, folders, _media, _dialogs);
+        var dialog = new AddMediaViewModel(title, session, folders, _media, _dialogs, _scans.CanScan);
         if (_dialogs.ShowDialog(dialog) == true)
         {
             _host.NotifyMediaChanged();
+            if (dialog.StartScanning && dialog.Added.Count > 0)
+            {
+                _scans.Enqueue(dialog.Added.Select(m => (m, ScanType.Full)));
+            }
+
             _ = RunDiscoveryAsync(DiscoveryMode.Silent);
         }
     }

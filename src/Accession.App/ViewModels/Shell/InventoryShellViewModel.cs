@@ -14,10 +14,14 @@ public sealed partial class InventoryShellViewModel : ViewModelBase
 
     private readonly MediaListViewModel _mediaList;
     private readonly NavItem _mediaItem;
+    private readonly ScanHost _scans;
+    private readonly MediaWorkflows _media;
 
-    public InventoryShellViewModel(InventoryHost host, MediaListViewModel mediaList)
+    public InventoryShellViewModel(InventoryHost host, MediaListViewModel mediaList, ScanHost scans, MediaWorkflows media)
     {
         _host = host;
+        _scans = scans;
+        _media = media;
         _mediaList = mediaList;
         _mediaItem = new NavItem("Media", mediaList);
         NavItems =
@@ -55,13 +59,24 @@ public sealed partial class InventoryShellViewModel : ViewModelBase
 
     public string Notice => _host.Notice;
 
+    public string ScanStatus => _scans.StatusText;
+
+    public bool HasScanStatus => !string.IsNullOrEmpty(_scans.StatusText);
+
+    public bool CanScanNow => _scans.CanScan;
+
     public bool HasNotice => !string.IsNullOrEmpty(_host.Notice);
 
-    public override void OnNavigatedTo() => _host.PropertyChanged += OnHostChanged;
+    public override void OnNavigatedTo()
+    {
+        _host.PropertyChanged += OnHostChanged;
+        _scans.PropertyChanged += OnHostChanged;
+    }
 
     public override void OnNavigatedFrom()
     {
         _host.PropertyChanged -= OnHostChanged;
+        _scans.PropertyChanged -= OnHostChanged;
         foreach (var disposable in NavItems.Select(n => n.Content).OfType<IDisposable>())
         {
             disposable.Dispose();
@@ -73,6 +88,9 @@ public sealed partial class InventoryShellViewModel : ViewModelBase
 
     [RelayCommand]
     private void ShowMedia() => SelectedItem = _mediaItem;
+
+    [RelayCommand]
+    private void ScanNow() => _media.ScanPendingMedia();
 
     private void UpdateMediaBadge() =>
         _mediaItem.Badge = _mediaList.Rows.Count > 0 ? _mediaList.Rows.Count.ToString(System.Globalization.CultureInfo.CurrentCulture) : string.Empty;

@@ -14,10 +14,22 @@ public partial class MainWindow : Window
         DataContext = viewModel;
 
         placement.Restore(this, PlacementKey);
-        Closing += (_, _) =>
+        var closeApproved = false;
+        Closing += async (_, e) =>
         {
+            if (closeApproved)
+            {
+                return;
+            }
+
+            // Closing the inventory may ask the user (running scan) and waits for the scan to stop.
+            e.Cancel = true;
             placement.Save(this, PlacementKey);
-            viewModel.OnClosing();
+            if (await viewModel.PrepareCloseAsync())
+            {
+                closeApproved = true;
+                Close();
+            }
         };
     }
 }

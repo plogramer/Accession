@@ -8,9 +8,11 @@
                 <Button Content="+ Add Media" Command="{Binding AddMediaCommand}" Padding="8,3" />
                 <Button Content="Discover" Command="{Binding DiscoverCommand}" Padding="8,3" />
                 <Separator />
-                <Button Content="Scan" IsEnabled="False" Padding="8,3" ToolTip="Available once scanning is implemented" />
-                <Button Content="Rescan" IsEnabled="False" Padding="8,3" ToolTip="Available once scanning is implemented" />
-                <Button Content="Resume" IsEnabled="False" Padding="8,3" ToolTip="Available once scanning is implemented" />
+                <Button Content="▶ Scan" Command="{Binding ScanCommand}" Padding="8,3"
+                        ToolTip="New media: full scan. Incomplete: resume. Already scanned: rescan (asks first)." />
+                <Button Content="Rescan" Command="{Binding RescanCommand}" Padding="8,3" ToolTip="Replace the existing results with a new full scan" />
+                <Button Content="Resume" Command="{Binding ResumeCommand}" Padding="8,3" ToolTip="Continue an incomplete scan" />
+                <Button Content="Retry Failed" Command="{Binding RetryFailedCommand}" Padding="8,3" ToolTip="Hash again the files that could not be read" />
                 <Separator />
                 <Button Content="Delete…" Command="{Binding DeleteCommand}" Padding="8,3" />
                 <Button Content="Open in Explorer" Command="{Binding OpenInExplorerCommand}" Padding="8,3" />
@@ -52,7 +54,8 @@
                        Style="{StaticResource HintText}"
                        Visibility="{Binding HasRows, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}" />
             <DataGrid ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedRow}" AutoGenerateColumns="False"
-                      IsReadOnly="True" SelectionMode="Single" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                      IsReadOnly="True" SelectionMode="Extended" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                      SelectionChanged="MediaGrid_SelectionChanged"
                       CanUserAddRows="False" EnableRowVirtualization="True"
                       Visibility="{Binding HasRows, Converter={StaticResource BoolToVisibility}}">
                 <DataGrid.Columns>
