@@ -1,0 +1,10 @@
+<UserControl x:Class="Accession.App.Views.HomeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+        <TextBlock Text="{Binding AppName}" FontSize="36" FontWeight="SemiBold" HorizontalAlignment="Center" />
+        <TextBlock Text="{Binding Tagline}" FontSize="16" Margin="0,8,0,0" HorizontalAlignment="Center" />
+        <TextBlock Text="{Binding Version, StringFormat=Version {0}}" Margin="0,24,0,0" HorizontalAlignment="Center"
+                   Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" />
+    </StackPanel>
+</UserControl>
