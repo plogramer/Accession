@@ -1,0 +1,70 @@
+@inherits ObservingComponentBase
+
+<div class="page page-wide">
+    <div class="page-header">
+        <div>
+            <h2>Categories</h2>
+            <p class="muted">Files are grouped by extension into fixed categories. Select a category to see its extensions.</p>
+        </div>
+    </div>
+
+    <div class="master-detail has-detail detail-wide">
+        <section class="card">
+            <div class="card-header"><h3>All categories</h3><span class="muted small">@Model.Categories.Count(c => c.FileCount > 0) with files</span></div>
+            <DataTable TItem="CategoryRowVm" Items="Model.Categories" SelectedItem="Model.SelectedCategory"
+                       SelectedItemChanged="row => Model.SelectedCategory = row" RowClass="@(c => c.FileCount == 0 ? "is-empty" : null)">
+                <Columns>
+                    <Column TItem="CategoryRowVm" Title="Category" Class="strong">@context.Name</Column>
+                    <Column TItem="CategoryRowVm" Title="Share of files">
+                        <div class="bar-track share"><div class="bar-fill" style="width:@Share(context)"></div></div>
+                    </Column>
+                    <Column TItem="CategoryRowVm" Title="Files" Class="num">@context.Files</Column>
+                    <Column TItem="CategoryRowVm" Title="Size" Class="num">@context.Size</Column>
+                </Columns>
+            </DataTable>
+        </section>
+
+        @if (Model.SelectedCategory is { } category)
+        {
+            <aside class="card detail">
+                <div class="detail-header">
+                    <div>
+                        <div class="detail-title">@category.Name</div>
+                        <div class="muted small">@category.Files files · @category.Size</div>
+                    </div>
+                </div>
+                @if (!string.IsNullOrEmpty(category.Description))
+                {
+                    <p class="muted">@category.Description</p>
+                }
+                <div class="detail-actions">
+                    <button class="btn btn-primary" disabled="@(category.FileCount == 0)" @onclick="() => Run(Model.ShowFilesCommand)"><Icon Name="files" Size="16" /> Browse @category.Name files</button>
+                </div>
+                <h4 class="detail-section">Extensions</h4>
+                <DataTable TItem="ExtensionCountVm" Items="Model.Extensions" Class="table-compact" MaxHeight="calc(100vh - 420px)"
+                           OnRowClick="e => OpenExtension(e)" RowClass="@(e => e.HasFiles ? null : "is-empty")" EmptyText="No extensions.">
+                    <Columns>
+                        <Column TItem="ExtensionCountVm" Title="Extension"><span class="ext">@context.Extension</span></Column>
+                        <Column TItem="ExtensionCountVm" Title="Files" Class="num">@context.Files</Column>
+                        <Column TItem="ExtensionCountVm" Title="Size" Class="num">@context.Size</Column>
+                    </Columns>
+                </DataTable>
+                <p class="muted small">Select an extension to browse its files.</p>
+            </aside>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ICategoriesModel Model { get; set; } = default!;
+
+    protected override void OnParametersSet() => Observe(Model, Model.Categories, Model.Extensions);
+
+    private string Share(CategoryRowVm row)
+    {
+        var total = Math.Max(1, Model.Categories.Sum(c => c.FileCount));
+        return (100d * row.FileCount / total).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + "%";
+    }
+
+    private Task OpenExtension(ExtensionCountVm extension) => extension.HasFiles ? Run(Model.ShowExtensionFilesCommand, extension) : Task.CompletedTask;
+}

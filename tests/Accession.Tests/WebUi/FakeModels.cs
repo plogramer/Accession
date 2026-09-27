@@ -143,10 +143,10 @@ internal sealed partial class FakeShell : ObservableObject, IShellModel
             new ShellNavItem("Dashboard", "dashboard", "Overview", dashboard),
             new ShellNavItem("Media", "media", "Inventory", media) { Badge = media is null ? string.Empty : "5" },
             new ShellNavItem("Files", "files", "Inventory", files),
-            new ShellNavItem("Categories", "categories", "Inventory"),
+            new ShellNavItem("Categories", "categories", "Inventory", Screen("Categories")),
             new ShellNavItem("Scan Queue", "queue", "Scanning", Screen("Scan Queue")) { Badge = scanning ? "2" : string.Empty },
             new ShellNavItem("Errors", "errors", "Scanning", Screen("Errors")) { Badge = "39" },
-            new ShellNavItem("Audit Log", "audit", "Records"),
+            new ShellNavItem("Audit Log", "audit", "Records", Screen("Audit Log")),
         ];
         SelectedItem = NavItems[0];
     }

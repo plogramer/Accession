@@ -17,6 +17,12 @@
         case IErrorsModel errors:
             <ErrorsPage Model="errors" />
             break;
+        case ICategoriesModel categories:
+            <CategoriesPage Model="categories" />
+            break;
+        case IAuditModel audit:
+            <AuditPage Model="audit" />
+            break;
         default:
             <ClassicOnlyPage Title="@Item.Key" Icon="@Item.Icon" OpenCommand="OpenInClassicCommand" />
             break;

@@ -31,6 +31,8 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
     private readonly WebFilesViewModel _files;
     private readonly ScanQueueViewModel _scanQueue;
     private readonly ErrorsViewModel _errors;
+    private readonly CategoriesViewModel _categories;
+    private readonly AuditLogViewModel _auditLog;
     private readonly ShellNavItem _mediaItem;
     private readonly ShellNavItem _filesItem;
     private readonly ShellNavItem _queueItem;
@@ -46,8 +48,12 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
         MediaListViewModel mediaList,
         WebFilesViewModel files,
         ScanQueueViewModel scanQueue,
-        ErrorsViewModel errors)
+        ErrorsViewModel errors,
+        CategoriesViewModel categories,
+        AuditLogViewModel auditLog)
     {
+        _categories = categories;
+        _auditLog = auditLog;
         _scanQueue = scanQueue;
         _errors = errors;
         _files = files;
@@ -68,10 +74,10 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
             new ShellNavItem("Dashboard", "dashboard", "Overview", dashboard),
             _mediaItem,
             _filesItem,
-            new ShellNavItem("Categories", "categories", "Inventory"),
+            new ShellNavItem("Categories", "categories", "Inventory", categories),
             _queueItem,
             _errorsItem,
-            new ShellNavItem("Audit Log", "audit", "Records"),
+            new ShellNavItem("Audit Log", "audit", "Records", auditLog),
         ];
         SelectedItem = NavItems[0];
         UpdateBadges();
@@ -166,6 +172,8 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
         _scanQueue.Dispose();
         _errors.PropertyChanged -= OnErrorsChanged;
         _errors.Dispose();
+        _categories.Dispose();
+        _auditLog.Dispose();
     }
 
     [RelayCommand(CanExecute = nameof(CanScanNow))]

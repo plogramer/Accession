@@ -1,0 +1,97 @@
+@inherits ObservingComponentBase
+
+<div class="page page-wide">
+    <div class="page-header">
+        <div>
+            <h2>Audit log</h2>
+            <p class="muted">Every change to this inventory, who made it and when. Entries cannot be edited or deleted.</p>
+        </div>
+        <div class="page-actions">
+            <button class="icon-btn icon-btn-lg" title="Refresh" @onclick="() => Run(Model.RefreshCommand)"><Icon Name="refresh" /></button>
+        </div>
+    </div>
+
+    <div class="master-detail @(Model.SelectedRow is null ? null : "has-detail") detail-wide">
+        <section class="card">
+            <div class="card-header filter-header">
+                <select class="input" title="Action" value="@Model.ActionFilterValue" @onchange="e => Model.ActionFilterValue = e.Value?.ToString() ?? string.Empty">
+                    @foreach (var option in Model.ActionFilterOptions)
+                    {
+                        <option value="@option.Value">@option.Label</option>
+                    }
+                </select>
+                <select class="input" title="User" value="@Model.UserFilterValue" @onchange="e => Model.UserFilterValue = e.Value?.ToString() ?? string.Empty">
+                    @foreach (var option in Model.UserFilterOptions)
+                    {
+                        <option value="@option.Value">@option.Label</option>
+                    }
+                </select>
+                <input class="input input-ext" placeholder="Media ID" title="Media ID (press Enter)" value="@Model.MediaIdText"
+                       @oninput="e => Model.MediaIdText = e.Value?.ToString() ?? string.Empty" @onkeydown="OnMediaKey" />
+                <input class="input" type="date" title="From" value="@Model.FromDateText" @onchange="e => Model.FromDateText = e.Value?.ToString() ?? string.Empty" />
+                <span class="range-to">to</span>
+                <input class="input" type="date" title="To" value="@Model.ToDateText" @onchange="e => Model.ToDateText = e.Value?.ToString() ?? string.Empty" />
+                <button class="link-btn" @onclick="() => Run(Model.ClearFiltersCommand)">Clear</button>
+            </div>
+            <DataTable TItem="AuditRowVm" Items="Model.PageRows" Virtualize="true" MaxHeight="calc(100vh - 360px)"
+                       SelectedItem="Model.SelectedRow" SelectedItemChanged="row => Model.SelectedRow = row" EmptyText="No entries match the filters.">
+                <Columns>
+                    <Column TItem="AuditRowVm" Title="Time" Class="muted nowrap">@context.Time</Column>
+                    <Column TItem="AuditRowVm" Title="Action"><span class="status @ActionClass(context.Action)">@Humanize(context.Action)</span></Column>
+                    <Column TItem="AuditRowVm" Title="Media" Class="mono">@context.MediaId</Column>
+                    <Column TItem="AuditRowVm" Title="User">@context.User</Column>
+                    <Column TItem="AuditRowVm" Title="Computer" Class="muted col-optional">@context.Machine</Column>
+                </Columns>
+            </DataTable>
+            <Pager PageIndex="Model.PageIndex" PageSize="Model.AuditPageSize" PageSizes="Model.PageSizes" TotalCount="Model.TotalCount"
+                   ItemName="entries" OnPageChange="Model.GoToPageAsync" OnPageSizeChange="Model.SetPageSizeAsync" />
+        </section>
+
+        @if (Model.SelectedRow is { } row)
+        {
+            <aside class="card detail">
+                <div class="detail-header">
+                    <div>
+                        <div class="detail-title">@Humanize(row.Action)</div>
+                        <div class="muted small">@row.Time · @row.User on @row.Machine</div>
+                    </div>
+                    <button class="icon-btn" title="Close details" @onclick="() => Model.SelectedRow = null"><Icon Name="x" /></button>
+                </div>
+                @if (!string.IsNullOrEmpty(row.MediaId))
+                {
+                    <div><span class="muted small">Media</span> <span class="mono strong">@row.MediaId</span></div>
+                }
+                <h4 class="detail-section">Details</h4>
+                @if (string.IsNullOrEmpty(Model.Details))
+                {
+                    <p class="muted">No details were recorded.</p>
+                }
+                else
+                {
+                    <pre class="json">@Model.Details</pre>
+                }
+            </aside>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IAuditModel Model { get; set; } = default!;
+
+    protected override void OnParametersSet() => Observe(Model);
+
+    private Task OnMediaKey(KeyboardEventArgs e) => e.Key == "Enter" ? Run(Model.ApplyMediaFilterCommand) : Task.CompletedTask;
+
+    /// <summary>"MediaDeleted" → "Media deleted".</summary>
+    private static string Humanize(string action) =>
+        string.Concat(action.Select((c, i) => i > 0 && char.IsUpper(c) ? " " + char.ToLowerInvariant(c) : c.ToString()));
+
+    private static string ActionClass(string action) => action switch
+    {
+        _ when action.EndsWith("Deleted", StringComparison.Ordinal) || action.EndsWith("Forced", StringComparison.Ordinal)
+            || action.EndsWith("Failed", StringComparison.Ordinal) => "is-danger",
+        _ when action.Contains("Scan", StringComparison.Ordinal) => "is-active",
+        _ when action.Contains("Added", StringComparison.Ordinal) || action.Contains("Created", StringComparison.Ordinal) => "is-success",
+        _ => "is-neutral",
+    };
+}

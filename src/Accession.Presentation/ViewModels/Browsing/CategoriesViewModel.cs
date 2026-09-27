@@ -1,3 +1,4 @@
+using System.Windows.Input;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using Accession.Core.Formatting;
@@ -8,11 +9,12 @@ using Accession.Presentation.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using Accession.UI.Records;
 
 namespace Accession.Presentation.ViewModels.Browsing;
 
 /// <summary>Categories screen (requirement CAT-02, section 8.12). Read-only: categories are defined by the application.</summary>
-public sealed partial class CategoriesViewModel : ViewModelBase, IDisposable
+public sealed partial class CategoriesViewModel : ViewModelBase, ICategoriesModel, IDisposable
 {
     private readonly InventoryHost _host;
     private readonly CategoryQueries _queries;
@@ -37,6 +39,10 @@ public sealed partial class CategoriesViewModel : ViewModelBase, IDisposable
 
     [ObservableProperty]
     public partial CategoryRowVm? SelectedCategory { get; set; }
+
+    ICommand ICategoriesModel.ShowFilesCommand => ShowFilesCommand;
+
+    ICommand ICategoriesModel.ShowExtensionFilesCommand => ShowExtensionFilesCommand;
 
     public void Dispose() => _host.MediaChanged -= OnMediaChanged;
 
@@ -111,7 +117,3 @@ public sealed partial class CategoriesViewModel : ViewModelBase, IDisposable
 
     private void OnMediaChanged(object? sender, EventArgs e) => Load();
 }
-
-public sealed record CategoryRowVm(int CategoryId, string Name, string Description, string Files, string Size, long FileCount);
-
-public sealed record ExtensionCountVm(string RawExtension, string Extension, string Files, string Size, bool HasFiles);

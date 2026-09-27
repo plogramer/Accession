@@ -53,49 +53,64 @@ public sealed class AuditService : IAuditService
         ArgumentNullException.ThrowIfNull(query);
         ArgumentOutOfRangeException.ThrowIfLessThan(query.PageSize, 1);
 
-        var sql = new StringBuilder("SELECT * FROM AuditLog WHERE 1 = 1");
+        var (where, parameters) = BuildWhere(query);
+        if (query.BeforeAuditId is not null)
+        {
+            where.Append(" AND AuditId < @BeforeAuditId");
+            parameters.Add("BeforeAuditId", query.BeforeAuditId);
+        }
+
+        parameters.Add("PageSize", query.PageSize);
+        parameters.Add("Offset", query.Offset);
+        using var scope = _database.Open();
+        return scope.Connection.Query<AuditEntry>(
+            $"SELECT * FROM AuditLog WHERE {where} ORDER BY AuditId DESC LIMIT @PageSize OFFSET @Offset", parameters).AsList();
+    }
+
+    public long Count(AuditQuery query)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        var (where, parameters) = BuildWhere(query);
+        using var scope = _database.Open();
+        return scope.Connection.ExecuteScalar<long>($"SELECT COUNT(*) FROM AuditLog WHERE {where}", parameters);
+    }
+
+    /// <summary>Filters shared by <see cref="Query"/> and <see cref="Count"/> (paging fields excluded).</summary>
+    private static (StringBuilder Where, DynamicParameters Parameters) BuildWhere(AuditQuery query)
+    {
+        var where = new StringBuilder("1 = 1");
         var parameters = new DynamicParameters();
         if (query.From is not null)
         {
-            sql.Append(" AND OccurredAtUtc >= @From");
+            where.Append(" AND OccurredAtUtc >= @From");
             parameters.Add("From", query.From.Value);
         }
 
         if (query.To is not null)
         {
-            sql.Append(" AND OccurredAtUtc < @To");
+            where.Append(" AND OccurredAtUtc < @To");
             parameters.Add("To", query.To.Value);
         }
 
         if (query.Actions is { Count: > 0 })
         {
-            sql.Append(" AND Action IN @Actions");
+            where.Append(" AND Action IN @Actions");
             parameters.Add("Actions", query.Actions.Select(a => a.ToString()).ToList());
         }
 
         if (!string.IsNullOrWhiteSpace(query.UserName))
         {
-            sql.Append(" AND UserName = @UserName COLLATE NOCASE");
+            where.Append(" AND UserName = @UserName COLLATE NOCASE");
             parameters.Add("UserName", query.UserName);
         }
 
         if (!string.IsNullOrWhiteSpace(query.MediaId))
         {
-            sql.Append(" AND MediaId = @MediaId COLLATE NOCASE");
+            where.Append(" AND MediaId = @MediaId COLLATE NOCASE");
             parameters.Add("MediaId", query.MediaId);
         }
 
-        if (query.BeforeAuditId is not null)
-        {
-            sql.Append(" AND AuditId < @BeforeAuditId");
-            parameters.Add("BeforeAuditId", query.BeforeAuditId);
-        }
-
-        sql.Append(" ORDER BY AuditId DESC LIMIT @PageSize");
-        parameters.Add("PageSize", query.PageSize);
-
-        using var scope = _database.Open();
-        return scope.Connection.Query<AuditEntry>(sql.ToString(), parameters).AsList();
+        return (where, parameters);
     }
 
     public IReadOnlyList<string> ListUserNames()
