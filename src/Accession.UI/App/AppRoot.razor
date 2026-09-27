@@ -1,0 +1,42 @@
+@inherits ObservingComponentBase
+
+@* Root component of the web page: theme, current screen, notifications, busy overlay and dialogs. *@
+<CascadingValue Value="Model" IsFixed="true">
+    <div class="app" data-theme="@ThemeAttribute">
+        @switch (Model.Screen)
+        {
+            case IShellModel shell:
+                <AppShell Model="shell" />
+                break;
+            case IStartModel start:
+                <StartPage Model="start" />
+                break;
+        }
+
+        <ToastHost Service="Model.Toasts" />
+
+        @if (Model.IsBusy)
+        {
+            <div class="overlay">
+                <div class="overlay-card" role="status">
+                    <div class="spinner"></div>
+                    <div class="overlay-text">@Model.BusyMessage</div>
+                    @if (Model.CanCancelBusy)
+                    {
+                        <button class="btn" @onclick="() => Run(Model.CancelBusyCommand)">Cancel</button>
+                    }
+                </div>
+            </div>
+        }
+
+        <DialogHost Center="Model.Dialogs" />
+    </div>
+</CascadingValue>
+
+@code {
+    [Parameter, EditorRequired] public IAppModel Model { get; set; } = default!;
+
+    private string? ThemeAttribute => Model.Theme is "light" or "dark" ? Model.Theme : null;
+
+    protected override void OnParametersSet() => Observe(Model);
+}

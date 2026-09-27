@@ -128,7 +128,8 @@ public sealed class InventoryWorkflows
 
         try
         {
-            var session = await _busy.RunAsync(_ => Task.FromResult(_opener.Open(path, _interaction)), "Opening inventory…");
+            // On a background thread: the open may ask questions, and web dialogs need the UI thread free to answer.
+            var session = await _busy.RunAsync(_ => Task.Run(() => _opener.Open(path, _interaction)), "Opening inventory…");
             if (session is not null)
             {
                 Activate(session);

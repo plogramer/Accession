@@ -1,14 +1,11 @@
 using System.ComponentModel;
 using System.Globalization;
 using System.Windows.Input;
-using Accession.Core.Settings;
-using Accession.Core.Threading;
 using Accession.Data.Browsing;
 using Accession.Data.Schema;
 using Accession.Presentation.Mvvm;
 using Accession.Presentation.Services;
 using Accession.Presentation.ViewModels.Dashboard;
-using Accession.UI.Components;
 using Accession.UI.Shell;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -25,8 +22,6 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
     private readonly ScanHost _scans;
     private readonly MediaWorkflows _media;
     private readonly MainWindowViewModel _main;
-    private readonly ISettingsService _settings;
-    private readonly BusyTracker _busy;
     private readonly FileBrowserNavigator _navigator;
     private readonly DashboardViewModel _dashboard;
     private readonly ShellNavItem _filesItem;
@@ -39,19 +34,13 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
         ScanHost scans,
         MediaWorkflows media,
         MainWindowViewModel main,
-        ISettingsService settings,
-        BusyTracker busy,
         FileBrowserNavigator navigator,
-        DashboardViewModel dashboard,
-        ToastService toasts)
+        DashboardViewModel dashboard)
     {
-        Toasts = toasts;
         _host = host;
         _scans = scans;
         _media = media;
         _main = main;
-        _settings = settings;
-        _busy = busy;
         _navigator = navigator;
         _dashboard = dashboard;
 
@@ -105,14 +94,6 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
 
     public bool IsScanActive => _scans.IsBusy;
 
-    // ---- Busy ----
-
-    public bool IsBusy => _busy.IsBusy;
-
-    public string BusyMessage => _busy.Message ?? string.Empty;
-
-    public bool CanCancelBusy => _busy.CanCancel;
-
     // ---- Navigation ----
 
     public IReadOnlyList<ShellNavItem> NavItems { get; }
@@ -121,21 +102,6 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
     public partial ShellNavItem SelectedItem { get; set; }
 
     public string PendingFilterText => _pendingFilter is { } filter && SelectedItem == _filesItem ? Describe(filter) : string.Empty;
-
-    public ToastService Toasts { get; }
-
-    public string Theme
-    {
-        get => _settings.Current.WebTheme;
-        set
-        {
-            if (value != Theme)
-            {
-                _settings.Update(s => s.WebTheme = value);
-                OnPropertyChanged();
-            }
-        }
-    }
 
     // ---- Commands (dialog-based ones stay in the main window view model) ----
 
@@ -159,8 +125,6 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
 
     public ICommand CloseInventoryCommand => _main.CloseInventoryCommand;
 
-    public ICommand CancelBusyCommand => _main.CancelBusyCommand;
-
     ICommand IShellModel.ScanNowCommand => ScanNowCommand;
 
     ICommand IShellModel.DismissNoticeCommand => DismissNoticeCommand;
@@ -172,7 +136,6 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
         _navigator.ShowFilesRequested += OnShowFiles;
         _host.PropertyChanged += OnSourceChanged;
         _scans.PropertyChanged += OnSourceChanged;
-        _busy.PropertyChanged += OnSourceChanged;
         _dashboard.PropertyChanged += OnDashboardChanged;
     }
 
@@ -181,7 +144,6 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
         _navigator.ShowFilesRequested -= OnShowFiles;
         _host.PropertyChanged -= OnSourceChanged;
         _scans.PropertyChanged -= OnSourceChanged;
-        _busy.PropertyChanged -= OnSourceChanged;
         _dashboard.PropertyChanged -= OnDashboardChanged;
         _dashboard.Dispose();
     }

@@ -1,3 +1,4 @@
+using Accession.UI.App;
 using Accession.UI.Shell;
 
 namespace Accession.Tests.WebUi;
@@ -30,7 +31,7 @@ public sealed class WebUiRenderTests
     [Fact]
     public async Task Dark_theme_sets_the_theme_attribute()
     {
-        var html = await RenderAsync(new FakeShell(new FakeDashboard()) { Theme = "dark" }, "dashboard-dark");
+        var html = await RenderAsync(new FakeApp(new FakeShell(new FakeDashboard())) { Theme = "dark" }, "dashboard-dark");
 
         Assert.Contains("data-theme=\"dark\"", html);
     }
@@ -38,7 +39,7 @@ public sealed class WebUiRenderTests
     [Fact]
     public async Task System_theme_leaves_the_theme_to_the_operating_system()
     {
-        var html = await RenderAsync(new FakeShell(new FakeDashboard()) { Theme = "system" });
+        var html = await RenderAsync(new FakeApp(new FakeShell(new FakeDashboard())) { Theme = "system" });
 
         Assert.DoesNotContain("data-theme", html);
     }
@@ -77,9 +78,62 @@ public sealed class WebUiRenderTests
         Assert.DoesNotContain("By media", html);
     }
 
-    private static async Task<string> RenderAsync(IShellModel shell, string? previewName = null)
+    [Fact]
+    public async Task Start_page_lists_recent_inventories_and_marks_missing_ones()
     {
-        var html = await WebUiRenderer.RenderAsync<AppShell>(new Dictionary<string, object?> { [nameof(AppShell.Model)] = shell });
+        var html = await RenderAsync(new FakeApp(new FakeStart()), "start");
+
+        Assert.Contains("New inventory", html);
+        Assert.Contains("Open inventory", html);
+        Assert.Contains("Fabrikam Arbitration", html);
+        Assert.Contains("Not found", html);
+        Assert.Contains("Version 0.1.0", html);
+        Assert.Contains("Classic UI", html);
+        Assert.DoesNotContain("sidebar", html);
+    }
+
+    [Fact]
+    public async Task Start_page_without_recent_inventories_explains_the_list()
+    {
+        var html = await RenderAsync(new FakeApp(new FakeStart(empty: true)));
+
+        Assert.Contains("Inventories you open or create will appear here.", html);
+    }
+
+    [Fact]
+    public async Task Busy_overlay_shows_the_message()
+    {
+        var html = await RenderAsync(new FakeApp(new FakeStart()) { IsBusy = true, BusyMessage = "Opening inventory" });
+
+        Assert.Contains("Opening inventory", html);
+        Assert.Contains("class=\"spinner\"", html);
+    }
+
+    [Fact]
+    public async Task Pending_dialog_is_shown_with_its_facts_and_choices()
+    {
+        var app = new FakeApp(new FakeStart());
+        var answer = app.Dialogs.AskAsync(new Accession.UI.Components.ChoiceDialog(
+            "Inventory in use", "Another user has this inventory open.",
+            [new("cancel", "Cancel"), new("readonly", "Open read-only", Accession.UI.Components.DialogChoiceStyle.Primary)], "cancel")
+        {
+            Facts = [new("User", "LITSUPPORT\\john.roe"), new("Computer", "LIT-WS-042")],
+        });
+
+        var html = await RenderAsync(app, "dialog");
+
+        Assert.Contains("role=\"dialog\"", html);
+        Assert.Contains("Inventory in use", html);
+        Assert.Contains("LIT-WS-042", html);
+        Assert.Contains("Open read-only", html);
+        Assert.False(answer.IsCompleted);
+    }
+
+    private static Task<string> RenderAsync(IShellModel shell, string? previewName = null) => RenderAsync(new FakeApp(shell), previewName);
+
+    private static async Task<string> RenderAsync(IAppModel app, string? previewName = null)
+    {
+        var html = await WebUiRenderer.RenderAsync<AppRoot>(new Dictionary<string, object?> { [nameof(AppRoot.Model)] = app });
         WritePreview(previewName, html);
         return html;
     }

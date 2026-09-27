@@ -87,7 +87,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     public bool HasSession => _host.HasSession;
 
     /// <summary>The web shell draws its own top bar and menus.</summary>
-    public bool IsClassicMenuVisible => CurrentScreen is not WebShellViewModel;
+    public bool IsClassicMenuVisible => CurrentScreen is not WebAppViewModel;
 
     /// <summary>Shows the web UI (preview) while an inventory is open.</summary>
     public bool UseWebUi
@@ -202,15 +202,23 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     private bool CanResumeScan() => Scans.CanResume;
 
+    /// <summary>Leaves the web UI, e.g. from the Start page.</summary>
+    [RelayCommand]
+    private void LeaveWebUi() => SwitchToClassic(null, null);
+
     private bool CanCancelScan() => Scans.CanCancel;
 
     private bool CanAddMedia() => _media.CanAddMedia;
 
     private void ShowScreenForSession()
     {
-        if (_host.HasSession && UseWebUi)
+        if (UseWebUi)
         {
-            _navigation.NavigateTo<WebShellViewModel>();
+            // One web page for Start and the inventory shell; it follows session changes itself.
+            if (_navigation.Current is not WebAppViewModel)
+            {
+                _navigation.NavigateTo<WebAppViewModel>();
+            }
         }
         else if (_host.HasSession)
         {

@@ -132,7 +132,9 @@ public partial class App : Application
         builder.Services.AddSingleton<IDialogService, DialogService>();
         builder.Services.AddSingleton<IWindowPlacementService, WindowPlacementService>();
         builder.Services.AddSingleton<InventoryHost>();
-        builder.Services.AddSingleton<IOpenInteraction, WpfOpenInteraction>();
+        builder.Services.AddSingleton<WpfOpenInteraction>();
+        builder.Services.AddSingleton<WebOpenInteraction>();
+        builder.Services.AddSingleton<IOpenInteraction, OpenInteractionRouter>();
         builder.Services.AddSingleton<InventoryWorkflows>();
         builder.Services.AddSingleton<MediaWorkflows>();
         builder.Services.AddSingleton<ScanHost>();
@@ -141,6 +143,7 @@ public partial class App : Application
         // Web UI (preview)
         builder.Services.AddWpfBlazorWebView();
         builder.Services.AddSingleton(sp => new Accession.UI.Components.ToastService(sp.GetRequiredService<TimeProvider>()));
+        builder.Services.AddSingleton<Accession.UI.Components.DialogCenter>();
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();
 #endif
@@ -150,6 +153,9 @@ public partial class App : Application
         builder.Services.AddTransient<StartViewModel>();
         builder.Services.AddTransient<InventoryShellViewModel>();
         builder.Services.AddTransient<WebShellViewModel>();
+        builder.Services.AddSingleton<Func<WebShellViewModel>>(sp => sp.GetRequiredService<WebShellViewModel>);
+        builder.Services.AddSingleton<Func<StartViewModel>>(sp => sp.GetRequiredService<StartViewModel>);
+        builder.Services.AddTransient<WebAppViewModel>();
         builder.Services.AddTransient<MediaListViewModel>();
         builder.Services.AddTransient<Accession.Presentation.ViewModels.Dashboard.DashboardViewModel>();
         builder.Services.AddTransient<Accession.Presentation.ViewModels.Browsing.FileBrowserViewModel>();

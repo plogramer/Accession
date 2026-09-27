@@ -1,17 +1,19 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Windows.Input;
 using Accession.Core.Formatting;
 using Accession.Core.Runtime;
 using Accession.Core.Settings;
 using Accession.Presentation.Mvvm;
 using Accession.Presentation.Platform;
 using Accession.Presentation.Services;
+using Accession.UI.Start;
 using CommunityToolkit.Mvvm.Input;
 
 namespace Accession.Presentation.ViewModels;
 
 /// <summary>Start window content (requirements 8.2): new/open inventory and the recent list.</summary>
-public sealed partial class StartViewModel : ViewModelBase
+public sealed partial class StartViewModel : ViewModelBase, IStartModel
 {
     private readonly IUiDispatcher _ui;
     private readonly InventoryWorkflows _workflows;
@@ -34,6 +36,16 @@ public sealed partial class StartViewModel : ViewModelBase
     public ObservableCollection<RecentInventoryItem> RecentInventories { get; } = [];
 
     public bool HasRecentInventories => RecentInventories.Count > 0;
+
+    ICommand IStartModel.NewInventoryCommand => NewInventoryCommand;
+
+    ICommand IStartModel.OpenInventoryCommand => OpenInventoryCommand;
+
+    ICommand IStartModel.OpenRecentCommand => OpenRecentCommand;
+
+    ICommand IStartModel.RemoveRecentCommand => RemoveRecentCommand;
+
+    ICommand IStartModel.OpenSettingsCommand => OpenSettingsCommand;
 
     public override void OnNavigatedTo()
     {
@@ -82,5 +94,3 @@ public sealed partial class StartViewModel : ViewModelBase
         OnPropertyChanged(nameof(HasRecentInventories));
     }
 }
-
-public sealed record RecentInventoryItem(string DisplayName, string Path, string LastOpened, bool Exists);

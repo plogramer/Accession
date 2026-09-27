@@ -1,0 +1,110 @@
+@inherits ObservingComponentBase
+
+<div class="start">
+    <div class="start-top">
+        <div class="brand brand-light">
+            <span class="brand-mark"><Icon Name="logo" Size="20" /></span>
+            <div>
+                <div class="brand-name">@Model.AppName</div>
+                <div class="brand-tag">Version @Model.Version</div>
+            </div>
+        </div>
+        <div class="start-top-actions">
+            @if (App is not null)
+            {
+                <button class="btn" title="Switch to the classic screens" @onclick="() => Run(App.SwitchToClassicCommand)">
+                    <Icon Name="classic" Size="16" /> Classic UI
+                </button>
+            }
+            <ThemeSwitch />
+            <button class="icon-btn icon-btn-lg" title="Settings" @onclick="() => Run(Model.OpenSettingsCommand)"><Icon Name="settings" /></button>
+        </div>
+    </div>
+
+    <div class="start-body">
+        <section class="start-hero">
+            <h1>@Model.Tagline</h1>
+            <p class="muted">Create an inventory for a matter, or open one you worked on before. Inventories are single files you can keep on a network share.</p>
+            <div class="start-actions">
+                <button class="action-card is-primary" @onclick="() => Run(Model.NewInventoryCommand)">
+                    <span class="action-icon"><Icon Name="plus" Size="22" /></span>
+                    <span>
+                        <span class="action-title">New inventory</span>
+                        <span class="action-sub">Set up a matter and its media root folder</span>
+                    </span>
+                </button>
+                <button class="action-card" @onclick="() => Run(Model.OpenInventoryCommand)">
+                    <span class="action-icon"><Icon Name="folder-open" Size="22" /></span>
+                    <span>
+                        <span class="action-title">Open inventory…</span>
+                        <span class="action-sub">Browse for an .accession file</span>
+                    </span>
+                </button>
+            </div>
+        </section>
+
+        <section class="card start-recent">
+            <div class="card-header">
+                <h3>Recent inventories</h3>
+                @if (Model.RecentInventories.Count > 0)
+                {
+                    <div class="search">
+                        <Icon Name="search" Size="15" />
+                        <input type="search" placeholder="Find" value="@_search" @oninput="e => _search = e.Value?.ToString() ?? string.Empty" />
+                    </div>
+                }
+            </div>
+            @if (Model.RecentInventories.Count == 0)
+            {
+                <div class="empty-row">Inventories you open or create will appear here.</div>
+            }
+            else
+            {
+                <ul class="recent-list">
+                    @foreach (var item in Filtered)
+                    {
+                        <li class="recent-item @(item.Exists ? null : "is-missing")">
+                            <button class="recent-open" disabled="@(!item.Exists)" title="@item.Path" @onclick="() => Run(Model.OpenRecentCommand, item)">
+                                <span class="recent-icon"><Icon Name="files" Size="18" /></span>
+                                <span class="recent-text">
+                                    <span class="recent-name">@item.DisplayName</span>
+                                    <span class="recent-path mono">@item.Path</span>
+                                </span>
+                                <span class="recent-meta">
+                                    @if (item.Exists)
+                                    {
+                                        <span class="muted small">@item.LastOpened</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="chip is-danger">Not found</span>
+                                    }
+                                </span>
+                            </button>
+                            <button class="icon-btn" title="Remove from list" @onclick="() => Run(Model.RemoveRecentCommand, item)"><Icon Name="x" Size="15" /></button>
+                        </li>
+                    }
+                </ul>
+                @if (!Filtered.Any())
+                {
+                    <div class="empty-row">No recent inventory matches “@_search”.</div>
+                }
+            }
+        </section>
+    </div>
+</div>
+
+@code {
+    private string _search = string.Empty;
+
+    [Parameter, EditorRequired] public IStartModel Model { get; set; } = default!;
+
+    [CascadingParameter] public IAppModel? App { get; set; }
+
+    private IEnumerable<RecentInventoryItem> Filtered => _search.Length == 0
+        ? Model.RecentInventories
+        : Model.RecentInventories.Where(r =>
+            r.DisplayName.Contains(_search, StringComparison.OrdinalIgnoreCase) || r.Path.Contains(_search, StringComparison.OrdinalIgnoreCase));
+
+    protected override void OnParametersSet() => Observe(Model, Model.RecentInventories);
+}

@@ -1,0 +1,82 @@
+@implements IDisposable
+
+@* Shows the DialogCenter's current dialog. *@
+@if (Center.Current is { } dialog)
+{
+    <Modal IsOpen="true" Title="@dialog.Title" OnClose="() => Center.Answer(dialog, dialog.CancelKey)" Width="500px">
+        <ChildContent>
+            <div class="dialog-body">
+                <div class="dialog-icon is-@dialog.Kind.ToString().ToLowerInvariant()"><Icon Name="@IconFor(dialog.Kind)" Size="20" /></div>
+                <div class="dialog-text">
+                    @foreach (var paragraph in dialog.Message.Split("\n\n", StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        <p>@paragraph</p>
+                    }
+                    @if (dialog.Facts.Count > 0)
+                    {
+                        <dl class="facts">
+                            @foreach (var fact in dialog.Facts)
+                            {
+                                <dt>@fact.Label</dt>
+                                <dd>@fact.Value</dd>
+                            }
+                        </dl>
+                    }
+                    @if (!string.IsNullOrEmpty(dialog.Note))
+                    {
+                        <p class="dialog-note">@dialog.Note</p>
+                    }
+                </div>
+            </div>
+        </ChildContent>
+        <Footer>
+            @foreach (var choice in dialog.Choices)
+            {
+                <button class="btn @StyleClass(choice.Style)" @onclick="() => Center.Answer(dialog, choice.Key)">@choice.Label</button>
+            }
+        </Footer>
+    </Modal>
+}
+
+@code {
+    private DialogCenter? _subscribed;
+
+    [Parameter, EditorRequired] public DialogCenter Center { get; set; } = default!;
+
+    protected override void OnParametersSet()
+    {
+        if (!ReferenceEquals(_subscribed, Center))
+        {
+            Unsubscribe();
+            Center.Changed += OnChanged;
+            _subscribed = Center;
+        }
+    }
+
+    public void Dispose() => Unsubscribe();
+
+    private void Unsubscribe()
+    {
+        if (_subscribed is not null)
+        {
+            _subscribed.Changed -= OnChanged;
+            _subscribed = null;
+        }
+    }
+
+    private void OnChanged(object? sender, EventArgs e) => _ = InvokeAsync(StateHasChanged);
+
+    private static string? StyleClass(DialogChoiceStyle style) => style switch
+    {
+        DialogChoiceStyle.Primary => "btn-primary",
+        DialogChoiceStyle.Danger => "btn-danger",
+        _ => null,
+    };
+
+    private static string IconFor(DialogKind kind) => kind switch
+    {
+        DialogKind.Warning or DialogKind.Error => "errors",
+        DialogKind.Info => "info",
+        _ => "info",
+    };
+}

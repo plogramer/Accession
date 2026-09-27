@@ -1,8 +1,10 @@
 using System.Collections.ObjectModel;
 using System.Windows.Input;
+using Accession.UI.App;
 using Accession.UI.Components;
 using Accession.UI.Dashboard;
 using Accession.UI.Shell;
+using Accession.UI.Start;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -157,17 +159,12 @@ internal sealed partial class FakeShell : ObservableObject, IShellModel
     public string Notice => string.Empty;
     public string ScanStatus => IsScanActive ? "123-123_003 · Hashing 41,210 of 96,020 files · 212 MB/s" : string.Empty;
     public bool IsScanActive { get; }
-    public bool IsBusy => false;
-    public string BusyMessage => string.Empty;
-    public bool CanCancelBusy => false;
     public IReadOnlyList<ShellNavItem> NavItems { get; }
 
     [ObservableProperty]
     public partial ShellNavItem SelectedItem { get; set; }
 
     public string PendingFilterText { get; set; } = string.Empty;
-    public ToastService Toasts { get; } = new(TimeProvider.System);
-    public string Theme { get; set; } = "light";
     public ICommand ScanNowCommand { get; } = new RelayCommand(() => { });
     public ICommand PauseScanCommand { get; } = new RelayCommand(() => { });
     public ICommand ResumeScanCommand { get; } = new RelayCommand(() => { }, () => false);
@@ -180,6 +177,42 @@ internal sealed partial class FakeShell : ObservableObject, IShellModel
     public ICommand OpenSettingsCommand { get; } = new RelayCommand(() => { });
     public ICommand CloseInventoryCommand { get; } = new RelayCommand(() => { });
     public ICommand DismissNoticeCommand { get; } = new RelayCommand(() => { });
-    public ICommand CancelBusyCommand { get; } = new RelayCommand(() => { });
     public ICommand OpenInClassicCommand { get; } = new RelayCommand(() => { });
+}
+
+/// <summary>The whole page: a screen plus theme, busy overlay, toasts and dialogs.</summary>
+internal sealed partial class FakeApp(object screen) : ObservableObject, IAppModel
+{
+    public object Screen { get; } = screen;
+    public string Theme { get; set; } = "light";
+    public ToastService Toasts { get; } = new(TimeProvider.System);
+    public DialogCenter Dialogs { get; } = new();
+    public bool IsBusy { get; set; }
+    public string BusyMessage { get; set; } = string.Empty;
+    public bool CanCancelBusy => false;
+    public ICommand CancelBusyCommand { get; } = new RelayCommand(() => { });
+    public ICommand SwitchToClassicCommand { get; } = new RelayCommand(() => { });
+}
+
+internal sealed class FakeStart : ObservableObject, IStartModel
+{
+    public FakeStart(bool empty = false)
+    {
+        if (!empty)
+        {
+            RecentInventories.Add(new RecentInventoryItem("Northwind v. Contoso Ltd. (NW-2026-0142)", @"\\evidence01\intake\NW-2026-0142\NW-2026-0142.accession", "2026-09-27 14:10", true));
+            RecentInventories.Add(new RecentInventoryItem("Fabrikam Arbitration (FB-2026-0077)", @"\\evidence01\intake\FB-2026-0077\FB-2026-0077.accession", "2026-09-22 09:31", true));
+            RecentInventories.Add(new RecentInventoryItem("Adatum Internal Review (AD-2025-0311)", @"D:\Cases\AD-2025-0311\AD-2025-0311.accession", "2026-08-30 16:48", false));
+        }
+    }
+
+    public string AppName => "Accession";
+    public string Tagline => "Inventory, hash, and report every media you receive.";
+    public string Version => "0.1.0";
+    public ObservableCollection<RecentInventoryItem> RecentInventories { get; } = [];
+    public ICommand NewInventoryCommand { get; } = new RelayCommand(() => { });
+    public ICommand OpenInventoryCommand { get; } = new RelayCommand(() => { });
+    public ICommand OpenRecentCommand { get; } = new RelayCommand<object?>(_ => { });
+    public ICommand RemoveRecentCommand { get; } = new RelayCommand<object?>(_ => { });
+    public ICommand OpenSettingsCommand { get; } = new RelayCommand(() => { });
 }

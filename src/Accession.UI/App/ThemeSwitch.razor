@@ -1,0 +1,26 @@
+@* Light / dark / follow-Windows switch. Uses the page's IAppModel. *@
+@if (App is not null)
+{
+    <div class="theme-switch @Class" role="radiogroup" aria-label="Theme">
+        @foreach (var (value, icon, label) in Themes)
+        {
+            <button role="radio" aria-checked="@(App.Theme == value ? "true" : "false")" title="@label"
+                    class="@(App.Theme == value ? "is-active" : null)" @onclick="() => App.Theme = value">
+                <Icon Name="@icon" Size="15" />
+            </button>
+        }
+    </div>
+}
+
+@code {
+    private static readonly (string Value, string Icon, string Label)[] Themes =
+    [
+        ("light", "sun", "Light"),
+        ("dark", "moon", "Dark"),
+        ("system", "monitor", "Match Windows"),
+    ];
+
+    [CascadingParameter] public IAppModel? App { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+}

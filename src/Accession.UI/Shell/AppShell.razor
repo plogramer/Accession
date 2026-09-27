@@ -1,6 +1,6 @@
 @inherits ObservingComponentBase
 
-<div class="app" data-theme="@ThemeAttribute">
+<div class="shell">
     <aside class="sidebar">
         <div class="brand">
             <span class="brand-mark"><Icon Name="logo" Size="20" /></span>
@@ -35,15 +35,7 @@
         </nav>
 
         <div class="sidebar-footer">
-            <div class="theme-switch" role="radiogroup" aria-label="Theme">
-                @foreach (var (value, icon, label) in Themes)
-                {
-                    <button role="radio" aria-checked="@(Model.Theme == value ? "true" : "false")" title="@label"
-                            class="@(Model.Theme == value ? "is-active" : null)" @onclick="() => Model.Theme = value">
-                        <Icon Name="@icon" Size="15" />
-                    </button>
-                }
-            </div>
+            <ThemeSwitch />
             <div class="user">
                 <span class="avatar">@Initials</span>
                 <span class="user-name" title="@Model.UserName">@Model.UserName</span>
@@ -147,34 +139,10 @@
         </footer>
     </div>
 
-    <ToastHost Service="Model.Toasts" />
-
-    @if (Model.IsBusy)
-    {
-        <div class="overlay">
-            <div class="overlay-card" role="status">
-                <div class="spinner"></div>
-                <div class="overlay-text">@Model.BusyMessage</div>
-                @if (Model.CanCancelBusy)
-                {
-                    <button class="btn" @onclick="() => Run(Model.CancelBusyCommand)">Cancel</button>
-                }
-            </div>
-        </div>
-    }
 </div>
 
 @code {
-    private static readonly (string Value, string Icon, string Label)[] Themes =
-    [
-        ("light", "sun", "Light"),
-        ("dark", "moon", "Dark"),
-        ("system", "monitor", "Match Windows"),
-    ];
-
     [Parameter, EditorRequired] public IShellModel Model { get; set; } = default!;
-
-    private string? ThemeAttribute => Model.Theme is "light" or "dark" ? Model.Theme : null;
 
     private string Initials
     {

@@ -1,17 +1,17 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
-using Accession.UI.Shell;
+using Accession.UI.App;
 using Microsoft.AspNetCore.Components.WebView.Wpf;
 
 namespace Accession.App.Views;
 
-/// <summary>Hosts the web UI shell (Accession.UI) in a BlazorWebView.</summary>
-public partial class WebShellView : UserControl
+/// <summary>Hosts the web UI (Accession.UI) in a BlazorWebView.</summary>
+public partial class WebAppView : UserControl
 {
     private BlazorWebView? _webView;
 
-    public WebShellView()
+    public WebAppView()
     {
         InitializeComponent();
         DataContextChanged += (_, _) => CreateWebView();
@@ -28,7 +28,7 @@ public partial class WebShellView : UserControl
     private void CreateWebView()
     {
         DisposeWebView();
-        if (DataContext is not IShellModel model)
+        if (DataContext is not IAppModel model)
         {
             return;
         }
@@ -41,8 +41,8 @@ public partial class WebShellView : UserControl
         webView.RootComponents.Add(new RootComponent
         {
             Selector = "#app",
-            ComponentType = typeof(AppShell),
-            Parameters = new Dictionary<string, object?> { [nameof(AppShell.Model)] = model },
+            ComponentType = typeof(AppRoot),
+            Parameters = new Dictionary<string, object?> { [nameof(AppRoot.Model)] = model },
         });
         _webView = webView;
         Host.Content = webView;
