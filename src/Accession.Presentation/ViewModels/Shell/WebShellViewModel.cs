@@ -5,6 +5,7 @@ using Accession.Data.Browsing;
 using Accession.Data.Schema;
 using Accession.Presentation.Mvvm;
 using Accession.Presentation.Services;
+using Accession.Presentation.ViewModels.Browsing;
 using Accession.Presentation.ViewModels.Dashboard;
 using Accession.Presentation.ViewModels.MediaScreen;
 using Accession.UI.Shell;
@@ -26,11 +27,11 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
     private readonly FileBrowserNavigator _navigator;
     private readonly DashboardViewModel _dashboard;
     private readonly MediaListViewModel _mediaList;
+    private readonly WebFilesViewModel _files;
     private readonly ShellNavItem _mediaItem;
     private readonly ShellNavItem _filesItem;
     private readonly ShellNavItem _queueItem;
     private readonly ShellNavItem _errorsItem;
-    private FileFilter? _pendingFilter;
 
     public WebShellViewModel(
         InventoryHost host,
@@ -39,8 +40,10 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
         MainWindowViewModel main,
         FileBrowserNavigator navigator,
         DashboardViewModel dashboard,
-        MediaListViewModel mediaList)
+        MediaListViewModel mediaList,
+        WebFilesViewModel files)
     {
+        _files = files;
         _mediaList = mediaList;
         _mediaItem = new ShellNavItem("Media", "media", "Inventory", mediaList);
         _host = host;
@@ -50,7 +53,7 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
         _navigator = navigator;
         _dashboard = dashboard;
 
-        _filesItem = new ShellNavItem("Files", "files", "Inventory");
+        _filesItem = new ShellNavItem("Files", "files", "Inventory", files);
         _queueItem = new ShellNavItem("Scan Queue", "queue", "Scanning");
         _errorsItem = new ShellNavItem("Errors", "errors", "Scanning");
         NavItems =
@@ -107,8 +110,6 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
     [ObservableProperty]
     public partial ShellNavItem SelectedItem { get; set; }
 
-    public string PendingFilterText => _pendingFilter is { } filter && SelectedItem == _filesItem ? Describe(filter) : string.Empty;
-
     // ---- Commands (dialog-based ones stay in the main window view model) ----
 
     public ICommand PauseScanCommand => _main.PauseScanCommand;
@@ -155,6 +156,7 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
         _dashboard.Dispose();
         _mediaList.RowsReloaded -= OnMediaReloaded;
         _mediaList.Dispose();
+        _files.Dispose();
     }
 
     [RelayCommand(CanExecute = nameof(CanScanNow))]
@@ -167,28 +169,15 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
     [RelayCommand]
     private void OpenInClassic()
     {
-        var screen = SelectedItem.IsAvailable ? null : SelectedItem.Key;
-        var filter = SelectedItem == _filesItem ? _pendingFilter : null;
-        _main.SwitchToClassic(screen, filter);
+        _main.SwitchToClassic(SelectedItem.Key, null);
     }
 
     private bool CanScanNow() => _scans.CanScan;
 
-    partial void OnSelectedItemChanged(ShellNavItem value)
-    {
-        if (value != _filesItem)
-        {
-            _pendingFilter = null;
-        }
-
-        OnPropertyChanged(nameof(PendingFilterText));
-    }
-
     private void OnShowFiles(object? sender, FileFilter filter)
     {
-        _pendingFilter = filter;
         SelectedItem = _filesItem;
-        OnPropertyChanged(nameof(PendingFilterText));
+        _files.ApplyPreset(filter);
     }
 
     private void OnSourceChanged(object? sender, PropertyChangedEventArgs e)
@@ -215,40 +204,4 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
         _errorsItem.Badge = _dashboard.ErrorCount is "0" or "—" ? string.Empty : _dashboard.ErrorCount;
     }
 
-    /// <summary>Short text for a Files filter, e.g. "Media 123-123_001 · Email".</summary>
-    private string Describe(FileFilter filter)
-    {
-        var parts = new List<string>();
-        if (filter.MediaKey is { } key)
-        {
-            parts.Add("Media " + (_dashboard.MediaFilter.FirstOrDefault(m => m.MediaKey == key)?.MediaId ?? key.ToString(CultureInfo.InvariantCulture)));
-        }
-
-        if (filter.CategoryId is { } categoryId)
-        {
-            parts.Add(CategoryCatalog.Categories.FirstOrDefault(c => c.CategoryId == categoryId)?.Name ?? "category " + categoryId);
-        }
-
-        if (filter.Extension is { } extension)
-        {
-            parts.Add(extension.Length == 0 ? "no extension" : "." + extension);
-        }
-
-        if (filter.ModifiedFrom is { } from)
-        {
-            parts.Add("modified in " + from.Year.ToString(CultureInfo.InvariantCulture));
-        }
-
-        if (!string.IsNullOrEmpty(filter.NameContains))
-        {
-            parts.Add($"name “{filter.NameContains}”");
-        }
-
-        if (filter.DuplicatesOnly)
-        {
-            parts.Add("duplicates only");
-        }
-
-        return parts.Count == 0 ? "all files" : string.Join(" · ", parts);
-    }
 }

@@ -1,0 +1,247 @@
+@inherits ObservingComponentBase
+
+<div class="page page-wide page-files">
+    <div class="page-header">
+        <div>
+            <h2>Files</h2>
+            <p class="muted">@(string.IsNullOrEmpty(Model.TotalsText) ? "Every file in the inventory, with its SHA-1." : Model.TotalsText)</p>
+        </div>
+        <div class="page-actions">
+            <button class="icon-btn icon-btn-lg" title="Refresh" @onclick="() => Run(Model.RefreshCommand)"><Icon Name="refresh" Class="@(Model.IsLoading ? "spin" : null)" /></button>
+        </div>
+    </div>
+
+    <SplitPanel SideWidth="250px">
+        <Side>
+            <section class="card tree-card">
+                <div class="card-header"><h3>Folders</h3></div>
+                <div class="tree" role="tree">
+                    <div class="tree-row @(Model.SelectedFolder is null ? "is-selected" : null)" style="padding-left:6px" @onclick="() => Model.SelectedFolder = null">
+                        <span class="tree-toggle"></span>
+                        <Icon Name="dashboard" Size="15" Class="tree-icon" />
+                        <span class="tree-name">All media</span>
+                    </div>
+                    <FolderTree Nodes="Model.Folders" Model="Model" />
+                </div>
+                <label class="tree-footer check-row">
+                    <input type="checkbox" checked="@Model.IncludeSubfolders" @onchange="e => SetAndApply(() => Model.IncludeSubfolders = e.Value is true)" />
+                    Include subfolders
+                </label>
+            </section>
+        </Side>
+        <Main>
+            <section class="card filter-card">
+                <div class="filter-row" @onkeydown="OnFilterKey">
+                    <div class="search search-wide">
+                        <Icon Name="search" Size="15" />
+                        <input type="search" placeholder="File name contains…" value="@Model.NameContains"
+                               @oninput="e => Model.NameContains = e.Value?.ToString() ?? string.Empty" />
+                    </div>
+                    <input class="input input-ext" placeholder="Extension" title="Extension without the dot; (none) for files without one"
+                           value="@Model.ExtensionText" @oninput="e => Model.ExtensionText = e.Value?.ToString() ?? string.Empty" />
+                    <select class="input" title="Media" value="@Model.MediaValue" @onchange="e => Model.MediaValue = e.Value?.ToString() ?? string.Empty">
+                        @foreach (var option in Model.MediaOptions)
+                        {
+                            <option value="@option.Value">@option.Label</option>
+                        }
+                    </select>
+                    <select class="input" title="Category" value="@Model.CategoryValue" @onchange="e => Model.CategoryValue = e.Value?.ToString() ?? string.Empty">
+                        @foreach (var option in Model.CategoryOptions)
+                        {
+                            <option value="@option.Value">@option.Label</option>
+                        }
+                    </select>
+                    <Dropdown CloseOnClick="false" IsMenu="false" Wide="true" Title="More filters">
+                        <Trigger><Icon Name="filter" Size="15" /> More <Icon Name="chevron-down" Size="14" /></Trigger>
+                        <ChildContent>
+                            <div class="filter-panel" @onkeydown="OnFilterKey">
+                                <div class="field">
+                                    <label>Hash status</label>
+                                    <select class="input" value="@Model.HashStatusValue" @onchange="e => Model.HashStatusValue = e.Value?.ToString() ?? string.Empty">
+                                        @foreach (var option in Model.HashStatusOptions)
+                                        {
+                                            <option value="@option.Value">@option.Label</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="field">
+                                    <label>Size (@Model.SizeUnitLabel)</label>
+                                    <div class="field-pair">
+                                        <input class="input" placeholder="min" value="@Model.MinSizeText" @oninput="e => Model.MinSizeText = e.Value?.ToString() ?? string.Empty" />
+                                        <span class="muted">to</span>
+                                        <input class="input" placeholder="max" value="@Model.MaxSizeText" @oninput="e => Model.MaxSizeText = e.Value?.ToString() ?? string.Empty" />
+                                    </div>
+                                </div>
+                                <div class="field">
+                                    <label>Modified (UTC dates)</label>
+                                    <div class="field-pair">
+                                        <input class="input" type="date" value="@Model.ModifiedFromText" @onchange="e => Model.ModifiedFromText = e.Value?.ToString() ?? string.Empty" />
+                                        <span class="muted">to</span>
+                                        <input class="input" type="date" value="@Model.ModifiedToText" @onchange="e => Model.ModifiedToText = e.Value?.ToString() ?? string.Empty" />
+                                    </div>
+                                </div>
+                                <div class="field">
+                                    <label>SHA-1</label>
+                                    <input class="input mono" placeholder="40 hex characters" value="@Model.Sha1Text" @oninput="e => Model.Sha1Text = e.Value?.ToString() ?? string.Empty" />
+                                </div>
+                                <label class="check-row"><input type="checkbox" checked="@Model.DuplicatesOnly" @onchange="e => Model.DuplicatesOnly = e.Value is true" /> Duplicates only</label>
+                                <label class="check-row"><input type="checkbox" checked="@Model.ErrorsOnly" @onchange="e => Model.ErrorsOnly = e.Value is true" /> Files with errors only</label>
+                            </div>
+                        </ChildContent>
+                    </Dropdown>
+                    <button class="btn btn-primary" @onclick="() => Run(Model.ApplyCommand)">Apply</button>
+                </div>
+                @if (Model.ActiveFilters.Count > 0)
+                {
+                    <div class="chips-row">
+                        <span class="muted small">Filtered by</span>
+                        @foreach (var label in Model.ActiveFilters)
+                        {
+                            <span class="chip">@label</span>
+                        }
+                        <button class="link-btn" @onclick="() => Run(Model.ClearFiltersCommand)">Clear all</button>
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(Model.FilterError))
+                {
+                    <div class="field-error filter-error">@Model.FilterError</div>
+                }
+            </section>
+
+            <section class="card files-card">
+                <div class="card-header">
+                    @if (Model.SelectedRow is { } row)
+                    {
+                        <div class="selection-bar">
+                            <span class="strong truncate" title="@row.RelativePath">@row.Name</span>
+                            <button class="btn btn-sm" disabled="@Disabled(Model.CopyPathCommand)" @onclick="() => Run(Model.CopyPathCommand)"><Icon Name="copy" Size="14" /> Copy path</button>
+                            <button class="btn btn-sm" title="@row.Sha1" disabled="@Disabled(Model.CopySha1Command)" @onclick="() => Run(Model.CopySha1Command)"><Icon Name="copy" Size="14" /> Copy SHA-1</button>
+                            <button class="btn btn-sm" disabled="@Disabled(Model.OpenContainingFolderCommand)" @onclick="() => Run(Model.OpenContainingFolderCommand)"><Icon Name="folder-open" Size="14" /> Show in folder</button>
+                            <button class="btn btn-sm" disabled="@Disabled(Model.ShowCopiesCommand)" @onclick="() => Run(Model.ShowCopiesCommand)">
+                                <Icon Name="files" Size="14" /> All copies@(row.Copies > 1 ? $" ({row.Copies:N0})" : null)
+                            </button>
+                        </div>
+                    }
+                    else
+                    {
+                        <h3>@(Model.IsLoading && Model.Rows.Count == 0 ? "Loading…" : "Select a file for actions")</h3>
+                    }
+                    <Dropdown TriggerClass="icon-btn icon-btn-lg" Title="Columns" CloseOnClick="false" IsMenu="false">
+                        <Trigger><Icon Name="columns" /></Trigger>
+                        <ChildContent>
+                            <div class="menu-header"><span>Columns</span></div>
+                            @foreach (var column in OptionalColumns)
+                            {
+                                <label class="check-row">
+                                    <input type="checkbox" checked="@Model.VisibleColumns.Contains(column.Key)" @onchange="() => Model.ToggleColumn(column.Key)" />
+                                    @column.Title
+                                </label>
+                            }
+                        </ChildContent>
+                    </Dropdown>
+                </div>
+
+                <DataTable TItem="FileRow" Items="Model.Rows" Virtualize="true" MaxHeight="calc(100vh - 470px)" Class="files-table"
+                           SortKey="@Model.SortKey" SortDescending="Model.SortDescending" OnSort="Model.SortByAsync"
+                           SelectedItem="Model.SelectedRow" SelectedItemChanged="row => Model.SelectedRow = row"
+                           IsLoading="Model.IsLoading" EmptyText="No files match these filters.">
+                    <Columns>
+                        <Column TItem="FileRow" Title="Name" SortKey="name" Order="0" Class="name-cell">
+                            <span title="@context.RelativePath">@context.Name</span>
+                        </Column>
+                        @if (Show("extension"))
+                        {
+                            <Column TItem="FileRow" Title="Ext" SortKey="extension" Order="1">
+                                @if (context.Extension.Length > 0)
+                                {
+                                    <span class="ext">@context.Extension</span>
+                                }
+                            </Column>
+                        }
+                        @if (Show("folder"))
+                        {
+                            <Column TItem="FileRow" Title="Folder" SortKey="default" Order="2" Class="path-cell muted">
+                                <span title="@context.FolderPath">@context.FolderPath</span>
+                            </Column>
+                        }
+                        @if (Show("media"))
+                        {
+                            <Column TItem="FileRow" Title="Media" Order="3" Class="mono">@context.MediaId</Column>
+                        }
+                        @if (Show("size"))
+                        {
+                            <Column TItem="FileRow" Title="Size" SortKey="size" Order="4" Class="num">@context.Size</Column>
+                        }
+                        @if (Show("modified"))
+                        {
+                            <Column TItem="FileRow" Title="Modified" SortKey="modified" Order="5" Class="muted">@context.Modified</Column>
+                        }
+                        @if (Show("created"))
+                        {
+                            <Column TItem="FileRow" Title="Created" Order="6" Class="muted">@context.Created</Column>
+                        }
+                        @if (Show("accessed"))
+                        {
+                            <Column TItem="FileRow" Title="Accessed" Order="7" Class="muted">@context.Accessed</Column>
+                        }
+                        @if (Show("category"))
+                        {
+                            <Column TItem="FileRow" Title="Category" Order="8" Class="muted">@context.Category</Column>
+                        }
+                        @if (Show("hash"))
+                        {
+                            <Column TItem="FileRow" Title="Hash" Order="9">
+                                <span class="status @HashClass(context.HashStatus)">@context.HashStatus</span>
+                            </Column>
+                        }
+                        @if (Show("sha1"))
+                        {
+                            <Column TItem="FileRow" Title="SHA-1" Order="10" Class="mono small">@context.Sha1</Column>
+                        }
+                        @if (Show("copies"))
+                        {
+                            <Column TItem="FileRow" Title="Copies" Order="11" Class="num">@(context.Copies > 1 ? context.Copies.ToString("N0") : null)</Column>
+                        }
+                    </Columns>
+                </DataTable>
+
+                <Pager PageIndex="Model.PageIndex" PageSize="Model.PageSize" PageSizes="Model.PageSizes" TotalCount="Model.TotalCount"
+                       ItemName="files" IsBusy="Model.IsLoading" IsCounting="Model.IsCounting" HasMore="Model.Rows.Count == Model.PageSize"
+                       RowsOnPage="Model.Rows.Count" OnPageChange="Model.GoToPageAsync" OnPageSizeChange="Model.SetPageSizeAsync" />
+            </section>
+        </Main>
+    </SplitPanel>
+</div>
+
+@code {
+    /// <summary>Optional columns in display order (Name is always shown).</summary>
+    public static readonly IReadOnlyList<(string Key, string Title)> OptionalColumns =
+    [
+        ("extension", "Extension"), ("folder", "Folder"), ("media", "Media"), ("size", "Size"), ("modified", "Modified"),
+        ("created", "Created"), ("accessed", "Accessed"), ("category", "Category"), ("hash", "Hash status"),
+        ("sha1", "SHA-1"), ("copies", "Copies"),
+    ];
+
+    [Parameter, EditorRequired] public IFilesModel Model { get; set; } = default!;
+
+    protected override void OnParametersSet() => Observe(Model, Model.Folders, Model.CopyPathCommand, Model.CopySha1Command,
+        Model.OpenContainingFolderCommand, Model.ShowCopiesCommand);
+
+    private bool Show(string key) => Model.VisibleColumns.Contains(key);
+
+    private Task OnFilterKey(KeyboardEventArgs e) => e.Key == "Enter" ? Run(Model.ApplyCommand) : Task.CompletedTask;
+
+    private Task SetAndApply(Action set)
+    {
+        set();
+        return Run(Model.ApplyCommand);
+    }
+
+    private static string HashClass(string status) => status switch
+    {
+        "Hashed" => "is-success",
+        "Error" => "is-danger",
+        "Pending" => "is-active",
+        _ => "is-neutral",
+    };
+}

@@ -159,6 +159,7 @@ public partial class App : Application
         builder.Services.AddTransient<MediaListViewModel>();
         builder.Services.AddTransient<Accession.Presentation.ViewModels.Dashboard.DashboardViewModel>();
         builder.Services.AddTransient<Accession.Presentation.ViewModels.Browsing.FileBrowserViewModel>();
+        builder.Services.AddTransient<Accession.Presentation.ViewModels.Browsing.WebFilesViewModel>();
         builder.Services.AddTransient<Accession.Presentation.ViewModels.Browsing.CategoriesViewModel>();
         builder.Services.AddTransient<Accession.Presentation.ViewModels.Browsing.AuditLogViewModel>();
         builder.Services.AddTransient<Accession.Presentation.ViewModels.Scanning.ScanQueueViewModel>();

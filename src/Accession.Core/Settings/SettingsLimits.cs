@@ -16,4 +16,10 @@ public static class SettingsLimits
     public const int MaxDbBatchSize = 100_000;
 
     public const int MaxRecentInventories = 15;
+
+    /// <summary>Rows-per-page choices on the web Files screen; the first is the default.</summary>
+    public static readonly IReadOnlyList<int> FilePageSizes = [1_000, 2_000, 5_000, 10_000, 50_000];
+
+    /// <summary>Optional Files columns shown by default.</summary>
+    public static readonly IReadOnlyList<string> DefaultFilesColumns = ["extension", "folder", "media", "size", "modified", "category", "hash", "copies"];
 }

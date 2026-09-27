@@ -26,6 +26,12 @@ public sealed class AppSettings
     /// <summary>"system", "light" or "dark".</summary>
     public string WebTheme { get; set; } = WebThemes.System;
 
+    /// <summary>Rows per page on the web Files screen (one of <see cref="SettingsLimits.FilePageSizes"/>).</summary>
+    public int FilesPageSize { get; set; } = SettingsLimits.FilePageSizes[0];
+
+    /// <summary>Optional columns shown on the web Files screen.</summary>
+    public List<string> FilesColumns { get; set; } = [.. SettingsLimits.DefaultFilesColumns];
+
     // UI state
     public List<RecentInventory> RecentInventories { get; set; } = [];
     public Dictionary<string, WindowPlacement> Windows { get; set; } = [];
@@ -80,6 +86,13 @@ public sealed class AppSettings
         DbBatchSize = Math.Clamp(DbBatchSize, SettingsLimits.MinDbBatchSize, SettingsLimits.MaxDbBatchSize);
         DefaultExportFolder = DefaultExportFolder?.Trim() ?? string.Empty;
         WebTheme = WebThemes.Normalize(WebTheme);
+        if (!SettingsLimits.FilePageSizes.Contains(FilesPageSize))
+        {
+            FilesPageSize = SettingsLimits.FilePageSizes[0];
+        }
+
+        FilesColumns = FilesColumns?.Where(c => !string.IsNullOrWhiteSpace(c)).Distinct(StringComparer.Ordinal).ToList()
+            ?? [.. SettingsLimits.DefaultFilesColumns];
 
         RecentInventories = (RecentInventories ?? [])
             .Where(r => r is not null && !string.IsNullOrWhiteSpace(r.Path))

@@ -3,6 +3,7 @@ using System.Windows.Input;
 using Accession.UI.App;
 using Accession.UI.Components;
 using Accession.UI.Dashboard;
+using Accession.UI.FilesScreen;
 using Accession.UI.MediaScreen;
 using Accession.UI.Shell;
 using Accession.UI.Start;
@@ -131,7 +132,8 @@ internal sealed class FakeDashboard : ObservableObject, IDashboardModel
 
 internal sealed partial class FakeShell : ObservableObject, IShellModel
 {
-    public FakeShell(FakeDashboard dashboard, bool scanning = false, bool readOnly = false, IMediaModel? media = null)
+    public FakeShell(FakeDashboard dashboard, bool scanning = false, bool readOnly = false, IMediaModel? media = null,
+        IFilesModel? files = null)
     {
         IsScanActive = scanning;
         IsReadOnly = readOnly;
@@ -139,7 +141,7 @@ internal sealed partial class FakeShell : ObservableObject, IShellModel
         [
             new ShellNavItem("Dashboard", "dashboard", "Overview", dashboard),
             new ShellNavItem("Media", "media", "Inventory", media) { Badge = media is null ? string.Empty : "5" },
-            new ShellNavItem("Files", "files", "Inventory"),
+            new ShellNavItem("Files", "files", "Inventory", files),
             new ShellNavItem("Categories", "categories", "Inventory"),
             new ShellNavItem("Scan Queue", "queue", "Scanning") { Badge = scanning ? "2" : string.Empty },
             new ShellNavItem("Errors", "errors", "Scanning") { Badge = "39" },
@@ -165,7 +167,6 @@ internal sealed partial class FakeShell : ObservableObject, IShellModel
     [ObservableProperty]
     public partial ShellNavItem SelectedItem { get; set; }
 
-    public string PendingFilterText { get; set; } = string.Empty;
     public ICommand ScanNowCommand { get; } = new RelayCommand(() => { });
     public ICommand PauseScanCommand { get; } = new RelayCommand(() => { });
     public ICommand ResumeScanCommand { get; } = new RelayCommand(() => { }, () => false);

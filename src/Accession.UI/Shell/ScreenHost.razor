@@ -8,16 +8,17 @@
         case IMediaModel media:
             <MediaPage Model="media" />
             break;
+        case IFilesModel files:
+            <FilesPage Model="files" />
+            break;
         default:
-            <ClassicOnlyPage Title="@Item.Key" Icon="@Item.Icon" FilterText="@PendingFilterText" OpenCommand="OpenInClassicCommand" />
+            <ClassicOnlyPage Title="@Item.Key" Icon="@Item.Icon" OpenCommand="OpenInClassicCommand" />
             break;
     }
 </ScreenErrorBoundary>
 
 @code {
     [Parameter, EditorRequired] public ShellNavItem Item { get; set; } = default!;
-
-    [Parameter] public string? PendingFilterText { get; set; }
 
     [Parameter, EditorRequired] public ICommand OpenInClassicCommand { get; set; } = default!;
 }

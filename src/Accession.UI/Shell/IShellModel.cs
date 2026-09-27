@@ -29,9 +29,6 @@ public interface IShellModel : INotifyPropertyChanged
     IReadOnlyList<ShellNavItem> NavItems { get; }
     ShellNavItem SelectedItem { get; set; }
 
-    /// <summary>Set when a Dashboard click-through targets a screen that is not in the web UI yet.</summary>
-    string PendingFilterText { get; }
-
     // Commands
     ICommand ScanNowCommand { get; }
     ICommand PauseScanCommand { get; }

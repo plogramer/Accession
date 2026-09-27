@@ -34,7 +34,7 @@
 
 @code {
     /// <summary>Rows-per-page choices for the Files screen (default 1,000).</summary>
-    public static readonly IReadOnlyList<int> FilePageSizes = [1_000, 2_000, 5_000, 10_000, 50_000];
+    public static readonly IReadOnlyList<int> FilePageSizes = Accession.Core.Settings.SettingsLimits.FilePageSizes;
 
     /// <summary>Zero-based current page.</summary>
     [Parameter] public int PageIndex { get; set; }

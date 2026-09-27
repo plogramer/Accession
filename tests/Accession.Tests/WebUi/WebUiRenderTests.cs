@@ -66,15 +66,14 @@ public sealed class WebUiRenderTests
     }
 
     [Fact]
-    public async Task Screen_not_in_web_ui_offers_the_classic_screen_with_the_pending_filter()
+    public async Task Screen_not_in_web_ui_offers_the_classic_screen()
     {
-        var shell = new FakeShell(new FakeDashboard()) { PendingFilterText = "Media 123-123_001 · Email" };
-        shell.SelectedItem = shell.NavItems.First(n => n.Key == "Files");
+        var shell = new FakeShell(new FakeDashboard());
+        shell.SelectedItem = shell.NavItems.First(n => n.Key == "Categories");
 
         var html = await RenderAsync(shell, "classic-only");
 
         Assert.Contains("Open in classic UI", html);
-        Assert.Contains("Media 123-123_001", html); // the separator is HTML-encoded
         Assert.DoesNotContain("By media", html);
     }
 

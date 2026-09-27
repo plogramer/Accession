@@ -29,7 +29,7 @@
             {
                 <tr><td colspan="@Math.Max(1, _columns.Count)" class="empty-row">@(IsLoading ? LoadingText : EmptyText)</td></tr>
             }
-            else if (Virtualize)
+            else if (Virtualize && Items.Count > VirtualizeAbove)
             {
                 <Virtualize TItem="TItem" Items="ItemCollection" Context="item" ItemSize="RowHeight" OverscanCount="30" SpacerElement="tr">
                     @RenderRow(item)
@@ -76,6 +76,9 @@
     [Parameter] public bool Virtualize { get; set; }
 
     [Parameter] public float RowHeight { get; set; } = 41;
+
+    /// <summary>Smaller lists render every row (no scroll bookkeeping needed).</summary>
+    [Parameter] public int VirtualizeAbove { get; set; } = 300;
 
     /// <summary>CSS max-height; the table scrolls inside with a sticky header.</summary>
     [Parameter] public string? MaxHeight { get; set; }

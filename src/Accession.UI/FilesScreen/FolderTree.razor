@@ -1,0 +1,39 @@
+@inherits ObservingComponentBase
+
+@foreach (var node in Nodes)
+{
+    var selected = ReferenceEquals(node, Model.SelectedFolder);
+    <div class="tree-row @(selected ? "is-selected" : null)" style="padding-left:@(node.Depth * 16 + 6)px" title="@node.Info.Name"
+         role="treeitem" aria-selected="@(selected ? "true" : "false")" aria-expanded="@(node.Info.HasChildren ? (node.IsExpanded ? "true" : "false") : null)"
+         @onclick="() => Model.SelectedFolder = node">
+        @if (node.Info.HasChildren)
+        {
+            <button class="tree-toggle @(node.IsExpanded ? "is-open" : null)" title="@(node.IsExpanded ? "Collapse" : "Expand")"
+                    @onclick="() => node.IsExpanded = !node.IsExpanded" @onclick:stopPropagation="true">
+                <Icon Name="chevron-right" Size="14" />
+            </button>
+        }
+        else
+        {
+            <span class="tree-toggle"></span>
+        }
+        <Icon Name="@(node.Depth == 0 ? "media" : node.IsExpanded ? "folder-open" : "files")" Size="15" Class="tree-icon" />
+        <span class="tree-name">@node.Info.Name</span>
+        @if (node.Info.IsLink)
+        {
+            <span class="chip" title="Link or junction; not followed">link</span>
+        }
+    </div>
+    @if (node.IsExpanded && node.Children.Count > 0)
+    {
+        <FolderTree Nodes="node.Children" Model="Model" />
+    }
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<FolderTreeNode> Nodes { get; set; } = [];
+
+    [Parameter, EditorRequired] public IFilesModel Model { get; set; } = default!;
+
+    protected override void OnParametersSet() => Observe([Nodes, .. Nodes]);
+}
