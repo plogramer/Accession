@@ -96,5 +96,7 @@ public sealed class ShortcutsTests
         public ICommand NewInventoryCommand => newInventory;
         public ICommand OpenInventoryCommand => inner.OpenInventoryCommand;
         public ICommand OpenSettingsCommand => inner.OpenSettingsCommand;
+
+        public void PageRendered() => inner.PageRendered();
     }
 }

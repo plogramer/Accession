@@ -18,4 +18,16 @@ public sealed class WindowsDesktop : IDesktop
     public void OpenUrl(string url) => Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
 
     public void RequestExit() => Application.Current.MainWindow?.Close();
+
+    public string? WebViewRuntimeVersion()
+    {
+        try
+        {
+            return Microsoft.Web.WebView2.Core.CoreWebView2Environment.GetAvailableBrowserVersionString();
+        }
+        catch (Microsoft.Web.WebView2.Core.WebView2RuntimeNotFoundException)
+        {
+            return null;
+        }
+    }
 }

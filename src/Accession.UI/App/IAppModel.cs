@@ -29,6 +29,9 @@ public interface IAppModel : INotifyPropertyChanged
     /// <summary>Switches back to the classic (WPF) screens.</summary>
     ICommand SwitchToClassicCommand { get; }
 
+    /// <summary>Called by the page after its first render (the host's start-up check).</summary>
+    void PageRendered();
+
     // Keyboard shortcuts (Ctrl+N, Ctrl+O, Ctrl+,)
     ICommand NewInventoryCommand { get; }
     ICommand OpenInventoryCommand { get; }

@@ -7,10 +7,29 @@
     <base href="/" />
     <link rel="stylesheet" href="_content/Accession.UI/css/accession.css" />
 </head>
-<body>
-    <div id="app"></div>
+<!-- Inline styles so the start-up text and errors are readable even if the stylesheet does not load. -->
+<body style="margin:0;background:#0f1422;color:#c3c9d8;font-family:'Segoe UI',system-ui,sans-serif">
+    <div id="app">
+        <p style="padding:24px;margin:0">Starting the new UI…</p>
+    </div>
 
-    <div id="blazor-error-ui">
+    <div id="page-errors" style="position:fixed;left:0;right:0;bottom:0;margin:0;padding:0 16px;color:#ffb3c4;background:#2a0f18;font:12px Consolas,monospace;white-space:pre-wrap"></div>
+    <script>
+        // Shows script errors as text, so a failure never looks like an empty window.
+        (function () {
+            var box = document.getElementById("page-errors");
+            function show(message) {
+                var line = document.createElement("div");
+                line.textContent = message;
+                line.style.padding = "4px 0";
+                box.appendChild(line);
+            }
+            window.addEventListener("error", function (e) { show("Error: " + (e.message || e.type) + (e.filename ? " (" + e.filename + ")" : "")); }, true);
+            window.addEventListener("unhandledrejection", function (e) { show("Error: " + (e.reason && e.reason.message || e.reason)); });
+        })();
+    </script>
+
+    <div id="blazor-error-ui" style="display:none">
         Something went wrong in the page. The details are in the log.
         <a href="" class="reload">Reload</a>
         <span class="dismiss">✕</span>

@@ -57,6 +57,8 @@ public sealed class RecordingDesktop : IDesktop
     public void RequestExit()
     {
     }
+
+    public string? WebViewRuntimeVersion() => "130.0.0.0";
 }
 
 /// <summary>Dialogs that fail the test if shown (and a folder picker returning a set folder).</summary>

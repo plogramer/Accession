@@ -16,4 +16,7 @@ public interface IDesktop
 
     /// <summary>Closes the main window, which runs the normal close flow.</summary>
     void RequestExit();
+
+    /// <summary>Installed WebView2 runtime version (needed by the web UI), or null when it is missing.</summary>
+    string? WebViewRuntimeVersion();
 }

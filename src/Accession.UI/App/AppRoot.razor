@@ -62,8 +62,16 @@
     {
         if (firstRender)
         {
+            Model.PageRendered();
             _self = DotNetObjectReference.Create(this);
-            await JS.InvokeVoidAsync("accession.registerShortcuts", _self);
+            try
+            {
+                await JS.InvokeVoidAsync("accession.registerShortcuts", _self);
+            }
+            catch (JSException)
+            {
+                // accession.js did not load: the page works without keyboard shortcuts
+            }
         }
     }
 

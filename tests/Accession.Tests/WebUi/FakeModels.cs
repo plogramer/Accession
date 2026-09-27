@@ -198,6 +198,10 @@ internal sealed partial class FakeApp(object screen) : ObservableObject, IAppMod
     public ICommand NewInventoryCommand { get; } = new RelayCommand(() => { });
     public ICommand OpenInventoryCommand { get; } = new RelayCommand(() => { });
     public ICommand OpenSettingsCommand { get; } = new RelayCommand(() => { });
+
+    public void PageRendered()
+    {
+    }
 }
 
 internal sealed class FakeStart : ObservableObject, IStartModel

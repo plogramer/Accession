@@ -79,6 +79,14 @@ public sealed class WebAppViewModel : ViewModelBase, IAppModel
 
     public ICommand OpenSettingsCommand => _main.OpenSettingsCommand;
 
+    /// <summary>The page rendered at least once (the web view works).</summary>
+    public bool IsPageRendered { get; private set; }
+
+    public void PageRendered() => IsPageRendered = true;
+
+    /// <summary>The web view did not start: go back to the classic screens and tell the user.</summary>
+    public void ReportStartFailure(string message) => _main.WebUiFailed(message);
+
     public override void OnNavigatedTo()
     {
         _host.SessionChanged += OnSessionChanged;

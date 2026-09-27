@@ -122,6 +122,16 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     /// </summary>
     public Task<bool> PrepareCloseAsync() => _workflows.CloseInventoryAsync();
 
+    /// <summary>The web UI could not start: switch to the classic screens and explain why.</summary>
+    public void WebUiFailed(string message)
+    {
+        _ui.Defer(() =>
+        {
+            UseWebUi = false;
+            _dialogs.ShowWarning("New UI", message); // UseWebUi is off now, so this is a classic message box
+        });
+    }
+
     /// <summary>
     /// Leaves the web UI for the classic screens, optionally opening a screen (navigation title) or the Files screen
     /// with a filter. Deferred, because it is called from inside a web view event and replaces the web view.
@@ -212,6 +222,15 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     private void ShowScreenForSession()
     {
+        if (UseWebUi && _desktop.WebViewRuntimeVersion() is null)
+        {
+            _settings.Update(s => s.UseWebUi = false);
+            OnPropertyChanged(nameof(UseWebUi));
+            _dialogs.ShowWarning("New UI",
+                "The new UI needs the Microsoft Edge WebView2 Runtime, which is not installed on this computer. " +
+                "Accession is using the classic screens.\n\nInstall it from https://go.microsoft.com/fwlink/p/?LinkId=2124703 and try again.");
+        }
+
         if (UseWebUi)
         {
             // One web page for Start and the inventory shell; it follows session changes itself.
