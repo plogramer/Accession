@@ -1,6 +1,8 @@
 # 002 – Web-style UI (Blazor Hybrid) – plan
 
-Status: **prototype built** (shell + Dashboard, #65). Tracked by epic #64.
+Status: **all screens and dialogs are in the web UI** (#65–#73). Tracked by epic #64. The classic screens are still
+available (View → New UI (preview) off, or "Classic UI" in the page) until the switch-over (#74), which waits for a
+check on Windows.
 
 ## 1. Goal
 
