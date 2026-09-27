@@ -2,8 +2,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Accession.App.Mvvm;
 
-/// <summary>Base class for all view models.</summary>
-public abstract class ViewModelBase : ObservableObject
+/// <summary>Base class for all view models. Supports data-annotation validation (INotifyDataErrorInfo).</summary>
+public abstract class ViewModelBase : ObservableValidator
 {
     /// <summary>Called when the navigation service makes this view model the current screen.</summary>
     public virtual void OnNavigatedTo()

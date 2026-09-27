@@ -94,6 +94,8 @@ public partial class App : Application
         // View models and windows
         builder.Services.AddSingleton<MainWindowViewModel>();
         builder.Services.AddTransient<HomeViewModel>();
+        builder.Services.AddTransient<SettingsViewModel>();
+        builder.Services.AddSingleton<Func<SettingsViewModel>>(sp => sp.GetRequiredService<SettingsViewModel>);
         builder.Services.AddSingleton<MainWindow>();
 
         return builder.Build();

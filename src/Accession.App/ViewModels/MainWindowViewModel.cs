@@ -9,10 +9,18 @@ namespace Accession.App.ViewModels;
 public sealed partial class MainWindowViewModel : ViewModelBase
 {
     private readonly INavigationService _navigation;
+    private readonly IDialogService _dialogs;
+    private readonly Func<SettingsViewModel> _settingsViewModelFactory;
 
-    public MainWindowViewModel(INavigationService navigation, BusyTracker busy)
+    public MainWindowViewModel(
+        INavigationService navigation,
+        IDialogService dialogs,
+        Func<SettingsViewModel> settingsViewModelFactory,
+        BusyTracker busy)
     {
         _navigation = navigation;
+        _dialogs = dialogs;
+        _settingsViewModelFactory = settingsViewModelFactory;
         Busy = busy;
         _navigation.CurrentChanged += (_, _) => OnPropertyChanged(nameof(CurrentScreen));
     }
@@ -30,6 +38,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 #endif
 
     public void Initialize() => _navigation.NavigateTo<HomeViewModel>();
+
+    [RelayCommand]
+    private void OpenSettings() => _dialogs.ShowDialog(_settingsViewModelFactory());
 
     [RelayCommand]
     private void CancelBusy() => Busy.Cancel();

@@ -6,5 +6,9 @@
         <TextBlock Text="{Binding Tagline}" FontSize="16" Margin="0,8,0,0" HorizontalAlignment="Center" />
         <TextBlock Text="{Binding Version, StringFormat=Version {0}}" Margin="0,24,0,0" HorizontalAlignment="Center"
                    Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" />
+        <TextBlock Text="{Binding SampleSize}" Margin="0,8,0,0" HorizontalAlignment="Center"
+                   Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" />
+        <Button Content="Settings…" Command="{Binding OpenSettingsCommand}" HorizontalAlignment="Center"
+                MinWidth="100" Margin="0,16,0,0" />
     </StackPanel>
 </UserControl>
