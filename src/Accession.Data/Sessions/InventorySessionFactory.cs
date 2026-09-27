@@ -34,9 +34,9 @@ public sealed class InventorySessionFactory
     }
 
     /// <summary>Session for a database whose lock is already held by <paramref name="lockService"/>. Starts the heartbeat.</summary>
-    internal static InventorySession CreateLocked(InventoryDatabase database, AuditService audit, InventoryLockService lockService)
+    internal InventorySession CreateLocked(InventoryDatabase database, AuditService audit, InventoryLockService lockService)
     {
-        var session = new InventorySession(database, audit, lockService);
+        var session = new InventorySession(database, audit, lockService, _user.UserName);
         lockService.StartHeartbeat();
         return session;
     }
@@ -44,6 +44,6 @@ public sealed class InventorySessionFactory
     internal InventorySession CreateReadOnly(string path)
     {
         var database = new InventoryDatabase(path, isReadOnly: true);
-        return new InventorySession(database, new AuditService(database, _user, _timeProvider), lockService: null);
+        return new InventorySession(database, new AuditService(database, _user, _timeProvider), lockService: null, _user.UserName);
     }
 }

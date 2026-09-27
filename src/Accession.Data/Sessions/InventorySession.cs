@@ -11,8 +11,9 @@ public sealed class InventorySession : IDisposable
     private readonly Lock _gate = new();
     private bool _closed;
 
-    internal InventorySession(InventoryDatabase database, IAuditService audit, InventoryLockService? lockService)
+    internal InventorySession(InventoryDatabase database, IAuditService audit, InventoryLockService? lockService, string userName)
     {
+        UserName = userName;
         Database = database;
         Audit = audit;
         LockService = lockService;
@@ -27,6 +28,9 @@ public sealed class InventorySession : IDisposable
     }
 
     public InventoryDatabase Database { get; }
+
+    /// <summary><c>DOMAIN\user</c> of the person using this session.</summary>
+    public string UserName { get; }
 
     public string DbPath => Database.Path;
 

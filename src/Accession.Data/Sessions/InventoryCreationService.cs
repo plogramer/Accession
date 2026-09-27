@@ -70,6 +70,6 @@ public sealed class InventoryCreationService
             throw new InvalidOperationException("The new inventory was opened by someone else before it could be locked.");
         }
 
-        return InventorySessionFactory.CreateLocked(database, audit, lockService);
+        return _factory.CreateLocked(database, audit, lockService);
     }
 }

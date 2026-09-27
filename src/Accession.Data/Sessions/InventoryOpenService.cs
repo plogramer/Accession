@@ -122,7 +122,7 @@ public sealed class InventoryOpenService
                 transaction.Commit();
             }
 
-            return InventorySessionFactory.CreateLocked(database, audit, lockService);
+            return _factory.CreateLocked(database, audit, lockService);
         }
         catch
         {
