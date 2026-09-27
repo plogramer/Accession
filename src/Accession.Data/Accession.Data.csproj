@@ -11,6 +11,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Schema\*.sql" LogicalName="Accession.Data.Schema.%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Accession.Core\Accession.Core.csproj" />
   </ItemGroup>
 

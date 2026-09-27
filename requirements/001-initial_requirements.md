@@ -370,6 +370,7 @@ CREATE TABLE Media (
     MediaId             TEXT    NOT NULL COLLATE NOCASE,   -- folder name
     RelativePath        TEXT    NOT NULL COLLATE NOCASE,   -- \123-123_001\
     Status              TEXT    NOT NULL,                  -- see 5.4
+    StatusBeforeMissing TEXT,                              -- restored when a Missing folder reappears (DSC-03)
     AddedAtUtc          TEXT    NOT NULL,
     AddedBy             TEXT    NOT NULL,
     ScanCount           INTEGER NOT NULL DEFAULT 0,
