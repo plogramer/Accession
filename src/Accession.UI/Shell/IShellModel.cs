@@ -13,6 +13,9 @@ public interface IShellModel : INotifyPropertyChanged
     string ClientName { get; }
     string MatterName { get; }
     string MatterCode { get; }
+
+    /// <summary>The matter's web link (http/https), or empty when there is none.</summary>
+    string MatterUrl { get; }
     string UserName { get; }
     string RootPath { get; }
     string SchemaText { get; }

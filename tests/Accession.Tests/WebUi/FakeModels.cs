@@ -167,6 +167,7 @@ internal sealed partial class FakeShell : ObservableObject, IShellModel
     public string ClientName => "Northwind Holdings";
     public string MatterName => "Northwind v. Contoso Ltd.";
     public string MatterCode => "NW-2026-0142";
+    public string MatterUrl { get; init; } = "https://dms.northwind.example/matters/NW-2026-0142";
     public string UserName => @"LITSUPPORT\jane.doe";
     public string RootPath => @"\\evidence01\intake\NW-2026-0142";
     public string SchemaText => "Schema v1";

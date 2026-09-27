@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Globalization;
 using System.Windows.Input;
+using Accession.Core.Inventories;
 using Accession.Data.Browsing;
 using Accession.Data.Schema;
 using Accession.Presentation.Mvvm;
@@ -89,6 +90,8 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
     public string MatterName => _host.Config?.MatterName ?? string.Empty;
 
     public string MatterCode => _host.Config?.MatterCode ?? string.Empty;
+
+    public string MatterUrl => _host.Config?.MatterUrl is { } url && InventoryValidation.IsWebUrl(url) ? url : string.Empty;
 
     public string UserName => _host.Session?.UserName ?? Environment.UserName;
 

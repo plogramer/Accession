@@ -55,6 +55,19 @@ public sealed class WebUiRenderTests
     }
 
     [Fact]
+    public async Task Matter_link_shows_next_to_the_matter_when_set()
+    {
+        var html = await RenderAsync(new FakeShell(new FakeDashboard()));
+
+        Assert.Contains("class=\"matter-link\"", html);
+        Assert.Contains("Open the matter link: https://dms.northwind.example/matters/NW-2026-0142", html);
+        Assert.Contains(">dms.northwind.example<", html);
+
+        var without = await RenderAsync(new FakeShell(new FakeDashboard()) { MatterUrl = string.Empty });
+        Assert.DoesNotContain("class=\"matter-link\"", without);
+    }
+
+    [Fact]
     public async Task Dark_theme_sets_the_theme_attribute()
     {
         var html = await RenderAsync(new FakeApp(new FakeShell(new FakeDashboard())) { Theme = "dark" }, "dashboard-dark");

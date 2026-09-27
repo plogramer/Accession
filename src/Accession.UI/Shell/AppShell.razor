@@ -46,6 +46,13 @@
                 <div class="matter-title">
                     <h1>@Model.MatterName</h1>
                     <span class="matter-code">@Model.MatterCode</span>
+                    @if (!string.IsNullOrEmpty(Model.MatterUrl))
+                    {
+                        <button class="matter-link" title="Open the matter link: @Model.MatterUrl" aria-label="Open the matter link"
+                                @onclick="() => Run(Model.OpenMatterLinkCommand)">
+                            <Icon Name="external" Size="14" /> <span class="truncate">@LinkText</span>
+                        </button>
+                    }
                 </div>
             </div>
 
@@ -138,6 +145,9 @@
 
 @code {
     [Parameter, EditorRequired] public IShellModel Model { get; set; } = default!;
+
+    /// <summary>The link's host ("dms.contoso.com"), short enough for the top bar; the full address is in the tooltip.</summary>
+    private string LinkText => Uri.TryCreate(Model.MatterUrl, UriKind.Absolute, out var uri) ? uri.Host : "Matter link";
 
     private string Initials
     {
