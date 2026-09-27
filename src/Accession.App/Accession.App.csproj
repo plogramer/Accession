@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>Accession</AssemblyName>
+    <RootNamespace>Accession.App</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Accession.Core\Accession.Core.csproj" />
+    <ProjectReference Include="..\Accession.Data\Accession.Data.csproj" />
+  </ItemGroup>
+
+</Project>
