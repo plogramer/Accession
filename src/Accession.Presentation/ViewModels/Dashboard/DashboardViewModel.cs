@@ -32,6 +32,8 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDashboardModel,
     private readonly ISettingsService _settings;
     private readonly ILogger<DashboardViewModel> _logger;
     private readonly FileBrowserNavigator _navigator;
+    private readonly TimeProvider _time;
+    private CancellationTokenSource? _reloadDelay;
     private IReadOnlyList<CategoryTotal> _categoryTotals = [];
     private CancellationTokenSource? _loadCancel;
     private IReadOnlyList<ExtensionRowVm> _allExtensions = [];
@@ -39,11 +41,15 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDashboardModel,
     private bool? _lastScanBusy;
     private (SizeUnitSystem Unit, DisplayTimeZone Zone) _displaySettings;
 
+    /// <summary>Wait after a selection change before reloading, so ticking several media reloads once.</summary>
+    public static readonly TimeSpan ReloadDelay = TimeSpan.FromMilliseconds(300);
+
     public DashboardViewModel(InventoryHost host, ScanHost scans, DashboardQueries queries, ISettingsService settings,
         FileBrowserNavigator navigator, ILogger<DashboardViewModel> logger,
-        IUiDispatcher ui)
+        IUiDispatcher ui, TimeProvider time)
     {
         _ui = ui;
+        _time = time;
         _navigator = navigator;
         _host = host;
         _scans = scans;
@@ -58,6 +64,9 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDashboardModel,
         _ = ReloadAsync();
     }
 
+    /// <summary>The latest dashboard load (for tests).</summary>
+    internal Task LastLoad { get; private set; } = Task.CompletedTask;
+
     // ---- Filter ----
 
     public ObservableCollection<MediaFilterItem> MediaFilter { get; } = [];
@@ -70,9 +79,36 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDashboardModel,
         get
         {
             var selected = MediaFilter.Count(m => m.IsChecked);
-            return selected == MediaFilter.Count ? "All media" : selected == 1 ? MediaFilter.First(m => m.IsChecked).MediaId : $"{selected} of {MediaFilter.Count} media";
+            return selected == MediaFilter.Count ? "All media"
+                : selected == 0 ? "No media selected"
+                : selected == 1 ? MediaFilter.First(m => m.IsChecked).MediaId
+                : $"{selected} of {MediaFilter.Count} media";
         }
     }
+
+    /// <summary>Narrows the filter list by Media ID; Select all / Unselect all apply to the media shown.</summary>
+    [ObservableProperty]
+    public partial string MediaSearch { get; set; } = string.Empty;
+
+    public IReadOnlyList<MediaFilterItem> VisibleMediaFilter
+    {
+        get
+        {
+            var search = MediaSearch.Trim();
+            return search.Length == 0
+                ? MediaFilter
+                : [.. MediaFilter.Where(m => m.MediaId.Contains(search, StringComparison.OrdinalIgnoreCase))];
+        }
+    }
+
+    public string SelectionSummary => $"{MediaFilter.Count(m => m.IsChecked):N0} of {MediaFilter.Count:N0} selected";
+
+    public bool AllMediaSelected => MediaFilter.All(m => m.IsChecked);
+
+    public bool NoMediaSelected => MediaFilter.Count > 0 && MediaFilter.All(m => !m.IsChecked);
+
+    /// <summary>Subtitle of the Media tile.</summary>
+    public string MediaNote => AllMediaSelected ? "in this inventory" : $"selected of {MediaFilter.Count:N0}";
 
     // ---- State ----
 
@@ -141,6 +177,9 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDashboardModel,
 
     ICommand IRefreshableScreen.RefreshCommand => RefreshCommand;
     ICommand IDashboardModel.SelectAllMediaCommand => SelectAllMediaCommand;
+    ICommand IDashboardModel.UnselectAllMediaCommand => UnselectAllMediaCommand;
+    ICommand IDashboardModel.SelectOnlyMediaCommand => SelectOnlyMediaCommand;
+    ICommand IDashboardModel.ToggleAllMediaCommand => ToggleAllMediaCommand;
     ICommand IDashboardModel.ClearCategoryCommand => ClearCategoryCommand;
     ICommand IDashboardModel.OpenMediaCommand => OpenMediaCommand;
     ICommand IDashboardModel.OpenCategoryCommand => OpenCategoryCommand;
@@ -154,14 +193,33 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDashboardModel,
         _host.MediaChanged -= OnMediaChanged;
         _scans.PropertyChanged -= OnScansChanged;
         _settings.SettingsChanged -= OnSettingsChanged;
+        _reloadDelay?.Cancel();
         _loadCancel?.Cancel();
     }
 
     [RelayCommand]
     private Task Refresh() => ReloadAsync();
 
+    /// <summary>Selects the media shown in the filter list (all of them unless searching).</summary>
     [RelayCommand]
-    private void SelectAllMedia() => SetAllMedia(true);
+    private void SelectAllMedia() => SetMedia(VisibleMediaFilter, true);
+
+    /// <summary>Unselects the media shown in the filter list (all of them unless searching).</summary>
+    [RelayCommand]
+    private void UnselectAllMedia() => SetMedia(VisibleMediaFilter, false);
+
+    [RelayCommand]
+    private void SelectOnlyMedia(MediaFilterItem? item)
+    {
+        if (item is not null)
+        {
+            SetMedia(MediaFilter, false, item);
+        }
+    }
+
+    /// <summary>The By media table's header checkbox: everything, or nothing when everything is selected.</summary>
+    [RelayCommand]
+    private void ToggleAllMedia() => SetMedia(MediaFilter, !AllMediaSelected);
 
     [RelayCommand]
     private void ClearCategory() => SelectedCategory = null;
@@ -221,11 +279,16 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDashboardModel,
     [RelayCommand]
     private void OpenDuplicates() => _navigator.ShowFiles(WithMedia(new FileFilter { DuplicatesOnly = true }));
 
-    /// <summary>Carries a single selected media into the File browser filter.</summary>
+    /// <summary>Carries the media selection into the File browser filter.</summary>
     private FileFilter WithMedia(FileFilter filter)
     {
-        var selected = MediaFilter.Where(m => m.IsChecked).ToList();
-        return selected.Count == 1 && selected.Count != MediaFilter.Count ? filter with { MediaKey = selected[0].MediaKey } : filter;
+        if (AllMediaSelected)
+        {
+            return filter;
+        }
+
+        var selected = MediaFilter.Where(m => m.IsChecked).Select(m => m.MediaKey).ToList();
+        return selected.Count == 1 ? filter with { MediaKey = selected[0] } : filter with { MediaKeys = selected };
     }
 
     partial void OnSelectedCategoryChanged(BarRow? value)
@@ -236,17 +299,20 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDashboardModel,
 
     partial void OnExtensionSearchChanged(string value) => ApplyExtensionFilter();
 
-    private void SetAllMedia(bool isChecked)
+    /// <summary>Sets <paramref name="items"/> to <paramref name="isChecked"/> (and <paramref name="except"/> to the opposite), then reloads once.</summary>
+    private void SetMedia(IReadOnlyList<MediaFilterItem> items, bool isChecked, MediaFilterItem? except = null)
     {
         _updatingFilter = true;
-        foreach (var item in MediaFilter)
+        foreach (var item in items)
         {
-            item.IsChecked = isChecked;
+            item.IsChecked = ReferenceEquals(item, except) ? !isChecked : isChecked;
         }
 
         _updatingFilter = false;
         OnFilterChanged();
     }
+
+    partial void OnMediaSearchChanged(string value) => OnPropertyChanged(nameof(VisibleMediaFilter));
 
     private void LoadMediaFilter()
     {
@@ -276,7 +342,8 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDashboardModel,
             _logger.LogError(ex, "Loading the media filter failed");
         }
 
-        OnPropertyChanged(nameof(FilterText));
+        OnSelectionChanged();
+        OnPropertyChanged(nameof(VisibleMediaFilter));
     }
 
     private void OnFilterItemChanged(object? sender, PropertyChangedEventArgs e)
@@ -289,14 +356,51 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDashboardModel,
 
     private void OnFilterChanged()
     {
-        OnPropertyChanged(nameof(FilterText));
-        _ = ReloadAsync();
+        OnSelectionChanged();
+        LastLoad = ReloadAfterDelayAsync();
     }
 
-    private DashboardFilter CurrentFilter() =>
-        MediaFilter.All(m => m.IsChecked) ? DashboardFilter.All : new DashboardFilter(MediaFilter.Where(m => m.IsChecked).Select(m => m.MediaKey).ToList());
+    private void OnSelectionChanged()
+    {
+        OnPropertyChanged(nameof(FilterText));
+        OnPropertyChanged(nameof(SelectionSummary));
+        OnPropertyChanged(nameof(AllMediaSelected));
+        OnPropertyChanged(nameof(NoMediaSelected));
+        OnPropertyChanged(nameof(MediaNote));
+    }
 
-    private async Task ReloadAsync()
+    private async Task ReloadAfterDelayAsync()
+    {
+        _reloadDelay?.Cancel();
+        var delay = new CancellationTokenSource();
+        _reloadDelay = delay;
+        try
+        {
+            await Task.Delay(ReloadDelay, _time, delay.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return; // another change came in: that one reloads
+        }
+
+        await ReloadAsync();
+    }
+
+    /// <summary>The query filter, or null when no media is selected.</summary>
+    private DashboardFilter? CurrentFilter() =>
+        AllMediaSelected ? DashboardFilter.All
+        : NoMediaSelected ? null
+        : new DashboardFilter(MediaFilter.Where(m => m.IsChecked).Select(m => m.MediaKey).ToList());
+
+    private Task ReloadAsync()
+    {
+        _reloadDelay?.Cancel();
+        var load = ReloadCoreAsync();
+        LastLoad = load;
+        return load;
+    }
+
+    private async Task ReloadCoreAsync()
     {
         if (_host.Session is not { } session)
         {
@@ -313,15 +417,16 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDashboardModel,
         var zone = _settings.Current.DisplayTimeZone;
         LoadError = string.Empty;
 
-        // Fast part: Media totals and extension summaries (DSH-11).
+        // Fast part: Media totals and extension summaries (DSH-11). The By media table always lists every media,
+        // so media can be ticked there; everything else follows the selection.
         IsLoading = true;
         try
         {
             var fast = await Task.Run(() => (
-                Summary: _queries.Summary(database, filter, token),
-                Media: _queries.ByMedia(database, filter, token),
-                Categories: _queries.ByCategory(database, filter, token),
-                Extensions: _queries.ByExtension(database, filter, token)), token);
+                Summary: filter is null ? null : _queries.Summary(database, filter, token),
+                Media: _queries.ByMedia(database, DashboardFilter.All, token),
+                Categories: filter is null ? [] : _queries.ByCategory(database, filter, token),
+                Extensions: filter is null ? [] : _queries.ByExtension(database, filter, token)), token);
             if (token.IsCancellationRequested)
             {
                 return;
@@ -345,6 +450,12 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDashboardModel,
             {
                 IsLoading = false;
             }
+        }
+
+        if (filter is null)
+        {
+            ClearSlow(string.Empty);
+            return;
         }
 
         // Background part: File-table queries. Skipped while a scan runs: long reads would make the scan's
@@ -393,23 +504,25 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDashboardModel,
         }
     }
 
-    private void ShowFast(DashboardSummary s, IReadOnlyList<DashboardMediaRow> media, IReadOnlyList<CategoryTotal> categories,
+    private void ShowFast(DashboardSummary? s, IReadOnlyList<DashboardMediaRow> media, IReadOnlyList<CategoryTotal> categories,
         IReadOnlyList<ExtensionTotal> extensions, SizeUnitSystem unit, DisplayTimeZone zone)
     {
         var culture = CultureInfo.CurrentCulture;
-        MediaCount = s.MediaCount.ToString("N0", culture);
-        FolderCount = s.FolderCount.ToString("N0", culture);
-        FileCount = s.FileCount.ToString("N0", culture);
-        TotalSize = SizeFormatter.Format(s.TotalBytes, unit);
-        HashedPercent = s.FileCount == 0 ? "—" : $"{Math.Floor(1000d * s.HashedCount / s.FileCount) / 10:0.0} %";
-        ErrorCount = s.ErrorCount.ToString("N0", culture);
+        MediaCount = s?.MediaCount.ToString("N0", culture) ?? "0";
+        FolderCount = s?.FolderCount.ToString("N0", culture) ?? "0";
+        FileCount = s?.FileCount.ToString("N0", culture) ?? "—";
+        TotalSize = s is null ? "—" : SizeFormatter.Format(s.TotalBytes, unit);
+        HashedPercent = s is null || s.FileCount == 0 ? "—" : $"{Math.Floor(1000d * s.HashedCount / s.FileCount) / 10:0.0} %";
+        ErrorCount = s?.ErrorCount.ToString("N0", culture) ?? "—";
 
+        var selection = MediaFilter.ToDictionary(m => m.MediaKey);
         ByMedia.Clear();
         foreach (var m in media)
         {
             var scanned = m.ScanCount > 0 || m.FileCount > 0;
             ByMedia.Add(new DashboardMediaRowVm
             {
+                Selection = selection.GetValueOrDefault(m.MediaKey),
                 MediaKey = m.MediaKey,
                 MediaId = m.MediaId,
                 Status = MediaRowViewModel.Humanize(m.Status),
@@ -423,10 +536,20 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDashboardModel,
                 FileCount = m.FileCount,
                 TotalBytes = m.TotalBytes,
                 HashedRatio = !scanned ? 0 : m.FileCount == 0 ? 1 : (double)m.HashedCount / m.FileCount,
+                Duplicates = selection.GetValueOrDefault(m.MediaKey) is { IsChecked: true } ? "…" : "—",
             });
         }
 
         _categoryTotals = categories;
+        if (categories.Count == 0)
+        {
+            ByCategory.Clear();
+            _allExtensions = [];
+            SelectedCategory = null;
+            ApplyExtensionFilter();
+            return;
+        }
+
         var totalFiles = Math.Max(1, categories.Sum(c => c.FileCount));
         var totalBytes = Math.Max(1, categories.Sum(c => c.TotalBytes));
         var maxBytes = Math.Max(1, categories.Max(c => c.TotalBytes));
@@ -444,6 +567,21 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDashboardModel,
             SizeFormatter.Format(e.TotalBytes, unit), Percent(e.TotalBytes, extensionBytes), e.FileCount, e.TotalBytes)).ToList();
         SelectedCategory = ByCategory.FirstOrDefault(c => c.Label == selected);
         ApplyExtensionFilter();
+    }
+
+    /// <summary>Empties the background sections (no media selected).</summary>
+    private void ClearSlow(string note)
+    {
+        UniqueFiles = DuplicateFiles = "—";
+        DuplicateSize = string.Empty;
+        DuplicateNote = note;
+        foreach (var row in ByMedia)
+        {
+            row.Duplicates = "—";
+        }
+
+        ByYear.Clear();
+        LargestFiles.Clear();
     }
 
     private void ShowSlow(DuplicateSummary d, IReadOnlyList<MediaDuplicates> perMedia, IReadOnlyList<YearTotal> years,

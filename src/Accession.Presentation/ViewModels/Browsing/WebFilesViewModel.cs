@@ -48,6 +48,11 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
     private CancellationTokenSource? _cancel;
     private bool _suppressApply;
     private HashSet<long> _mediaKeys = [];
+    private IReadOnlyList<SelectOption> _mediaRootOptions = [];
+    private IReadOnlyList<long>? _mediaSet;
+
+    /// <summary>Media option value for a set of media handed over by another screen.</summary>
+    public const string MediaSetValue = "set";
 
     public WebFilesViewModel(InventoryHost host, FileBrowserQueries queries, CategoryQueries categories, ISettingsService settings,
         IDesktop desktop, IDialogService dialogs, ToastService toasts, ILogger<WebFilesViewModel> logger)
@@ -198,7 +203,8 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
         try
         {
             ClearFields();
-            MediaValue = filter.MediaKey?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
+            SetMediaSet(filter.MediaKeys);
+            MediaValue = filter.MediaKeys is not null ? MediaSetValue : filter.MediaKey?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
             CategoryValue = filter.CategoryId?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
             ExtensionText = filter.Extension is null ? string.Empty : filter.Extension.Length == 0 ? "(none)" : filter.Extension;
             ModifiedFromText = filter.ModifiedFrom?.UtcDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? string.Empty;
@@ -350,10 +356,36 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
         }
     }
 
+    /// <summary>
+    /// A set of media from another screen (the Dashboard's selection) is shown as an extra media option while it is in
+    /// use; choosing another media, or clearing the filters, drops it.
+    /// </summary>
+    private void SetMediaSet(IReadOnlyCollection<long>? keys)
+    {
+        _mediaSet = keys is null ? null : [.. keys];
+        UpdateMediaOptions();
+    }
+
+    private void UpdateMediaOptions()
+    {
+        MediaOptions = _mediaSet is { } set
+            ? [new(string.Empty, "All media"), new(MediaSetValue, $"{set.Count:N0} media from Dashboard"), .. _mediaRootOptions]
+            : [new(string.Empty, "All media"), .. _mediaRootOptions];
+    }
+
+    partial void OnMediaValueChanged(string value)
+    {
+        if (value != MediaSetValue && _mediaSet is not null)
+        {
+            SetMediaSet(null);
+        }
+    }
+
     private void ClearFields()
     {
         NameContains = ExtensionText = MinSizeText = MaxSizeText = Sha1Text = ModifiedFromText = ModifiedToText = string.Empty;
         MediaValue = CategoryValue = HashStatusValue = string.Empty;
+        SetMediaSet(null);
         IncludeSubfolders = true;
         DuplicatesOnly = ErrorsOnly = false;
         FilterError = string.Empty;
@@ -426,6 +458,7 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
         filter = new FileFilter
         {
             MediaKey = long.TryParse(MediaValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var mediaKey) ? mediaKey : null,
+            MediaKeys = MediaValue == MediaSetValue ? _mediaSet : null,
             FolderId = SelectedFolder?.Info.FolderId,
             IncludeSubfolders = IncludeSubfolders,
             CategoryId = int.TryParse(CategoryValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var categoryId) ? categoryId : null,
@@ -451,6 +484,11 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
         if (filter.MediaKey is { } key)
         {
             labels.Add("Media " + (MediaOptions.FirstOrDefault(o => o.Value == key.ToString(CultureInfo.InvariantCulture))?.Label ?? "?"));
+        }
+
+        if (filter.MediaKeys is { } keys)
+        {
+            labels.Add(keys.Count == 1 ? "1 media" : $"{keys.Count.ToString("N0", culture)} media");
         }
 
         if (filter.FolderId is not null && SelectedFolder is { } folder)
@@ -546,7 +584,8 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
                 Folders.Add(new FolderTreeNode(ToInfo(root), id => _queries.ChildFolders(database, id).Select(ToInfo).ToList()));
             }
 
-            MediaOptions = [new(string.Empty, "All media"), .. roots.Select(r => new SelectOption(r.MediaKey.ToString(CultureInfo.InvariantCulture), r.Name))];
+            _mediaRootOptions = [.. roots.Select(r => new SelectOption(r.MediaKey.ToString(CultureInfo.InvariantCulture), r.Name))];
+            UpdateMediaOptions();
             CategoryOptions =
             [
                 new(string.Empty, "All categories"),

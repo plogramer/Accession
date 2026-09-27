@@ -15,6 +15,9 @@ public sealed partial class MediaFilterItem(long mediaKey, string mediaId, bool 
 
 public sealed partial class DashboardMediaRowVm : ObservableObject
 {
+    /// <summary>The media's entry in the dashboard filter: ticking the row's checkbox selects the media.</summary>
+    public MediaFilterItem? Selection { get; init; }
+
     public required long MediaKey { get; init; }
     public required string MediaId { get; init; }
     public required string Status { get; init; }
@@ -31,7 +34,7 @@ public sealed partial class DashboardMediaRowVm : ObservableObject
     /// <summary>Hashed files as a fraction of all files (0–1), for progress bars.</summary>
     public double HashedRatio { get; init; }
 
-    /// <summary>Duplicates within the media; filled in when the background query finishes.</summary>
+    /// <summary>Duplicates within the media ("—" when not selected); filled in when the background query finishes.</summary>
     [ObservableProperty]
     public partial string Duplicates { get; set; } = "…";
 }

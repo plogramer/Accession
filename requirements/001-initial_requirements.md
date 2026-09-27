@@ -228,14 +228,14 @@ flowchart TD
 | ID | Requirement |
 |---|---|
 | DSH-01 | **Summary tiles**: Total Media, Total Folders, Total Files, Total Size, Hashed files (% complete), Unique Files (distinct SHA-1), Duplicate Files and Duplicate Size, Errors. |
-| DSH-02 | **Media filter**: All media (default) or a multi-selection. All dashboard sections respect the filter. |
+| DSH-02 | **Media filter**: All media (default) or a multi-selection. All dashboard sections respect the filter, except the By Media table, which always lists every media with a checkbox to select it (unselected media dimmed). The filter list also offers Select all / Unselect all (of the media shown), a Media ID search and "Only" per media. With no media selected the page says so instead of showing empty sections. Changes reload the dashboard after a short pause (about 0.3 s), so several quick ticks reload once. The selection lasts while the inventory is open. |
 | DSH-03 | **By Media** grid: Media ID, status, folders, files, size, hashed %, duplicates within media, errors, last scanned, scan count. |
 | DSH-04 | **By Category**: category, file count, size, % of files, % of size, plus a bar or donut chart. Selecting a category shows its extensions. |
 | DSH-05 | **By Extension**: extension, category, file count, size, % of size. Sortable and searchable. |
 | DSH-06 | **Duplicates** (by SHA-1, hashed files only): within each media and across media. Unique size = size counting each hash once; duplicate size = total hashed size − unique size. Files not yet hashed are excluded and the tile says so. |
 | DSH-07 | **By Year** (modified date): file count and size per year. |
 | DSH-08 | **Largest Files**: top 100 by size (Media ID, relative path, size, modified). |
-| DSH-09 | Clicking a row (media, category, extension, year) opens the **File browser** with that filter applied. |
+| DSH-09 | Clicking a row (media, category, extension, year) opens the **File browser** with that filter applied, together with the dashboard's media selection (one media or several). |
 | DSH-10 | Dashboard data is produced by **named SQL query sets** kept separate from the UI code (embedded resource files, one query per widget) so they can be replaced by the SQL queries the business owner will provide. The queries in this document are placeholders. |
 | DSH-11 | Dashboard must load in **≤ 3 seconds for 10M files** for the summary tiles, By Media, By Category and By Extension sections, using the summary tables filled at scan end (SCN-25). Duplicates, By Year and Largest Files may load in the background with a busy indicator. |
 | DSH-12 | Sizes are shown in the unit chosen in settings (section 5.11). |

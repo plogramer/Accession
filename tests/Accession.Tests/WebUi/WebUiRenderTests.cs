@@ -29,6 +29,32 @@ public sealed class WebUiRenderTests
     }
 
     [Fact]
+    public async Task By_media_table_has_a_checkbox_per_media_and_dims_unselected_ones()
+    {
+        var html = await RenderAsync(new FakeShell(new FakeDashboard(false, 4, 5)), "dashboard-selection");
+
+        Assert.Contains("Tick media to update the dashboard", html);
+        Assert.Contains("aria-label=\"Select all media\"", html);
+        Assert.Contains("aria-label=\"Include 123-124_001\"", html);
+        Assert.Equal(2, CountOf(html, "is-unselected"));
+        Assert.Contains("3 of 5 media", html);
+        Assert.Contains("selected of 5", html);
+        Assert.Contains("By category", html);
+    }
+
+    [Fact]
+    public async Task No_media_selected_explains_how_to_select_instead_of_empty_sections()
+    {
+        var html = await RenderAsync(new FakeShell(new FakeDashboard(false, 1, 2, 3, 4, 5)), "dashboard-none-selected");
+
+        Assert.Contains("No media selected", html);
+        Assert.Contains("Select all media", html);
+        Assert.Contains("123-123_001", html); // the table still lists every media
+        Assert.DoesNotContain("By category", html);
+        Assert.DoesNotContain("Largest files", html);
+    }
+
+    [Fact]
     public async Task Dark_theme_sets_the_theme_attribute()
     {
         var html = await RenderAsync(new FakeApp(new FakeShell(new FakeDashboard())) { Theme = "dark" }, "dashboard-dark");
@@ -128,6 +154,8 @@ public sealed class WebUiRenderTests
         Assert.Contains("Open read-only", html);
         Assert.False(answer.IsCompleted);
     }
+
+    private static int CountOf(string html, string text) => (html.Length - html.Replace(text, string.Empty, StringComparison.Ordinal).Length) / text.Length;
 
     private static Task<string> RenderAsync(IShellModel shell, string? previewName = null) => RenderAsync(new FakeApp(shell), previewName);
 

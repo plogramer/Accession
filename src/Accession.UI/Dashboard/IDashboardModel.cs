@@ -12,6 +12,17 @@ public interface IDashboardModel : INotifyPropertyChanged, IRefreshableScreen
     ObservableCollection<MediaFilterItem> MediaFilter { get; }
     string FilterText { get; }
 
+    /// <summary>Narrows <see cref="VisibleMediaFilter"/> by Media ID.</summary>
+    string MediaSearch { get; set; }
+    IReadOnlyList<MediaFilterItem> VisibleMediaFilter { get; }
+
+    /// <summary>"12 of 140 selected".</summary>
+    string SelectionSummary { get; }
+    bool AllMediaSelected { get; }
+
+    /// <summary>Nothing selected: the page shows a hint instead of empty sections.</summary>
+    bool NoMediaSelected { get; }
+
     // State
     bool IsLoading { get; }
     bool IsLoadingDetails { get; }
@@ -20,6 +31,7 @@ public interface IDashboardModel : INotifyPropertyChanged, IRefreshableScreen
 
     // Tiles
     string MediaCount { get; }
+    string MediaNote { get; }
     string FolderCount { get; }
     string FileCount { get; }
     string TotalSize { get; }
@@ -41,7 +53,17 @@ public interface IDashboardModel : INotifyPropertyChanged, IRefreshableScreen
     ObservableCollection<LargeFileRowVm> LargestFiles { get; }
 
     // Commands
+    /// <summary>Selects the media in <see cref="VisibleMediaFilter"/>.</summary>
     ICommand SelectAllMediaCommand { get; }
+
+    /// <summary>Unselects the media in <see cref="VisibleMediaFilter"/>.</summary>
+    ICommand UnselectAllMediaCommand { get; }
+
+    /// <summary>Selects only the given <see cref="MediaFilterItem"/>.</summary>
+    ICommand SelectOnlyMediaCommand { get; }
+
+    /// <summary>All media, or none when all are selected (the By media header checkbox).</summary>
+    ICommand ToggleAllMediaCommand { get; }
     ICommand ClearCategoryCommand { get; }
     ICommand OpenMediaCommand { get; }
     ICommand OpenCategoryCommand { get; }

@@ -160,6 +160,12 @@ public sealed class FileBrowserQueries
             p.Add("mediaKey", mediaKey);
         }
 
+        if (filter.MediaKeys is { } mediaKeys)
+        {
+            where.Append(" AND f.MediaKey IN (SELECT value FROM json_each(@mediaKeys))");
+            p.Add("mediaKeys", System.Text.Json.JsonSerializer.Serialize(mediaKeys));
+        }
+
         if (filter.FolderId is { } folderId)
         {
             if (filter.IncludeSubfolders)

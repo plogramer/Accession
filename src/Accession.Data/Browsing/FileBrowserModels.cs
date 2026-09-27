@@ -28,6 +28,9 @@ public sealed record FileFilter
 {
     public long? MediaKey { get; init; }
 
+    /// <summary>Limit to these media (e.g. the Dashboard's media selection). An empty set matches no files.</summary>
+    public IReadOnlyCollection<long>? MediaKeys { get; init; }
+
     /// <summary>Limit to this folder (and its subfolders when <see cref="IncludeSubfolders"/>).</summary>
     public long? FolderId { get; init; }
 

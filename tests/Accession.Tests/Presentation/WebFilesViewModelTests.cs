@@ -106,6 +106,54 @@ public sealed class WebFilesViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task Preset_with_several_media_from_the_dashboard()
+    {
+        using var vm = await Create();
+
+        vm.ApplyPreset(new FileFilter { MediaKeys = [_m1, _m2], Extension = "xlsx" });
+        await Idle(vm);
+
+        Assert.Equal(300, vm.TotalCount);
+        Assert.Equal(WebFilesViewModel.MediaSetValue, vm.MediaValue);
+        Assert.Contains(vm.MediaOptions, o => o.Label == "2 media from Dashboard");
+        Assert.Contains("2 media", vm.ActiveFilters);
+
+        vm.ApplyPreset(new FileFilter { MediaKeys = [_m2] });
+        await Idle(vm);
+        Assert.Equal(300, vm.TotalCount);
+        Assert.All(vm.Rows, r => Assert.Equal("M2", r.MediaId));
+    }
+
+    [Fact]
+    public async Task Empty_media_set_matches_no_files()
+    {
+        using var vm = await Create();
+
+        vm.ApplyPreset(new FileFilter { MediaKeys = [] });
+        await Idle(vm);
+
+        Assert.Equal(0, vm.TotalCount);
+    }
+
+    [Fact]
+    public async Task Choosing_another_media_or_clearing_drops_the_dashboard_media_set()
+    {
+        using var vm = await Create();
+        vm.ApplyPreset(new FileFilter { MediaKeys = [_m1, _m2] });
+        await Idle(vm);
+
+        vm.MediaValue = _m2.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        Assert.DoesNotContain(vm.MediaOptions, o => o.Value == WebFilesViewModel.MediaSetValue);
+
+        vm.ApplyPreset(new FileFilter { MediaKeys = [_m1, _m2] });
+        await Idle(vm);
+        vm.ClearFiltersCommand.Execute(null);
+        await Idle(vm);
+        Assert.DoesNotContain(vm.MediaOptions, o => o.Value == WebFilesViewModel.MediaSetValue);
+        Assert.Equal(2_800, vm.TotalCount);
+    }
+
+    [Fact]
     public async Task Sorting_by_size_descending()
     {
         using var vm = await Create();

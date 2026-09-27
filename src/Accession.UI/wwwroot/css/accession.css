@@ -478,6 +478,16 @@ button:disabled { cursor: default; opacity: .45; }
 .check-row:hover { background: var(--surface-hover); }
 .check-row input { width: 16px; height: 16px; accent-color: var(--primary); }
 
+/* A check row with its own actions (Dashboard media filter): the label takes the space, "Only" shows on hover. */
+.check-row > label { display: flex; flex: 1; align-items: center; gap: 10px; min-width: 0; cursor: pointer; }
+.check-only { visibility: hidden; font-size: 12px; }
+.check-row:hover .check-only, .check-only:focus-visible { visibility: visible; }
+
+.menu-header-actions { display: flex; gap: 12px; text-transform: none; letter-spacing: normal; }
+.menu-header .small { text-transform: none; letter-spacing: normal; font-weight: 400; }
+.search.menu-search { display: flex; margin: 0 6px 6px; }
+.search.menu-search input { flex: 1; width: auto; }
+
 /* ---------- Banners ---------- */
 
 .banner {
@@ -938,6 +948,7 @@ button:disabled { cursor: default; opacity: .45; }
 .bulk-actions + .link-btn { margin-left: auto; }
 .table .check-cell { width: 44px; padding-right: 0 !important; }
 .check-cell input { width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; }
+.table tr.is-unselected td:not(.check-cell) { opacity: .5; }
 .table tr.is-missing td { color: var(--muted); }
 .table-compact td, .table-compact th { padding-top: 7px; padding-bottom: 7px; font-size: 13px; }
 

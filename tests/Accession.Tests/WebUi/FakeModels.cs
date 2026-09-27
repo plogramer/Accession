@@ -15,13 +15,15 @@ namespace Accession.Tests.WebUi;
 /// <summary>Sample dashboard data for rendering the web UI without a database.</summary>
 internal sealed class FakeDashboard : ObservableObject, IDashboardModel
 {
-    public FakeDashboard(bool scanInProgress = false)
+    /// <param name="scanInProgress">Show a running scan.</param>
+    /// <param name="unselected">Media keys (1–5) left out of the media selection.</param>
+    public FakeDashboard(bool scanInProgress = false, params long[] unselected)
     {
         ScanInProgress = scanInProgress;
         string[] ids = ["123-123_001", "123-123_002", "123-123_003", "123-124_001", "123-125_001"];
         foreach (var (id, i) in ids.Select((id, i) => (id, i)))
         {
-            MediaFilter.Add(new MediaFilterItem(i + 1, id, true));
+            MediaFilter.Add(new MediaFilterItem(i + 1, id, !unselected.Contains(i + 1)));
         }
 
         ByMedia.Add(Media(1, "123-123_001", "Completed", "4,812", "412,390", "1.84 TB", 1, "0", "2026-09-14 16:02", "1,204"));
@@ -77,7 +79,13 @@ internal sealed class FakeDashboard : ObservableObject, IDashboardModel
     }
 
     public ObservableCollection<MediaFilterItem> MediaFilter { get; } = [];
-    public string FilterText => "All media";
+    public string FilterText => AllMediaSelected ? "All media" : NoMediaSelected ? "No media selected" : $"{MediaFilter.Count(m => m.IsChecked)} of 5 media";
+    public string MediaSearch { get; set; } = string.Empty;
+    public IReadOnlyList<MediaFilterItem> VisibleMediaFilter => [.. MediaFilter.Where(m => m.MediaId.Contains(MediaSearch, StringComparison.OrdinalIgnoreCase))];
+    public string SelectionSummary => $"{MediaFilter.Count(m => m.IsChecked)} of {MediaFilter.Count} selected";
+    public bool AllMediaSelected => MediaFilter.All(m => m.IsChecked);
+    public bool NoMediaSelected => MediaFilter.All(m => !m.IsChecked);
+    public string MediaNote => AllMediaSelected ? "in this inventory" : "selected of 5";
     public bool IsLoading => false;
     public bool IsLoadingDetails => false;
     public bool ScanInProgress { get; }
@@ -102,6 +110,9 @@ internal sealed class FakeDashboard : ObservableObject, IDashboardModel
     public ObservableCollection<LargeFileRowVm> LargestFiles { get; } = [];
     public ICommand RefreshCommand { get; init; } = new RelayCommand(() => { });
     public ICommand SelectAllMediaCommand { get; } = new RelayCommand(() => { });
+    public ICommand UnselectAllMediaCommand { get; } = new RelayCommand(() => { });
+    public ICommand SelectOnlyMediaCommand { get; } = new RelayCommand<object?>(_ => { });
+    public ICommand ToggleAllMediaCommand { get; } = new RelayCommand(() => { });
     public ICommand ClearCategoryCommand { get; } = new RelayCommand(() => { });
     public ICommand OpenMediaCommand { get; } = new RelayCommand<object?>(_ => { });
     public ICommand OpenCategoryCommand { get; } = new RelayCommand<object?>(_ => { });
@@ -110,9 +121,10 @@ internal sealed class FakeDashboard : ObservableObject, IDashboardModel
     public ICommand OpenLargeFileCommand { get; } = new RelayCommand<object?>(_ => { });
     public ICommand OpenDuplicatesCommand { get; } = new RelayCommand(() => { });
 
-    private static DashboardMediaRowVm Media(long key, string id, string status, string folders, string files, string size,
+    private DashboardMediaRowVm Media(long key, string id, string status, string folders, string files, string size,
         double hashed, string errors, string lastScanned, string duplicates) => new()
     {
+        Selection = MediaFilter.First(m => m.MediaKey == key),
         MediaKey = key,
         MediaId = id,
         Status = status,
