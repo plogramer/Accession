@@ -45,6 +45,21 @@ public partial class WebAppView : UserControl
             return;
         }
 
+        try
+        {
+            CreateWebView(model);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "The web UI could not be created");
+            model.ReportStartFailure(
+                $"The new UI could not start ({ex.Message}), so Accession switched back to the classic screens.\n\n" +
+                $"Details are in the log: {AppPaths.LogFolder}");
+        }
+    }
+
+    private void CreateWebView(WebAppViewModel model)
+    {
         var webView = new BlazorWebView
         {
             HostPage = @"wwwroot\index.html",
@@ -52,11 +67,18 @@ public partial class WebAppView : UserControl
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
         };
-        webView.WebView.CoreWebView2InitializationCompleted += (_, e) =>
+        // The inner WebView2 control only exists once the BlazorWebView is in the window.
+        webView.Loaded += (_, _) =>
         {
-            if (!e.IsSuccess)
+            if (webView.WebView is { } inner)
             {
-                _logger.LogError(e.InitializationException, "WebView2 could not start");
+                inner.CoreWebView2InitializationCompleted += (_, e) =>
+                {
+                    if (!e.IsSuccess)
+                    {
+                        _logger.LogError(e.InitializationException, "WebView2 could not start");
+                    }
+                };
             }
         };
         webView.BlazorWebViewInitialized += (_, e) =>
