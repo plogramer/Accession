@@ -1,0 +1,176 @@
+using System.Diagnostics;
+using System.IO;
+using Accession.App.ViewModels;
+using Accession.Core.Inventories;
+using Accession.Core.Settings;
+using Accession.Core.Threading;
+using Accession.Data.Migrations;
+using Accession.Data.Sessions;
+using Microsoft.Extensions.Logging;
+
+namespace Accession.App.Services;
+
+/// <summary>User-level inventory actions: new, open, close, properties, change root, settings.</summary>
+public sealed class InventoryWorkflows
+{
+    public const string FileFilter = "Accession inventory (*.sqlite)|*.sqlite|All files (*.*)|*.*";
+
+    private readonly InventoryHost _host;
+    private readonly IDialogService _dialogs;
+    private readonly BusyTracker _busy;
+    private readonly ISettingsService _settings;
+    private readonly InventoryCreationService _creation;
+    private readonly InventoryOpenService _opener;
+    private readonly IOpenInteraction _interaction;
+    private readonly Func<NewInventoryViewModel> _newInventory;
+    private readonly Func<SettingsViewModel> _settingsDialog;
+    private readonly Func<InventoryPropertiesViewModel> _properties;
+    private readonly Func<ChangeRootPathViewModel> _changeRoot;
+    private readonly ILogger<InventoryWorkflows> _logger;
+
+    public InventoryWorkflows(
+        InventoryHost host,
+        IDialogService dialogs,
+        BusyTracker busy,
+        ISettingsService settings,
+        InventoryCreationService creation,
+        InventoryOpenService opener,
+        IOpenInteraction interaction,
+        Func<NewInventoryViewModel> newInventory,
+        Func<SettingsViewModel> settingsDialog,
+        Func<InventoryPropertiesViewModel> properties,
+        Func<ChangeRootPathViewModel> changeRoot,
+        ILogger<InventoryWorkflows> logger)
+    {
+        _host = host;
+        _dialogs = dialogs;
+        _busy = busy;
+        _settings = settings;
+        _creation = creation;
+        _opener = opener;
+        _interaction = interaction;
+        _newInventory = newInventory;
+        _settingsDialog = settingsDialog;
+        _properties = properties;
+        _changeRoot = changeRoot;
+        _logger = logger;
+    }
+
+    public async Task NewInventoryAsync()
+    {
+        var dialog = _newInventory();
+        if (_dialogs.ShowDialog(dialog) != true)
+        {
+            return;
+        }
+
+        var request = dialog.BuildRequest();
+        CloseInventory();
+        try
+        {
+            var session = await _busy.RunAsync(_ => Task.FromResult(_creation.Create(request)), "Creating inventory…");
+            Activate(session);
+        }
+        catch (InventoryValidationException ex)
+        {
+            _dialogs.ShowError("Cannot create inventory", string.Join(Environment.NewLine, ex.Errors.Values));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException)
+        {
+            _logger.LogError(ex, "Creating inventory at {Path} failed", request.SavePath);
+            _dialogs.ShowError("Cannot create inventory", $"The inventory could not be created.\n\n{ex.Message}", ex);
+        }
+    }
+
+    /// <summary>Opens <paramref name="path"/>, or asks for a file when null.</summary>
+    public async Task OpenInventoryAsync(string? path = null)
+    {
+        path ??= _dialogs.PickOpenFile("Open inventory", FileFilter);
+        if (path is null)
+        {
+            return;
+        }
+
+        if (!File.Exists(path))
+        {
+            if (_dialogs.Confirm("Inventory not found", $"The file '{path}' was not found.\n\nRemove it from the recent list?"))
+            {
+                _settings.RemoveRecentInventory(path);
+            }
+
+            return;
+        }
+
+        if (_host.Session is { } current && string.Equals(current.DbPath, Path.GetFullPath(path), PathRules.Comparison))
+        {
+            return; // already open
+        }
+
+        CloseInventory();
+        try
+        {
+            var session = await _busy.RunAsync(_ => Task.FromResult(_opener.Open(path, _interaction)), "Opening inventory…");
+            if (session is not null)
+            {
+                Activate(session);
+            }
+        }
+        catch (Exception ex) when (ex is NotAnInventoryException or SchemaTooNewException or InventoryInUseException)
+        {
+            _dialogs.ShowError("Cannot open inventory", ex.Message);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException)
+        {
+            _logger.LogError(ex, "Opening inventory {Path} failed", path);
+            _dialogs.ShowError("Cannot open inventory", $"The inventory could not be opened.\n\n{ex.Message}", ex);
+        }
+    }
+
+    /// <summary>Closes the open inventory (audit + release lock). Safe to call when none is open.</summary>
+    public void CloseInventory()
+    {
+        try
+        {
+            _host.Close();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException)
+        {
+            // The session is gone either way; the lock will become stale and can be taken over.
+            _logger.LogError(ex, "Closing the inventory failed");
+            _dialogs.ShowWarning("Close inventory", $"The inventory was closed, but the lock could not be released.\n\n{ex.Message}");
+        }
+    }
+
+    public void OpenSettings() => _dialogs.ShowDialog(_settingsDialog());
+
+    public void ShowProperties()
+    {
+        if (_host.HasSession)
+        {
+            _dialogs.ShowDialog(_properties());
+        }
+    }
+
+    public void ChangeRootPath()
+    {
+        if (_host.CanModify)
+        {
+            _dialogs.ShowDialog(_changeRoot());
+        }
+    }
+
+    public void OpenMatterLink()
+    {
+        var url = _host.Config?.MatterUrl;
+        if (url is not null && InventoryValidation.IsWebUrl(url))
+        {
+            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        }
+    }
+
+    private void Activate(InventorySession session)
+    {
+        _host.Open(session);
+        _settings.AddRecentInventory(session.DbPath, $"{session.Config.ClientName} – {session.Config.MatterName}");
+    }
+}

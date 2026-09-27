@@ -1,0 +1,85 @@
+<UserControl x:Class="Accession.App.Views.StartView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid MaxWidth="760" Margin="32">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <TextBlock Text="{Binding AppName}" FontSize="32" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding Tagline}" FontSize="15" Margin="0,4,0,0" Style="{StaticResource HintText}" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,24,0,0">
+            <Button Content="+ New Inventory" Command="{Binding NewInventoryCommand}" Padding="16,8" MinWidth="160" />
+            <Button Content="Open Inventory…" Command="{Binding OpenInventoryCommand}" Padding="16,8" MinWidth="160" Margin="12,0,0,0" />
+        </StackPanel>
+
+        <TextBlock Grid.Row="2" Text="Recent inventories" FontWeight="SemiBold" Margin="0,28,0,6" />
+
+        <Grid Grid.Row="3">
+            <TextBlock Text="No recent inventories. Create a new inventory or open an existing one."
+                       Style="{StaticResource HintText}" Margin="0,4">
+                <TextBlock.Visibility>
+                    <Binding Path="HasRecentInventories" Converter="{StaticResource BoolToVisibility}" ConverterParameter="Invert" />
+                </TextBlock.Visibility>
+            </TextBlock>
+            <ListBox x:Name="RecentList" ItemsSource="{Binding RecentInventories}" HorizontalContentAlignment="Stretch"
+                     Visibility="{Binding HasRecentInventories, Converter={StaticResource BoolToVisibility}}"
+                     MouseDoubleClick="RecentList_MouseDoubleClick" KeyDown="RecentList_KeyDown">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Margin="4,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding Path}" Style="{StaticResource HintText}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0">
+                                <TextBlock Text="{Binding LastOpened}" Style="{StaticResource HintText}" HorizontalAlignment="Right" />
+                                <TextBlock Text="File not found" Foreground="#C42B1C" HorizontalAlignment="Right">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Exists}" Value="False">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                            <Button Grid.Column="2" Content="Remove" VerticalAlignment="Center" Padding="8,2"
+                                    Command="{Binding DataContext.RemoveRecentCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                    CommandParameter="{Binding}" ToolTip="Remove from the recent list (the file is not deleted)" />
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Exists}" Value="False">
+                                <Setter Property="Opacity" Value="0.6" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+            </ListBox>
+        </Grid>
+
+        <DockPanel Grid.Row="4" Margin="0,16,0,0">
+            <TextBlock Text="{Binding Version, StringFormat=Version {0}}" Style="{StaticResource HintText}" VerticalAlignment="Center" />
+            <Button Content="Settings…" Command="{Binding OpenSettingsCommand}" HorizontalAlignment="Right" MinWidth="100" />
+        </DockPanel>
+    </Grid>
+</UserControl>

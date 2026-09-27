@@ -1,0 +1,19 @@
+<UserControl x:Class="Accession.App.Views.RootUnreachableView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Width="520">
+    <DockPanel Margin="16">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button Content="Retry" Command="{Binding RetryCommand}" IsDefault="True" Style="{StaticResource DialogButton}" />
+            <Button Content="Change Root Path…" Command="{Binding ChangeRootPathCommand}" Style="{StaticResource DialogButton}" />
+            <Button Content="Continue Offline" Command="{Binding ContinueOfflineCommand}" Style="{StaticResource DialogButton}" />
+            <Button Content="Cancel" Command="{Binding CancelCommand}" IsCancel="True" Style="{StaticResource DialogButton}" />
+        </StackPanel>
+        <StackPanel>
+            <TextBlock Text="The inventory's root folder cannot be reached:" FontWeight="SemiBold" TextWrapping="Wrap" />
+            <TextBox Text="{Binding RootPath, Mode=OneWay}" Style="{StaticResource ReadOnlyValue}" />
+            <TextBlock Margin="0,8,0,0" Style="{StaticResource HintText}"
+                       Text="Check the network connection and try again. If the inventory and its media were moved, choose the new root folder. Offline, you can view the dashboard, browse files and export, but not scan or add media." />
+        </StackPanel>
+    </DockPanel>
+</UserControl>

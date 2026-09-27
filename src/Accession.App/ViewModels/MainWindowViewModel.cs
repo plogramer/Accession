@@ -1,6 +1,8 @@
+using System.ComponentModel;
 using System.Windows;
 using Accession.App.Mvvm;
 using Accession.App.Services;
+using Accession.App.ViewModels.Shell;
 using Accession.Core.Threading;
 using CommunityToolkit.Mvvm.Input;
 
@@ -9,27 +11,51 @@ namespace Accession.App.ViewModels;
 public sealed partial class MainWindowViewModel : ViewModelBase
 {
     private readonly INavigationService _navigation;
+    private readonly InventoryHost _host;
+    private readonly InventoryWorkflows _workflows;
     private readonly IDialogService _dialogs;
-    private readonly Func<SettingsViewModel> _settingsViewModelFactory;
 
     public MainWindowViewModel(
         INavigationService navigation,
+        InventoryHost host,
+        InventoryWorkflows workflows,
         IDialogService dialogs,
-        Func<SettingsViewModel> settingsViewModelFactory,
         BusyTracker busy)
     {
         _navigation = navigation;
+        _host = host;
+        _workflows = workflows;
         _dialogs = dialogs;
-        _settingsViewModelFactory = settingsViewModelFactory;
         Busy = busy;
         _navigation.CurrentChanged += (_, _) => OnPropertyChanged(nameof(CurrentScreen));
+        _host.PropertyChanged += OnHostChanged;
+        _host.SessionChanged += (_, _) => ShowScreenForSession();
+        _host.LockLost += (_, _) => _dialogs.ShowWarning(
+            "Inventory lock lost",
+            "Another user took over this inventory's lock. It is now open read-only; your changes up to now were saved.");
     }
 
-    public string Title => "Accession";
+    public string Title
+    {
+        get
+        {
+            if (_host.Config is not { } config)
+            {
+                return "Accession";
+            }
+
+            var title = $"Accession – {config.ClientName} / {config.MatterName} ({config.MatterCode})";
+            return _host.IsReadOnly ? title + " – READ-ONLY" : title;
+        }
+    }
 
     public ViewModelBase? CurrentScreen => _navigation.Current;
 
     public BusyTracker Busy { get; }
+
+    public bool HasSession => _host.HasSession;
+
+    public bool HasMatterUrl => !string.IsNullOrWhiteSpace(_host.Config?.MatterUrl);
 
 #if DEBUG
     public bool IsDebugBuild => true;
@@ -37,10 +63,31 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     public bool IsDebugBuild => false;
 #endif
 
-    public void Initialize() => _navigation.NavigateTo<HomeViewModel>();
+    public void Initialize() => ShowScreenForSession();
+
+    /// <summary>Called when the main window is closing: closes the inventory (audit + release lock).</summary>
+    public void OnClosing() => _workflows.CloseInventory();
 
     [RelayCommand]
-    private void OpenSettings() => _dialogs.ShowDialog(_settingsViewModelFactory());
+    private Task NewInventory() => _workflows.NewInventoryAsync();
+
+    [RelayCommand]
+    private Task OpenInventory() => _workflows.OpenInventoryAsync();
+
+    [RelayCommand(CanExecute = nameof(HasSession))]
+    private void CloseInventory() => _workflows.CloseInventory();
+
+    [RelayCommand]
+    private void OpenSettings() => _workflows.OpenSettings();
+
+    [RelayCommand(CanExecute = nameof(HasSession))]
+    private void ShowProperties() => _workflows.ShowProperties();
+
+    [RelayCommand(CanExecute = nameof(CanModify))]
+    private void ChangeRootPath() => _workflows.ChangeRootPath();
+
+    [RelayCommand(CanExecute = nameof(HasMatterUrl))]
+    private void OpenMatterLink() => _workflows.OpenMatterLink();
 
     [RelayCommand]
     private void CancelBusy() => Busy.Cancel();
@@ -52,4 +99,29 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private static void ThrowTestException() =>
         throw new InvalidOperationException("Test exception from the Help menu (debug builds only).");
+
+    private bool CanModify() => _host.CanModify;
+
+    private void ShowScreenForSession()
+    {
+        if (_host.HasSession)
+        {
+            _navigation.NavigateTo<InventoryShellViewModel>();
+        }
+        else
+        {
+            _navigation.NavigateTo<StartViewModel>();
+        }
+    }
+
+    private void OnHostChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        OnPropertyChanged(nameof(Title));
+        OnPropertyChanged(nameof(HasSession));
+        OnPropertyChanged(nameof(HasMatterUrl));
+        CloseInventoryCommand.NotifyCanExecuteChanged();
+        ShowPropertiesCommand.NotifyCanExecuteChanged();
+        ChangeRootPathCommand.NotifyCanExecuteChanged();
+        OpenMatterLinkCommand.NotifyCanExecuteChanged();
+    }
 }

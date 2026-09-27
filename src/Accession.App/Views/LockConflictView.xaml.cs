@@ -2,9 +2,9 @@ using System.Windows.Controls;
 
 namespace Accession.App.Views;
 
-public partial class HomeView : UserControl
+public partial class LockConflictView : UserControl
 {
-    public HomeView()
+    public LockConflictView()
     {
         InitializeComponent();
     }

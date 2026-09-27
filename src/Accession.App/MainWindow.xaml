@@ -4,15 +4,36 @@
         Title="{Binding Title}"
         Width="1200" Height="800" MinWidth="800" MinHeight="500"
         WindowStartupLocation="CenterScreen">
-    <Window.Resources>
-        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
-    </Window.Resources>
     <DockPanel>
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="_File">
+                <MenuItem Header="_New Inventory…" Command="{Binding NewInventoryCommand}" />
+                <MenuItem Header="_Open Inventory…" Command="{Binding OpenInventoryCommand}" />
+                <MenuItem Header="_Close Inventory" Command="{Binding CloseInventoryCommand}" />
+                <Separator />
                 <MenuItem Header="_Settings…" Command="{Binding OpenSettingsCommand}" />
                 <Separator />
                 <MenuItem Header="E_xit" Command="{Binding ExitCommand}" />
+            </MenuItem>
+            <MenuItem Header="_Inventory">
+                <MenuItem Header="_Properties…" Command="{Binding ShowPropertiesCommand}" />
+                <MenuItem Header="_Change Root Path…" Command="{Binding ChangeRootPathCommand}" />
+                <MenuItem Header="_Discover Media" IsEnabled="False" ToolTip="Coming with media management" />
+                <Separator />
+                <MenuItem Header="Open _Matter Link" Command="{Binding OpenMatterLinkCommand}" />
+            </MenuItem>
+            <MenuItem Header="_Media" IsEnabled="{Binding HasSession}">
+                <MenuItem Header="_Add Media…" IsEnabled="False" ToolTip="Coming with media management" />
+                <MenuItem Header="_Scan" IsEnabled="False" ToolTip="Coming with the scan engine" />
+                <MenuItem Header="_Delete Media…" IsEnabled="False" ToolTip="Coming with media management" />
+            </MenuItem>
+            <MenuItem Header="_Scan" IsEnabled="{Binding HasSession}">
+                <MenuItem Header="_Pause" IsEnabled="False" />
+                <MenuItem Header="_Resume" IsEnabled="False" />
+                <MenuItem Header="_Cancel" IsEnabled="False" />
+            </MenuItem>
+            <MenuItem Header="_Export" IsEnabled="{Binding HasSession}">
+                <MenuItem Header="Export to _Excel…" IsEnabled="False" ToolTip="Coming with Excel export" />
             </MenuItem>
             <MenuItem Header="_Help">
                 <MenuItem Header="_Throw test exception" Command="{Binding ThrowTestExceptionCommand}"

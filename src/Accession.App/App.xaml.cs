@@ -6,6 +6,8 @@ using Accession.App.ViewModels;
 using Accession.Core.Runtime;
 using Accession.Core.Settings;
 using Accession.Core.Threading;
+using Accession.App.ViewModels.Shell;
+using Accession.Data.Sessions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -53,6 +55,9 @@ public partial class App : Application
         // Synchronous on purpose: the process ends when OnExit returns, so logs must be flushed first.
         try
         {
+            // Normally closed by the main window; this covers other shutdown paths.
+            _host?.Services.GetService<InventoryHost>()?.Close();
+
             if (_host is not null)
             {
                 Task.Run(() => _host.StopAsync(TimeSpan.FromSeconds(5))).Wait();
@@ -80,25 +85,46 @@ public partial class App : Application
         // Core
         builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddSingleton<IUserContext, EnvironmentUserContext>();
+        builder.Services.AddSingleton<IAppInfo>(new AssemblyAppInfo(typeof(App).Assembly));
         builder.Services.AddSingleton<ISettingsService>(sp => new JsonSettingsService(
             AppPaths.SettingsFile,
             sp.GetRequiredService<ILogger<JsonSettingsService>>(),
             sp.GetRequiredService<TimeProvider>()));
         builder.Services.AddSingleton(sp => new BusyTracker(sp.GetRequiredService<TimeProvider>()));
 
+        // Data
+        builder.Services.AddSingleton<InventorySessionFactory>();
+        builder.Services.AddSingleton<InventoryCreationService>();
+        builder.Services.AddSingleton<InventoryOpenService>();
+        builder.Services.AddSingleton<RootPathService>();
+        builder.Services.AddSingleton<InventoryPropertiesService>();
+
         // UI services
         builder.Services.AddSingleton<INavigationService, NavigationService>();
         builder.Services.AddSingleton<IDialogService, DialogService>();
         builder.Services.AddSingleton<IWindowPlacementService, WindowPlacementService>();
+        builder.Services.AddSingleton<InventoryHost>();
+        builder.Services.AddSingleton<IOpenInteraction, WpfOpenInteraction>();
+        builder.Services.AddSingleton<InventoryWorkflows>();
 
         // View models and windows
         builder.Services.AddSingleton<MainWindowViewModel>();
-        builder.Services.AddTransient<HomeViewModel>();
-        builder.Services.AddTransient<SettingsViewModel>();
-        builder.Services.AddSingleton<Func<SettingsViewModel>>(sp => sp.GetRequiredService<SettingsViewModel>);
+        builder.Services.AddTransient<StartViewModel>();
+        builder.Services.AddTransient<InventoryShellViewModel>();
+        AddDialog<NewInventoryViewModel>(builder.Services);
+        AddDialog<SettingsViewModel>(builder.Services);
+        AddDialog<InventoryPropertiesViewModel>(builder.Services);
+        AddDialog<ChangeRootPathViewModel>(builder.Services);
         builder.Services.AddSingleton<MainWindow>();
 
         return builder.Build();
+    }
+
+    /// <summary>Registers a transient dialog view model and a Func factory for it.</summary>
+    private static void AddDialog<TViewModel>(IServiceCollection services) where TViewModel : class
+    {
+        services.AddTransient<TViewModel>();
+        services.AddSingleton<Func<TViewModel>>(sp => sp.GetRequiredService<TViewModel>);
     }
 
     private static void ConfigureLogging()

@@ -14,6 +14,10 @@ public partial class MainWindow : Window
         DataContext = viewModel;
 
         placement.Restore(this, PlacementKey);
-        Closing += (_, _) => placement.Save(this, PlacementKey);
+        Closing += (_, _) =>
+        {
+            placement.Save(this, PlacementKey);
+            viewModel.OnClosing();
+        };
     }
 }
