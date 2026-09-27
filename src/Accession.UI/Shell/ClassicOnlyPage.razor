@@ -1,0 +1,30 @@
+@* Placeholder for screens that have not moved to the web UI yet. *@
+<div class="empty-state">
+    <div class="empty-icon"><Icon Name="@Icon" Size="28" /></div>
+    <h2>@Title</h2>
+    <p>This screen is not in the new UI yet. It is available in the classic UI.</p>
+    @if (!string.IsNullOrEmpty(FilterText))
+    {
+        <p class="muted">It will open with this filter: <strong>@FilterText</strong></p>
+    }
+    <button class="btn btn-primary" @onclick="Open"><Icon Name="classic" Size="16" /> Open in classic UI</button>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+
+    [Parameter] public string Icon { get; set; } = "classic";
+
+    [Parameter] public string? FilterText { get; set; }
+
+    [Parameter, EditorRequired] public ICommand OpenCommand { get; set; } = default!;
+
+    private async Task Open()
+    {
+        await Task.Yield(); // see ObservingComponentBase.Run
+        if (OpenCommand.CanExecute(null))
+        {
+            OpenCommand.Execute(null);
+        }
+    }
+}

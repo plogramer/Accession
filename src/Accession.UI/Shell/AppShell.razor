@@ -1,0 +1,218 @@
+@inherits ObservingComponentBase
+
+<div class="app" data-theme="@ThemeAttribute">
+    <aside class="sidebar">
+        <div class="brand">
+            <span class="brand-mark"><Icon Name="logo" Size="20" /></span>
+            <div>
+                <div class="brand-name">Accession</div>
+                <div class="brand-tag">Inventory · Hash · Report</div>
+            </div>
+        </div>
+
+        <nav class="nav" aria-label="Screens">
+            @foreach (var group in Model.NavItems.GroupBy(n => n.Group))
+            {
+                <div class="nav-group">@group.Key</div>
+                @foreach (var item in group)
+                {
+                    <button class="nav-item @(ReferenceEquals(item, Model.SelectedItem) ? "is-active" : null)"
+                            aria-current="@(ReferenceEquals(item, Model.SelectedItem) ? "page" : null)"
+                            @onclick="() => Model.SelectedItem = item">
+                        <Icon Name="@item.Icon" />
+                        <span class="nav-label">@item.Key</span>
+                        @if (!string.IsNullOrEmpty(item.Badge))
+                        {
+                            <span class="nav-badge @(item.Icon == "errors" ? "is-danger" : null)">@item.Badge</span>
+                        }
+                        else if (!item.IsAvailable)
+                        {
+                            <span class="nav-soon" title="Not in the new UI yet">classic</span>
+                        }
+                    </button>
+                }
+            }
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="theme-switch" role="radiogroup" aria-label="Theme">
+                @foreach (var (value, icon, label) in Themes)
+                {
+                    <button role="radio" aria-checked="@(Model.Theme == value ? "true" : "false")" title="@label"
+                            class="@(Model.Theme == value ? "is-active" : null)" @onclick="() => Model.Theme = value">
+                        <Icon Name="@icon" Size="15" />
+                    </button>
+                }
+            </div>
+            <div class="user">
+                <span class="avatar">@Initials</span>
+                <span class="user-name" title="@Model.UserName">@Model.UserName</span>
+            </div>
+        </div>
+    </aside>
+
+    <div class="main">
+        <header class="topbar">
+            <div class="matter">
+                <div class="matter-client">@Model.ClientName</div>
+                <div class="matter-title">
+                    <h1>@Model.MatterName</h1>
+                    <span class="matter-code">@Model.MatterCode</span>
+                </div>
+            </div>
+
+            <div class="topbar-status">
+                @if (Model.IsReadOnly)
+                {
+                    <span class="chip is-warning"><Icon Name="eye" Size="14" /> Read-only</span>
+                }
+                else if (!string.IsNullOrEmpty(Model.LockStatus))
+                {
+                    <span class="chip is-success"><Icon Name="lock" Size="14" /> @Model.LockStatus</span>
+                }
+                @if (Model.IsOffline)
+                {
+                    <span class="chip is-danger"><Icon Name="offline" Size="14" /> Root offline</span>
+                }
+            </div>
+
+            <div class="topbar-actions">
+                @if (Model.IsScanActive)
+                {
+                    <div class="scan-pill" title="@Model.ScanStatus">
+                        <span class="pulse"></span>
+                        <span class="scan-text">@Model.ScanStatus</span>
+                        <button class="icon-btn" title="Pause" disabled="@Disabled(Model.PauseScanCommand)" @onclick="() => Run(Model.PauseScanCommand)"><Icon Name="pause" Size="15" /></button>
+                        <button class="icon-btn" title="Resume" disabled="@Disabled(Model.ResumeScanCommand)" @onclick="() => Run(Model.ResumeScanCommand)"><Icon Name="play" Size="15" /></button>
+                        <button class="icon-btn" title="Cancel scan" disabled="@Disabled(Model.CancelScanCommand)" @onclick="() => Run(Model.CancelScanCommand)"><Icon Name="stop" Size="15" /></button>
+                    </div>
+                }
+                else
+                {
+                    <button class="btn" disabled="@Disabled(Model.ScanNowCommand)" @onclick="() => Run(Model.ScanNowCommand)"
+                            title="Scan every media that has not been scanned yet">
+                        <Icon Name="play" Size="16" /> Scan pending
+                    </button>
+                }
+                <button class="btn" disabled="@Disabled(Model.DiscoverMediaCommand)" @onclick="() => Run(Model.DiscoverMediaCommand)">
+                    <Icon Name="discover" Size="16" /> Discover
+                </button>
+                <button class="btn btn-primary" disabled="@Disabled(Model.AddMediaCommand)" @onclick="() => Run(Model.AddMediaCommand)">
+                    <Icon Name="plus" Size="16" /> Add media
+                </button>
+
+                <div class="menu-anchor">
+                    <button class="icon-btn icon-btn-lg" title="More" aria-haspopup="menu" aria-expanded="@(_menuOpen ? "true" : "false")"
+                            @onclick="() => _menuOpen = !_menuOpen">
+                        <Icon Name="more" />
+                    </button>
+                    @if (_menuOpen)
+                    {
+                        <div class="backdrop" @onclick="() => _menuOpen = false"></div>
+                        <div class="menu" role="menu">
+                            <MenuItem Icon="info" Text="Inventory properties" Command="Model.ShowPropertiesCommand" OnDone="CloseMenu" />
+                            <MenuItem Icon="folder-open" Text="Change root path" Command="Model.ChangeRootPathCommand" OnDone="CloseMenu" />
+                            <MenuItem Icon="external" Text="Open matter link" Command="Model.OpenMatterLinkCommand" OnDone="CloseMenu" />
+                            <MenuItem Icon="settings" Text="Settings" Command="Model.OpenSettingsCommand" OnDone="CloseMenu" />
+                            <div class="menu-sep"></div>
+                            <MenuItem Icon="classic" Text="Switch to classic UI" Command="Model.OpenInClassicCommand" OnDone="CloseMenu" />
+                            <MenuItem Icon="logout" Text="Close inventory" Command="Model.CloseInventoryCommand" OnDone="CloseMenu" />
+                        </div>
+                    }
+                </div>
+            </div>
+        </header>
+
+        @if (!string.IsNullOrEmpty(Model.Notice))
+        {
+            <div class="banner is-info">
+                <Icon Name="info" />
+                <span>@Model.Notice</span>
+                <button class="icon-btn" title="Dismiss" @onclick="() => Run(Model.DismissNoticeCommand)"><Icon Name="x" Size="15" /></button>
+            </div>
+        }
+        @if (Model.IsOffline)
+        {
+            <div class="banner is-danger">
+                <Icon Name="offline" />
+                <span>The root folder <code>@Model.RootPath</code> is not reachable. Browsing works; scanning is disabled until it is back.</span>
+            </div>
+        }
+
+        <main class="content">
+            @if (Model.SelectedItem.Key == "Dashboard")
+            {
+                <DashboardPage Model="Model.Dashboard" />
+            }
+            else
+            {
+                <ClassicOnlyPage Title="@Model.SelectedItem.Key" Icon="@Model.SelectedItem.Icon"
+                                 FilterText="@Model.PendingFilterText" OpenCommand="Model.OpenInClassicCommand" />
+            }
+        </main>
+
+        <footer class="statusbar">
+            <span class="status-item" title="Root path"><Icon Name="folder-open" Size="14" /> <code>@Model.RootPath</code></span>
+            <span class="status-spacer"></span>
+            @if (!string.IsNullOrEmpty(Model.ScanStatus))
+            {
+                <span class="status-item">@Model.ScanStatus</span>
+            }
+            <span class="status-item">@Model.SchemaText</span>
+        </footer>
+    </div>
+
+    @if (Model.IsBusy)
+    {
+        <div class="overlay">
+            <div class="overlay-card" role="status">
+                <div class="spinner"></div>
+                <div class="overlay-text">@Model.BusyMessage</div>
+                @if (Model.CanCancelBusy)
+                {
+                    <button class="btn" @onclick="() => Run(Model.CancelBusyCommand)">Cancel</button>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private static readonly (string Value, string Icon, string Label)[] Themes =
+    [
+        ("light", "sun", "Light"),
+        ("dark", "moon", "Dark"),
+        ("system", "monitor", "Match Windows"),
+    ];
+
+    private bool _menuOpen;
+
+    [Parameter, EditorRequired] public IShellModel Model { get; set; } = default!;
+
+    private string? ThemeAttribute => Model.Theme is "light" or "dark" ? Model.Theme : null;
+
+    private string Initials
+    {
+        get
+        {
+            var name = Model.UserName;
+            var slash = name.LastIndexOf('\\');
+            name = slash >= 0 ? name[(slash + 1)..] : name;
+            var parts = name.Split(['.', ' ', '_', '-'], StringSplitOptions.RemoveEmptyEntries);
+            return parts.Length switch
+            {
+                0 => "?",
+                1 => parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant(),
+                _ => string.Concat(char.ToUpperInvariant(parts[0][0]), char.ToUpperInvariant(parts[^1][0])),
+            };
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        Observe([Model, .. Model.NavItems, Model.ScanNowCommand, Model.PauseScanCommand, Model.ResumeScanCommand,
+            Model.CancelScanCommand, Model.AddMediaCommand, Model.DiscoverMediaCommand]);
+    }
+
+    private void CloseMenu() => _menuOpen = false;
+}

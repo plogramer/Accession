@@ -1,6 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace Accession.App.ViewModels.Dashboard;
+namespace Accession.UI.Dashboard;
 
 /// <summary>One media in the dashboard's media filter.</summary>
 public sealed partial class MediaFilterItem(long mediaKey, string mediaId, bool isChecked) : ObservableObject
@@ -28,9 +28,19 @@ public sealed partial class DashboardMediaRowVm : ObservableObject
     public required long FileCount { get; init; }
     public required long TotalBytes { get; init; }
 
+    /// <summary>Hashed files as a fraction of all files (0–1), for progress bars.</summary>
+    public double HashedRatio { get; init; }
+
     /// <summary>Duplicates within the media; filled in when the background query finishes.</summary>
     [ObservableProperty]
     public partial string Duplicates { get; set; } = "…";
+}
+
+/// <summary>Scale shared by the dashboard views.</summary>
+public static class DashboardScale
+{
+    /// <summary>Bar length of the largest value in <see cref="BarRow.BarLength"/>.</summary>
+    public const double MaxBarLength = 220;
 }
 
 /// <summary>A labelled bar: category or year.</summary>

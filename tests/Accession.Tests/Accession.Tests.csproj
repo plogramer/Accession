@@ -15,6 +15,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Accession.Core\Accession.Core.csproj" />
     <ProjectReference Include="..\..\src\Accession.Data\Accession.Data.csproj" />
+    <ProjectReference Include="..\..\src\Accession.UI\Accession.UI.csproj" />
   </ItemGroup>
 
   <ItemGroup>

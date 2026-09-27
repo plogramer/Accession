@@ -3,7 +3,9 @@ using System.Windows;
 using Accession.App.Mvvm;
 using Accession.App.Services;
 using Accession.App.ViewModels.Shell;
+using Accession.Core.Settings;
 using Accession.Core.Threading;
+using Accession.Data.Browsing;
 using CommunityToolkit.Mvvm.Input;
 
 namespace Accession.App.ViewModels;
@@ -15,6 +17,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private readonly InventoryWorkflows _workflows;
     private readonly IDialogService _dialogs;
     private readonly MediaWorkflows _media;
+    private readonly ISettingsService _settings;
+    private readonly FileBrowserNavigator _navigator;
 
     public MainWindowViewModel(
         INavigationService navigation,
@@ -23,8 +27,12 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         MediaWorkflows media,
         ScanHost scans,
         IDialogService dialogs,
-        BusyTracker busy)
+        BusyTracker busy,
+        ISettingsService settings,
+        FileBrowserNavigator navigator)
     {
+        _settings = settings;
+        _navigator = navigator;
         _navigation = navigation;
         _host = host;
         _workflows = workflows;
@@ -38,7 +46,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         };
         _dialogs = dialogs;
         Busy = busy;
-        _navigation.CurrentChanged += (_, _) => OnPropertyChanged(nameof(CurrentScreen));
+        _navigation.CurrentChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(CurrentScreen));
+            OnPropertyChanged(nameof(IsClassicMenuVisible));
+        };
         _host.PropertyChanged += OnHostChanged;
         _host.SessionChanged += (_, _) => ShowScreenForSession();
         _host.LockLost += (_, _) => _dialogs.ShowWarning(
@@ -68,6 +80,26 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     public bool HasSession => _host.HasSession;
 
+    /// <summary>The web shell draws its own top bar and menus.</summary>
+    public bool IsClassicMenuVisible => CurrentScreen is not WebShellViewModel;
+
+    /// <summary>Shows the web UI (preview) while an inventory is open.</summary>
+    public bool UseWebUi
+    {
+        get => _settings.Current.UseWebUi;
+        set
+        {
+            if (value == UseWebUi)
+            {
+                return;
+            }
+
+            _settings.Update(s => s.UseWebUi = value);
+            OnPropertyChanged();
+            ShowScreenForSession();
+        }
+    }
+
     public bool HasMatterUrl => !string.IsNullOrWhiteSpace(_host.Config?.MatterUrl);
 
 #if DEBUG
@@ -83,6 +115,31 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     /// Returns false to keep the window open.
     /// </summary>
     public Task<bool> PrepareCloseAsync() => _workflows.CloseInventoryAsync();
+
+    /// <summary>
+    /// Leaves the web UI for the classic screens, optionally opening a screen (navigation title) or the Files screen
+    /// with a filter. Deferred, because it is called from inside a web view event and replaces the web view.
+    /// </summary>
+    public void SwitchToClassic(string? screen, FileFilter? filter)
+    {
+        Application.Current.Dispatcher.BeginInvoke(() =>
+        {
+            UseWebUi = false;
+            if (_navigation.Current is not InventoryShellViewModel shell)
+            {
+                return;
+            }
+
+            if (filter is not null)
+            {
+                _navigator.ShowFiles(filter);
+            }
+            else if (screen is not null)
+            {
+                shell.Select(screen);
+            }
+        });
+    }
 
     [RelayCommand]
     private Task NewInventory() => _workflows.NewInventoryAsync();
@@ -145,7 +202,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     private void ShowScreenForSession()
     {
-        if (_host.HasSession)
+        if (_host.HasSession && UseWebUi)
+        {
+            _navigation.NavigateTo<WebShellViewModel>();
+        }
+        else if (_host.HasSession)
         {
             _navigation.NavigateTo<InventoryShellViewModel>();
         }

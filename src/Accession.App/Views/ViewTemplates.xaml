@@ -16,6 +16,9 @@
     <DataTemplate DataType="{x:Type shell:InventoryShellViewModel}">
         <views:InventoryShellView />
     </DataTemplate>
+    <DataTemplate DataType="{x:Type shell:WebShellViewModel}">
+        <views:WebShellView />
+    </DataTemplate>
     <DataTemplate DataType="{x:Type shell:PlaceholderViewModel}">
         <views:PlaceholderView />
     </DataTemplate>

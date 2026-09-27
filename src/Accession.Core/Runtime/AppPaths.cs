@@ -9,7 +9,10 @@ public static class AppPaths
     public static string SettingsFile => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), AppFolderName, "settings.json");
 
+    /// <summary><c>%LOCALAPPDATA%\Accession</c></summary>
+    public static string LocalDataFolder => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), AppFolderName);
+
     /// <summary><c>%LOCALAPPDATA%\Accession\logs</c></summary>
-    public static string LogFolder => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), AppFolderName, "logs");
+    public static string LogFolder => Path.Combine(LocalDataFolder, "logs");
 }

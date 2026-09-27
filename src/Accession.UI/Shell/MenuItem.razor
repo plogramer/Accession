@@ -1,0 +1,24 @@
+<button class="menu-item" role="menuitem" disabled="@(!Command.CanExecute(null))" @onclick="Execute">
+    <Icon Name="@Icon" Size="16" />
+    <span>@Text</span>
+</button>
+
+@code {
+    [Parameter, EditorRequired] public string Icon { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired] public string Text { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired] public ICommand Command { get; set; } = default!;
+
+    [Parameter] public EventCallback OnDone { get; set; }
+
+    private async Task Execute()
+    {
+        await OnDone.InvokeAsync();
+        await Task.Yield(); // see ObservingComponentBase.Run
+        if (Command.CanExecute(null))
+        {
+            Command.Execute(null);
+        }
+    }
+}

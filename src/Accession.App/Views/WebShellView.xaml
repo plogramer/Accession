@@ -1,0 +1,7 @@
+<UserControl x:Class="Accession.App.Views.WebShellView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="#0F1422">
+    <!-- The BlazorWebView is created in code once the view model is known (it is a root component parameter). -->
+    <ContentControl x:Name="Host" Focusable="False" />
+</UserControl>

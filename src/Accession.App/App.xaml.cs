@@ -20,6 +20,9 @@ namespace Accession.App;
 public partial class App : Application
 {
     private IHost? _host;
+
+    /// <summary>The application's service provider; used by views that cannot get it by injection (the BlazorWebView).</summary>
+    internal static IServiceProvider Services { get; private set; } = default!;
     private bool _showingError;
 
     protected override async void OnStartup(StartupEventArgs e)
@@ -30,7 +33,11 @@ public partial class App : Application
 
         try
         {
+            // WebView2 keeps its profile next to the executable by default, which is read-only under Program Files.
+            Environment.SetEnvironmentVariable("WEBVIEW2_USER_DATA_FOLDER", Path.Combine(AppPaths.LocalDataFolder, "WebView2"));
+
             _host = BuildHost();
+            Services = _host.Services;
             await _host.StartAsync();
 
             Log.Information("Accession {Version} started by {User} on {Machine}",
@@ -124,10 +131,17 @@ public partial class App : Application
         builder.Services.AddSingleton<ScanHost>();
         builder.Services.AddSingleton<FileBrowserNavigator>();
 
+        // Web UI (preview)
+        builder.Services.AddWpfBlazorWebView();
+#if DEBUG
+        builder.Services.AddBlazorWebViewDeveloperTools();
+#endif
+
         // View models and windows
         builder.Services.AddSingleton<MainWindowViewModel>();
         builder.Services.AddTransient<StartViewModel>();
         builder.Services.AddTransient<InventoryShellViewModel>();
+        builder.Services.AddTransient<WebShellViewModel>();
         builder.Services.AddTransient<MediaListViewModel>();
         builder.Services.AddTransient<Accession.App.ViewModels.Dashboard.DashboardViewModel>();
         builder.Services.AddTransient<Accession.App.ViewModels.Browsing.FileBrowserViewModel>();

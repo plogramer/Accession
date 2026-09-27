@@ -120,6 +120,15 @@ public sealed partial class InventoryShellViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Selects the screen with this navigation title, if there is one.</summary>
+    public void Select(string title)
+    {
+        if (NavItems.FirstOrDefault(n => n.Title == title) is { } item)
+        {
+            SelectedItem = item;
+        }
+    }
+
     [RelayCommand]
     private void DismissNotice() => _host.SetNotice(string.Empty);
 

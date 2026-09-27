@@ -19,6 +19,13 @@ public sealed class AppSettings
     public string DefaultExportFolder { get; set; } = string.Empty;
     public bool SplitExportPerMedia { get; set; }
 
+    // Web UI (preview)
+    /// <summary>Shows the new web-based screens when an inventory is open.</summary>
+    public bool UseWebUi { get; set; }
+
+    /// <summary>"system", "light" or "dark".</summary>
+    public string WebTheme { get; set; } = WebThemes.System;
+
     // UI state
     public List<RecentInventory> RecentInventories { get; set; } = [];
     public Dictionary<string, WindowPlacement> Windows { get; set; } = [];
@@ -72,6 +79,7 @@ public sealed class AppSettings
         HashingThreads = Math.Clamp(HashingThreads, SettingsLimits.MinHashingThreads, SettingsLimits.MaxHashingThreads);
         DbBatchSize = Math.Clamp(DbBatchSize, SettingsLimits.MinDbBatchSize, SettingsLimits.MaxDbBatchSize);
         DefaultExportFolder = DefaultExportFolder?.Trim() ?? string.Empty;
+        WebTheme = WebThemes.Normalize(WebTheme);
 
         RecentInventories = (RecentInventories ?? [])
             .Where(r => r is not null && !string.IsNullOrWhiteSpace(r.Path))

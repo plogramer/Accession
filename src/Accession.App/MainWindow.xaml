@@ -5,7 +5,7 @@
         Width="1200" Height="800" MinWidth="800" MinHeight="500"
         WindowStartupLocation="CenterScreen">
     <DockPanel>
-        <Menu DockPanel.Dock="Top">
+        <Menu DockPanel.Dock="Top" Visibility="{Binding IsClassicMenuVisible, Converter={StaticResource BoolToVisibility}}">
             <MenuItem Header="_File">
                 <MenuItem Header="_New Inventory…" Command="{Binding NewInventoryCommand}" />
                 <MenuItem Header="_Open Inventory…" Command="{Binding OpenInventoryCommand}" />
@@ -34,6 +34,10 @@
             </MenuItem>
             <MenuItem Header="_Export" IsEnabled="{Binding HasSession}">
                 <MenuItem Header="Export to _Excel…" IsEnabled="False" ToolTip="Coming with Excel export" />
+            </MenuItem>
+            <MenuItem Header="_View">
+                <MenuItem Header="_New UI (preview)" IsCheckable="True" IsChecked="{Binding UseWebUi}"
+                          ToolTip="Show the new web-style screens. The Dashboard is available; other screens open in the classic UI." />
             </MenuItem>
             <MenuItem Header="_Help">
                 <MenuItem Header="_Throw test exception" Command="{Binding ThrowTestExceptionCommand}"

@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
+using System.Windows.Input;
 using Accession.App.Mvvm;
 using Accession.App.Services;
 using Accession.App.ViewModels.MediaScreen;
@@ -8,6 +9,7 @@ using Accession.Core.Formatting;
 using Accession.Core.Settings;
 using Accession.Data.Browsing;
 using Accession.Data.Queries;
+using Accession.UI.Dashboard;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
@@ -15,9 +17,9 @@ using Microsoft.Extensions.Logging;
 namespace Accession.App.ViewModels.Dashboard;
 
 /// <summary>Dashboard (requirements 5.7, section 8.5). Fast sections load first; File-table queries load in the background.</summary>
-public sealed partial class DashboardViewModel : ViewModelBase, IDisposable
+public sealed partial class DashboardViewModel : ViewModelBase, IDashboardModel, IDisposable
 {
-    public const double MaxBarLength = 220;
+    public const double MaxBarLength = DashboardScale.MaxBarLength;
 
     private readonly InventoryHost _host;
     private readonly ScanHost _scans;
@@ -30,6 +32,7 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDisposable
     private IReadOnlyList<ExtensionRowVm> _allExtensions = [];
     private bool _updatingFilter;
     private bool? _lastScanBusy;
+    private (SizeUnitSystem Unit, DisplayTimeZone Zone) _displaySettings;
 
     public DashboardViewModel(InventoryHost host, ScanHost scans, DashboardQueries queries, ISettingsService settings,
         FileBrowserNavigator navigator, ILogger<DashboardViewModel> logger)
@@ -43,6 +46,7 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDisposable
         _host.MediaChanged += OnMediaChanged;
         _scans.PropertyChanged += OnScansChanged;
         _settings.SettingsChanged += OnSettingsChanged;
+        _displaySettings = (settings.Current.SizeUnit, settings.Current.DisplayTimeZone);
         LoadMediaFilter();
         _ = ReloadAsync();
     }
@@ -127,6 +131,16 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDisposable
     public ObservableCollection<BarRow> ByYear { get; } = [];
 
     public ObservableCollection<LargeFileRowVm> LargestFiles { get; } = [];
+
+    ICommand IDashboardModel.RefreshCommand => RefreshCommand;
+    ICommand IDashboardModel.SelectAllMediaCommand => SelectAllMediaCommand;
+    ICommand IDashboardModel.ClearCategoryCommand => ClearCategoryCommand;
+    ICommand IDashboardModel.OpenMediaCommand => OpenMediaCommand;
+    ICommand IDashboardModel.OpenCategoryCommand => OpenCategoryCommand;
+    ICommand IDashboardModel.OpenExtensionCommand => OpenExtensionCommand;
+    ICommand IDashboardModel.OpenYearCommand => OpenYearCommand;
+    ICommand IDashboardModel.OpenLargeFileCommand => OpenLargeFileCommand;
+    ICommand IDashboardModel.OpenDuplicatesCommand => OpenDuplicatesCommand;
 
     public void Dispose()
     {
@@ -401,6 +415,7 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDisposable
                 Scans = m.ScanCount,
                 FileCount = m.FileCount,
                 TotalBytes = m.TotalBytes,
+                HashedRatio = !scanned ? 0 : m.FileCount == 0 ? 1 : (double)m.HashedCount / m.FileCount,
             });
         }
 
@@ -487,5 +502,14 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDisposable
         _lastScanBusy = _scans.IsBusy;
     }
 
-    private void OnSettingsChanged(object? sender, SettingsChangedEventArgs e) => UiThread.Post(() => _ = ReloadAsync());
+    private void OnSettingsChanged(object? sender, SettingsChangedEventArgs e)
+    {
+        // Only display settings affect the dashboard (not e.g. the web theme or saved grid layouts).
+        var display = (e.Settings.SizeUnit, e.Settings.DisplayTimeZone);
+        if (display != _displaySettings)
+        {
+            _displaySettings = display;
+            UiThread.Post(() => _ = ReloadAsync());
+        }
+    }
 }

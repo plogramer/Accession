@@ -1,6 +1,7 @@
 using System.Windows.Controls;
 using System.Windows.Input;
 using Accession.App.ViewModels.Dashboard;
+using Accession.UI.Dashboard;
 
 namespace Accession.App.Views;
 

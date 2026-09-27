@@ -1,0 +1,320 @@
+@inherits ObservingComponentBase
+
+<div class="page">
+    <div class="page-header">
+        <div>
+            <h2>Dashboard</h2>
+            <p class="muted">Everything received for this matter, by media, category, extension and year.</p>
+        </div>
+        <div class="page-actions">
+            <div class="menu-anchor">
+                <button class="btn" aria-haspopup="listbox" aria-expanded="@(_filterOpen ? "true" : "false")" @onclick="() => _filterOpen = !_filterOpen">
+                    <Icon Name="filter" Size="16" /> @Model.FilterText <Icon Name="chevron-down" Size="14" Class="muted" />
+                </button>
+                @if (_filterOpen)
+                {
+                    <div class="backdrop" @onclick="() => _filterOpen = false"></div>
+                    <div class="menu menu-wide">
+                        <div class="menu-header">
+                            <span>Media</span>
+                            <button class="link-btn" @onclick="() => Run(Model.SelectAllMediaCommand)">Select all</button>
+                        </div>
+                        <div class="menu-scroll">
+                            @foreach (var item in Model.MediaFilter)
+                            {
+                                <label class="check-row">
+                                    <input type="checkbox" checked="@item.IsChecked" @onchange="e => item.IsChecked = e.Value is true" />
+                                    <span class="mono">@item.MediaId</span>
+                                </label>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+            <button class="icon-btn icon-btn-lg" title="Refresh" @onclick="() => Run(Model.RefreshCommand)">
+                <Icon Name="refresh" Class="@(Model.IsLoading || Model.IsLoadingDetails ? "spin" : null)" />
+            </button>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.LoadError))
+    {
+        <div class="banner is-danger"><Icon Name="errors" /><span>@Model.LoadError</span></div>
+    }
+    @if (Model.ScanInProgress)
+    {
+        <div class="banner is-info">
+            <Icon Name="info" />
+            <span>A scan is running. Duplicates, files by year and largest files load when it finishes, so the scan is not slowed down.</span>
+        </div>
+    }
+
+    <section class="kpis">
+        <div class="kpi">
+            <div class="kpi-label"><Icon Name="media" Size="15" /> Media</div>
+            <div class="kpi-value">@Model.MediaCount</div>
+            <div class="kpi-sub">in this inventory</div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-label"><Icon Name="files" Size="15" /> Files</div>
+            <div class="kpi-value">@Model.FileCount</div>
+            <div class="kpi-sub">in @Model.FolderCount folders</div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-label"><Icon Name="dashboard" Size="15" /> Total size</div>
+            <div class="kpi-value">@Model.TotalSize</div>
+            <div class="kpi-sub">logical size</div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-label"><Icon Name="lock" Size="15" /> Hashed (SHA-1)</div>
+            <div class="kpi-value">@Model.HashedPercent</div>
+            <div class="progress"><div class="progress-bar" style="width:@HashedWidth"></div></div>
+        </div>
+        <button class="kpi kpi-link" @onclick="() => Run(Model.OpenDuplicatesCommand)" title="@DuplicateTitle">
+            <div class="kpi-label"><Icon Name="copy" Size="15" /> Duplicates</div>
+            <div class="kpi-value">@Model.DuplicateFiles</div>
+            <div class="kpi-sub">@DuplicateSub</div>
+        </button>
+        <div class="kpi @(HasErrors ? "is-danger" : null)">
+            <div class="kpi-label"><Icon Name="errors" Size="15" /> Errors</div>
+            <div class="kpi-value">@Model.ErrorCount</div>
+            <div class="kpi-sub">@(HasErrors ? "need attention" : "none logged")</div>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="card-header">
+            <h3>By media</h3>
+            <span class="muted small">Select a media to browse its files</span>
+        </div>
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Media ID</th><th>Status</th><th class="num">Folders</th><th class="num">Files</th><th class="num">Size</th>
+                        <th>Hashed</th><th class="num">Duplicates</th><th class="num">Errors</th><th>Last scanned</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model.ByMedia)
+                    {
+                        <tr class="clickable" @onclick="() => Run(Model.OpenMediaCommand, row)">
+                            <td class="mono strong">@row.MediaId</td>
+                            <td><span class="status @StatusClass(row.Status)">@row.Status</span></td>
+                            <td class="num">@row.Folders</td>
+                            <td class="num">@row.Files</td>
+                            <td class="num">@row.Size</td>
+                            <td>
+                                <div class="inline-progress">
+                                    <div class="progress small"><div class="progress-bar" style="width:@Percent(row.HashedRatio)"></div></div>
+                                    <span class="small">@row.Hashed</span>
+                                </div>
+                            </td>
+                            <td class="num">@row.Duplicates</td>
+                            <td class="num @(row.Errors is not ("0" or "—") ? "text-danger" : null)">@row.Errors</td>
+                            <td class="muted">@row.LastScanned</td>
+                        </tr>
+                    }
+                    @if (Model.ByMedia.Count == 0)
+                    {
+                        <tr><td colspan="9" class="empty-row">@(Model.IsLoading ? "Loading…" : "No media yet. Use Add media or Discover to add some.")</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <div class="grid-2">
+        <section class="card">
+            <div class="card-header">
+                <h3>By category</h3>
+                <span class="muted small">Select one to filter extensions</span>
+            </div>
+            <div class="bars">
+                @foreach (var row in Model.ByCategory)
+                {
+                    var selected = ReferenceEquals(row, Model.SelectedCategory);
+                    <div class="bar-row @(selected ? "is-selected" : null)" @onclick="() => ToggleCategory(row)">
+                        <div class="bar-label">@row.Label</div>
+                        <div class="bar-track"><div class="bar-fill" style="width:@BarWidth(row)"></div></div>
+                        <div class="bar-value">@row.Size</div>
+                        <div class="bar-meta">@row.Files files · @row.PercentSize</div>
+                        <button class="icon-btn" title="Browse @row.Label files" @onclick="() => Run(Model.OpenCategoryCommand, row)" @onclick:stopPropagation="true">
+                            <Icon Name="chevron-right" Size="15" />
+                        </button>
+                    </div>
+                }
+                @if (Model.ByCategory.Count == 0)
+                {
+                    <div class="empty-row">@(Model.IsLoading ? "Loading…" : "No files scanned yet.")</div>
+                }
+            </div>
+        </section>
+
+        <section class="card">
+            <div class="card-header">
+                <h3>@Model.ExtensionHeader</h3>
+                @if (Model.SelectedCategory is not null)
+                {
+                    <button class="chip chip-btn" @onclick="() => Run(Model.ClearCategoryCommand)">@Model.SelectedCategory.Label <Icon Name="x" Size="12" /></button>
+                }
+                <span class="card-header-spacer"></span>
+                <div class="search">
+                    <Icon Name="search" Size="15" />
+                    <input type="search" placeholder="Find extension" value="@Model.ExtensionSearch"
+                           @oninput="e => Model.ExtensionSearch = e.Value?.ToString() ?? string.Empty" />
+                </div>
+            </div>
+            <div class="table-wrap table-scroll">
+                <table class="table">
+                    <thead>
+                        <tr><th>Extension</th><th>Category</th><th class="num">Files</th><th class="num">Size</th><th class="num">% size</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in Model.ByExtension)
+                        {
+                            <tr class="clickable" @onclick="() => Run(Model.OpenExtensionCommand, row)">
+                                <td><span class="ext">@row.Extension</span></td>
+                                <td class="muted">@row.Category</td>
+                                <td class="num">@row.Files</td>
+                                <td class="num">@row.Size</td>
+                                <td class="num muted">@row.PercentSize</td>
+                            </tr>
+                        }
+                        @if (Model.ByExtension.Count == 0)
+                        {
+                            <tr><td colspan="5" class="empty-row">No matching extensions.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <div class="grid-2">
+        <section class="card">
+            <div class="card-header">
+                <h3>Files by year modified</h3>
+                <span class="muted small">Select a year to browse its files</span>
+            </div>
+            @if (Model.ByYear.Count > 0)
+            {
+                <div class="columns">
+                    @foreach (var row in Model.ByYear)
+                    {
+                        <button class="column" title="@row.Label: @row.Files files, @row.Size" @onclick="() => Run(Model.OpenYearCommand, row)">
+                            <span class="column-track">
+                                <span class="column-value">@Compact(row.FileCount)</span>
+                                <span class="column-fill" style="height:@BarHeight(row)"></span>
+                            </span>
+                            <span class="column-label">@row.Label</span>
+                        </button>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="empty-row">@DetailsPlaceholder</div>
+            }
+        </section>
+
+        <section class="card">
+            <div class="card-header">
+                <h3>Largest files</h3>
+            </div>
+            <div class="table-wrap table-scroll">
+                <table class="table">
+                    <thead>
+                        <tr><th>File</th><th>Media</th><th class="num">Size</th><th>Modified</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in Model.LargestFiles)
+                        {
+                            var slash = row.RelativePath.LastIndexOf('\\');
+                            <tr class="clickable" @onclick="() => Run(Model.OpenLargeFileCommand, row)">
+                                <td class="file-cell" title="@row.RelativePath">
+                                    <div class="strong truncate">@row.RelativePath[(slash + 1)..]</div>
+                                    <div class="muted small truncate">@(slash > 0 ? row.RelativePath[..slash] : "\\")</div>
+                                </td>
+                                <td class="mono">@row.MediaId</td>
+                                <td class="num">@row.Size</td>
+                                <td class="muted nowrap">@row.Modified</td>
+                            </tr>
+                        }
+                        @if (Model.LargestFiles.Count == 0)
+                        {
+                            <tr><td colspan="4" class="empty-row">@DetailsPlaceholder</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</div>
+
+@code {
+    private bool _filterOpen;
+
+    [Parameter, EditorRequired] public IDashboardModel Model { get; set; } = default!;
+
+    private bool HasErrors => Model.ErrorCount is not ("0" or "—" or "");
+
+    private string DuplicateSub => string.IsNullOrEmpty(Model.DuplicateSize) ? Model.DuplicateNote : $"{Model.DuplicateSize} duplicated";
+
+    private string DuplicateTitle => string.IsNullOrEmpty(Model.DuplicateSize)
+        ? "Show duplicate files"
+        : $"Show duplicate files ({Model.UniqueFiles} unique files, {Model.DuplicateNote})";
+
+    private string DetailsPlaceholder => Model.ScanInProgress ? "Available when the scan finishes."
+        : Model.IsLoadingDetails ? "Calculating…" : "No data.";
+
+    private string HashedWidth
+    {
+        get
+        {
+            var text = Model.HashedPercent.Replace("%", string.Empty, StringComparison.Ordinal).Trim();
+            return double.TryParse(text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.CurrentCulture, out var value)
+                ? Percent(value / 100)
+                : "0%";
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        Observe(Model, Model.MediaFilter, Model.ByMedia, Model.ByCategory, Model.ByExtension, Model.ByYear, Model.LargestFiles);
+    }
+
+    private void ToggleCategory(BarRow row) =>
+        Model.SelectedCategory = ReferenceEquals(row, Model.SelectedCategory) ? null : row;
+
+    private static string BarWidth(BarRow row) => Percent(row.BarLength / DashboardScale.MaxBarLength);
+
+    /// <summary>Column height, leaving room above the tallest column for its value label.</summary>
+    private static string BarHeight(BarRow row) => Percent(0.85 * row.BarLength / DashboardScale.MaxBarLength);
+
+    /// <summary>Short count for chart labels: 950, 12.4k, 3.1M.</summary>
+    private static string Compact(long value)
+    {
+        var culture = System.Globalization.CultureInfo.CurrentCulture;
+        return value switch
+        {
+            >= 1_000_000 => (value / 1_000_000d).ToString("0.#", culture) + "M",
+            >= 10_000 => (value / 1_000d).ToString("0", culture) + "k",
+            >= 1_000 => (value / 1_000d).ToString("0.#", culture) + "k",
+            _ => value.ToString(culture),
+        };
+    }
+
+    private static string Percent(double ratio) =>
+        (Math.Clamp(ratio, 0, 1) * 100).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + "%";
+
+    private static string StatusClass(string status) => status switch
+    {
+        "Completed" => "is-success",
+        "Completed with errors" or "Incomplete" => "is-warning",
+        "Missing" => "is-danger",
+        "Scanning" or "Hashing" or "Queued" => "is-active",
+        "Paused" => "is-paused",
+        _ => "is-neutral",
+    };
+}
