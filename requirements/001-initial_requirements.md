@@ -256,7 +256,7 @@ flowchart TD
 |---|---|
 | EXP-01 | Export to `.xlsx` for delivery to the producing party. Scope: selected media or all media, or the current File browser view. |
 | EXP-02 | Workbook sheets: **Summary** (matter info, root path, export date/user, totals, size unit), **Media** (per media totals and last scan date), **Categories**, **Extensions**, **Files**, **Errors**. The user can untick sheets. |
-| EXP-03 | **Files** columns: Media ID, Relative Path, File Name, Extension, Category, Size (bytes), Size (selected unit), Created (UTC), Modified (UTC), Accessed (UTC), SHA-1. |
+| EXP-03 | **Files** columns: Media ID, Relative Path, File Name, Extension, Category, Size (bytes), Size (MB) (a number: bytes ÷ 1,000,000, no unit in the cells; "Size (MiB)", bytes ÷ 1,048,576, when Settings uses binary units), Created (UTC), Modified (UTC), Accessed (UTC), SHA-1. |
 | EXP-04 | Excel allows 1,048,576 rows per sheet. Larger file lists are split into sheets `Files (1)`, `Files (2)`, … Optionally (setting) split into one workbook per media. |
 | EXP-05 | The export must stream rows (constant memory) so that 10M+ rows can be exported without running out of memory. It runs in the background with progress and cancel. |
 | EXP-06 | Each export is audited (scope, sheets, row counts, output path). |

@@ -1,8 +1,8 @@
 using System.Globalization;
 using Accession.Core.Export;
-using Accession.Core.Formatting;
 using Accession.Core.Model;
 using Accession.Core.Runtime;
+using Accession.Core.Settings;
 using Accession.Data.Audit;
 using Accession.Data.Browsing;
 using Accession.Data.Queries;
@@ -26,10 +26,20 @@ public sealed class ExportService(
 {
     private const int ErrorPageSize = 5_000;
 
-    private static readonly XlsxColumn[] FileColumns =
+    private const double BytesPerMb = 1_000_000d;
+    private const double BytesPerMib = 1_048_576d;
+
+    /// <summary>The number column next to "Size (bytes)": "Size (MB)", or "Size (MiB)" with binary units.</summary>
+    public static string SizeHeader(SizeUnitSystem unit) => unit == SizeUnitSystem.Binary ? "Size (MiB)" : "Size (MB)";
+
+    private static XlsxColumn SizeColumn(SizeUnitSystem unit) => new(SizeHeader(unit), XlsxCellType.Number, 14);
+
+    private static double ToSizeUnit(long bytes, SizeUnitSystem unit) => bytes / (unit == SizeUnitSystem.Binary ? BytesPerMib : BytesPerMb);
+
+    private static XlsxColumn[] FileColumns(SizeUnitSystem unit) =>
     [
         new("Media ID", Width: 16), new("Relative Path", Width: 50), new("File Name", Width: 36), new("Extension", Width: 10),
-        new("Category", Width: 16), new("Size (bytes)", XlsxCellType.Integer, 16), new("Size", Width: 12),
+        new("Category", Width: 16), new("Size (bytes)", XlsxCellType.Integer, 16), SizeColumn(unit),
         new("Created (UTC)", XlsxCellType.DateTimeUtc, 20), new("Modified (UTC)", XlsxCellType.DateTimeUtc, 20),
         new("Accessed (UTC)", XlsxCellType.DateTimeUtc, 20), new("SHA-1", Width: 42),
     ];
@@ -205,7 +215,7 @@ public sealed class ExportService(
         {
             writer.BeginSheet("Media", [
                 new("Media ID", Width: 16), new("Status", Width: 20), new("Folders", XlsxCellType.Integer, 12),
-                new("Files", XlsxCellType.Integer, 14), new("Size (bytes)", XlsxCellType.Integer, 18), new("Size", Width: 12),
+                new("Files", XlsxCellType.Integer, 14), new("Size (bytes)", XlsxCellType.Integer, 18), SizeColumn(unit),
                 new("Hashed files", XlsxCellType.Integer, 14), new("Errors", XlsxCellType.Integer, 10), new("Scans", XlsxCellType.Integer, 8),
                 new("Last scan completed (UTC)", XlsxCellType.DateTimeUtc, 24)]);
             foreach (var m in media)
@@ -216,7 +226,7 @@ public sealed class ExportService(
                 writer.Integer(m.FolderCount);
                 writer.Integer(m.FileCount);
                 writer.Integer(m.TotalBytes);
-                writer.Text(SizeFormatter.Format(m.TotalBytes, unit, provider: CultureInfo.InvariantCulture));
+                writer.Number(ToSizeUnit(m.TotalBytes, unit));
                 writer.Integer(m.HashedCount);
                 writer.Integer(m.ErrorCount);
                 writer.Integer(m.ScanCount);
@@ -229,14 +239,14 @@ public sealed class ExportService(
         {
             writer.BeginSheet("Categories", [
                 new("Category", Width: 22), new("Files", XlsxCellType.Integer, 14), new("Size (bytes)", XlsxCellType.Integer, 18),
-                new("Size", Width: 12)]);
+                SizeColumn(unit)]);
             foreach (var c in dashboard.ByCategory(session.Database, filter, token).Where(c => c.FileCount > 0))
             {
                 writer.BeginRow();
                 writer.Text(c.Category);
                 writer.Integer(c.FileCount);
                 writer.Integer(c.TotalBytes);
-                writer.Text(SizeFormatter.Format(c.TotalBytes, unit, provider: CultureInfo.InvariantCulture));
+                writer.Number(ToSizeUnit(c.TotalBytes, unit));
                 writer.EndRow();
             }
         }
@@ -245,7 +255,7 @@ public sealed class ExportService(
         {
             writer.BeginSheet("Extensions", [
                 new("Extension", Width: 12), new("Category", Width: 22), new("Files", XlsxCellType.Integer, 14),
-                new("Size (bytes)", XlsxCellType.Integer, 18), new("Size", Width: 12)]);
+                new("Size (bytes)", XlsxCellType.Integer, 18), SizeColumn(unit)]);
             foreach (var e in dashboard.ByExtension(session.Database, filter, token))
             {
                 writer.BeginRow();
@@ -253,7 +263,7 @@ public sealed class ExportService(
                 writer.Text(e.Category);
                 writer.Integer(e.FileCount);
                 writer.Integer(e.TotalBytes);
-                writer.Text(SizeFormatter.Format(e.TotalBytes, unit, provider: CultureInfo.InvariantCulture));
+                writer.Number(ToSizeUnit(e.TotalBytes, unit));
                 writer.EndRow();
             }
         }
@@ -293,12 +303,12 @@ public sealed class ExportService(
         Text("Exported by", factory.User.UserName);
         Text("Computer", factory.User.MachineName);
         Text("Accession version", appInfo.Version);
-        Text("Size units", unit == Core.Settings.SizeUnitSystem.Binary ? "Binary (1 KiB = 1,024 bytes)" : "Decimal (1 KB = 1,000 bytes)");
+        Text("Size units", unit == SizeUnitSystem.Binary ? "MiB (1 MiB = 1,048,576 bytes)" : "MB (1 MB = 1,000,000 bytes)");
         Number("Media", totals.MediaCount);
         Number("Folders", totals.FolderCount);
         Number("Files", totals.FileCount);
         Number("Total size (bytes)", totals.TotalBytes);
-        Text("Total size", SizeFormatter.Format(totals.TotalBytes, unit, provider: CultureInfo.InvariantCulture));
+        Decimal($"Total size ({SizeHeader(unit)[6..^1]})", ToSizeUnit(totals.TotalBytes, unit));
         Number("Hashed files", totals.HashedCount);
         Number("Errors", totals.ErrorCount);
         if (request.FilesView is not null)
@@ -322,6 +332,14 @@ public sealed class ExportService(
             writer.EndRow();
         }
 
+        void Decimal(string item, double value)
+        {
+            writer.BeginRow();
+            writer.Text(item);
+            writer.Number(value);
+            writer.EndRow();
+        }
+
         void Date(string item, DateTimeOffset value)
         {
             writer.BeginRow();
@@ -334,8 +352,8 @@ public sealed class ExportService(
     private void WriteFiles(XlsxWriter writer, InventorySession session, ExportRequest request, IReadOnlyList<DashboardMediaRow> media,
         CancellationToken token)
     {
-        writer.BeginSheet("Files", FileColumns);
         var unit = request.SizeUnit;
+        writer.BeginSheet("Files", FileColumns(unit));
 
         // One media at a time, in Media ID order: each query sorts only that media's files.
         using var scope = session.Database.Open();
@@ -350,7 +368,7 @@ public sealed class ExportService(
                 writer.Text(f.Extension);
                 writer.Text(f.Category);
                 writer.Integer(f.SizeBytes);
-                writer.Text(SizeFormatter.Format(f.SizeBytes, unit, provider: CultureInfo.InvariantCulture));
+                writer.Number(ToSizeUnit(f.SizeBytes, unit));
                 writer.DateTimeUtc(f.CreatedUtc);
                 writer.DateTimeUtc(f.ModifiedUtc);
                 writer.DateTimeUtc(f.AccessedUtc);

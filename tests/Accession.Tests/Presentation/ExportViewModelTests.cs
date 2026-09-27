@@ -144,7 +144,7 @@ public sealed class ExportViewModelTests : IDisposable
         Assert.DoesNotContain("Current Files view", html, StringComparison.Ordinal); // only offered from the Files screen
         Assert.Contains("123-123_002", html); // media checklist for the selected scope
         Assert.Contains("Extensions", html);
-        Assert.Contains("Decimal: KB, MB, GB", html);
+        Assert.Contains("Size (bytes) and Size (MB)", html);
         Assert.Contains("Estimated rows: 1,501", html);
         Assert.Contains("Browse…", html);
     }

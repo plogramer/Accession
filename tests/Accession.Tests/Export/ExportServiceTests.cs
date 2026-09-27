@@ -81,10 +81,11 @@ public sealed class ExportServiceTests : IDisposable
         Assert.Equal("2026-001", summary["Matter ID"]);
         Assert.Equal("All media", summary["Scope"]);
         Assert.Equal(@"CORP\jdoe", summary["Exported by"]);
-        Assert.StartsWith("Decimal", summary["Size units"], StringComparison.Ordinal);
+        Assert.StartsWith("MB", summary["Size units"], StringComparison.Ordinal);
+        Assert.True(summary.ContainsKey("Total size (MB)"));
 
         var header = sheets.Single(s => s.Name == "Files").Rows[0];
-        Assert.Equal(["Media ID", "Relative Path", "File Name", "Extension", "Category", "Size (bytes)", "Size",
+        Assert.Equal(["Media ID", "Relative Path", "File Name", "Extension", "Category", "Size (bytes)", "Size (MB)",
             "Created (UTC)", "Modified (UTC)", "Accessed (UTC)", "SHA-1"], header);
         var first = sheets.Data("Files")[0];
         Assert.Equal(["123-123_001", @"\123-123_001\"], first.Take(2)); // root folder first, then by name
@@ -192,16 +193,23 @@ public sealed class ExportServiceTests : IDisposable
     }
 
     [Fact]
-    public void Readable_sizes_follow_the_unit_setting()
+    public void Size_columns_are_numbers_in_mb_or_mib()
     {
+        _export.Export(_test.Session, new ExportRequest { OutputPath = Out("mb.xlsx"), Sheets = new HashSet<ExportSheet> { ExportSheet.Files } });
+        var decimalSheet = XlsxReader.Read(Out("mb.xlsx")).Single(s => s.Name == "Files");
+        Assert.Equal("Size (MB)", decimalSheet.Rows[0][6]);
+        Assert.Equal("0.02047", decimalSheet.Rows.Single(r => r[2] == "doc_2047.pdf")[6]); // 20,470 bytes, no unit in the cell
+
         _export.Export(_test.Session, new ExportRequest
         {
             OutputPath = Out(), SizeUnit = SizeUnitSystem.Binary, Sheets = new HashSet<ExportSheet> { ExportSheet.Files },
         });
 
-        var row = XlsxReader.Read(Out()).Data("Files").Single(r => r[2] == "doc_2047.pdf");
+        var sheet = XlsxReader.Read(Out()).Single(s => s.Name == "Files");
+        var row = sheet.Rows.Single(r => r[2] == "doc_2047.pdf");
+        Assert.Equal("Size (MiB)", sheet.Rows[0][6]);
         Assert.Equal("20470", row[5]);
-        Assert.Equal("19.99 KiB", row[6]);
+        Assert.Equal(20_470 / 1_048_576d, double.Parse(row[6], CultureInfo.InvariantCulture), 10);
     }
 
     private sealed class App : IAppInfo

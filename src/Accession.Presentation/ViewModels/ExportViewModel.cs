@@ -100,8 +100,8 @@ public sealed partial class ExportViewModel : DialogViewModelBase
     public SizeUnitSystem SizeUnit { get; }
 
     public string UnitsText => SizeUnit == SizeUnitSystem.Binary
-        ? "Binary: KiB, MiB, GiB (1 KiB = 1,024 bytes), from Settings"
-        : "Decimal: KB, MB, GB (1 KB = 1,000 bytes), from Settings";
+        ? "Size (bytes) and Size (MiB), 1 MiB = 1,048,576 bytes (binary units in Settings)"
+        : "Size (bytes) and Size (MB), 1 MB = 1,000,000 bytes (decimal units in Settings)";
 
     [ObservableProperty]
     public partial bool OneWorkbookPerMedia { get; set; }
