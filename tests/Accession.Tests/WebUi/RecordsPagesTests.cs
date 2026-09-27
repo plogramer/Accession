@@ -19,7 +19,6 @@ public sealed class RecordsPagesTests
         Assert.Contains("Browse Email files", html);
         Assert.Contains(".msg", html);
         Assert.Contains("is-empty", html);
-        Assert.DoesNotContain(">classic<", html); // every screen is in the web UI now
     }
 
     [Fact]
@@ -39,7 +38,7 @@ public sealed class RecordsPagesTests
         {
             [key] = screen,
         };
-        var shell = new FakeShell(new FakeDashboard(), media: new FakeMedia(), files: new FakeFiles(), screens: AllScreens(screens));
+        var shell = new FakeShell(new FakeDashboard(), media: new FakeMedia(), files: new FakeFiles(), screens: screens);
         shell.SelectedItem = shell.NavItems.First(n => n.Key == key);
         var html = await WebUiRenderer.RenderAsync<AppRoot>(new Dictionary<string, object?> { [nameof(AppRoot.Model)] = new FakeApp(shell) });
         if (preview is not null)
@@ -48,17 +47,6 @@ public sealed class RecordsPagesTests
         }
 
         return html;
-    }
-
-    /// <summary>Gives every nav item a model so none shows the "classic" hint.</summary>
-    private static Dictionary<string, object> AllScreens(Dictionary<string, object> screens)
-    {
-        foreach (var key in new[] { "Scan Queue", "Errors", "Categories", "Audit Log" })
-        {
-            screens.TryAdd(key, new object());
-        }
-
-        return screens;
     }
 
     private sealed class FakeCategories : ObservableObject, ICategoriesModel

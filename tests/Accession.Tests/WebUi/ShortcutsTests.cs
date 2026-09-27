@@ -92,7 +92,6 @@ public sealed class ShortcutsTests
         public string BusyMessage => inner.BusyMessage;
         public bool CanCancelBusy => inner.CanCancelBusy;
         public ICommand CancelBusyCommand => inner.CancelBusyCommand;
-        public ICommand SwitchToClassicCommand => inner.SwitchToClassicCommand;
         public ICommand NewInventoryCommand => newInventory;
         public ICommand OpenInventoryCommand => inner.OpenInventoryCommand;
         public ICommand OpenSettingsCommand => inner.OpenSettingsCommand;

@@ -16,8 +16,7 @@ using CommunityToolkit.Mvvm.Input;
 namespace Accession.Presentation.ViewModels.Shell;
 
 /// <summary>
-/// Main window content while an inventory is open, drawn by the web UI (preview). Screens that have not moved
-/// to the web UI yet open in the classic shell.
+/// Main window content while an inventory is open: side navigation, top bar and the screens.
 /// </summary>
 public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
 {
@@ -149,8 +148,6 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
 
     ICommand IShellModel.DismissNoticeCommand => DismissNoticeCommand;
 
-    ICommand IShellModel.OpenInClassicCommand => OpenInClassicCommand;
-
     public override void OnNavigatedTo()
     {
         _navigator.ShowFilesRequested += OnShowFiles;
@@ -181,13 +178,6 @@ public sealed partial class WebShellViewModel : ViewModelBase, IShellModel
 
     [RelayCommand]
     private void DismissNotice() => _host.SetNotice(string.Empty);
-
-    /// <summary>Opens the selected screen in the classic shell, carrying a pending Files filter.</summary>
-    [RelayCommand]
-    private void OpenInClassic()
-    {
-        _main.SwitchToClassic(SelectedItem.Key, null);
-    }
 
     private bool CanScanNow() => _scans.CanScan;
 

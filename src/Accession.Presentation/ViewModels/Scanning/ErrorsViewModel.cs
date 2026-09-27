@@ -68,13 +68,11 @@ public sealed partial class ErrorsViewModel : ViewModelBase, IErrorsModel, IDisp
     [ObservableProperty]
     public partial bool ShowInfo { get; set; }
 
-    public ObservableCollection<ErrorRow> Rows { get; } = [];
-
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(CopyPathCommand), nameof(RetryFailedCommand), nameof(OpenContainingFolderCommand))]
     public partial ErrorRow? SelectedRow { get; set; }
 
-    // ---- Numbered pages (web UI) ----
+    // ---- Numbered pages ----
 
     public IReadOnlyList<int> PageSizes { get; } = [500, 1_000, 5_000, 10_000];
 
@@ -133,17 +131,9 @@ public sealed partial class ErrorsViewModel : ViewModelBase, IErrorsModel, IDisp
         return Task.CompletedTask;
     }
 
-    [ObservableProperty]
-    public partial bool HasMore { get; set; }
-
-    [ObservableProperty]
-    public partial string Summary { get; set; } = string.Empty;
-
     /// <summary>Errors (excluding Info) across active media, for the navigation badge.</summary>
     [ObservableProperty]
     public partial long ErrorCount { get; set; }
-
-    public bool HasRows => Rows.Count > 0;
 
     public void Dispose()
     {
@@ -167,9 +157,6 @@ public sealed partial class ErrorsViewModel : ViewModelBase, IErrorsModel, IDisp
 
     [RelayCommand]
     private void Refresh() => Reload();
-
-    [RelayCommand]
-    private void LoadMore() => LoadPage(append: true);
 
     [RelayCommand(CanExecute = nameof(HasSelection))]
     private void CopyPath()
@@ -283,61 +270,29 @@ public sealed partial class ErrorsViewModel : ViewModelBase, IErrorsModel, IDisp
     {
         if (!_loading)
         {
-            LoadPage(append: false);
+            LoadPage();
         }
     }
 
-    private void LoadPage(bool append)
+    /// <summary>Counts the errors matching the filter and shows the first page.</summary>
+    private void LoadPage()
     {
         if (_host.Session is not { } session)
         {
             return;
         }
 
-        if (!append)
-        {
-            Rows.Clear();
-        }
-
-        var severities = ShowInfo ? null : new[] { ScanErrorSeverity.Error, ScanErrorSeverity.Warning };
-        var types = SelectedErrorType?.Value is { } type ? new[] { type } : null;
-        var query = new ScanErrorQuery
-        {
-            MediaKey = SelectedMedia?.Value,
-            ErrorTypes = types,
-            Severities = severities,
-            AfterErrorId = append && Rows.Count > 0 ? Rows[^1].ErrorId : null,
-            PageSize = PageSize,
-        };
-
         try
         {
-            var zone = _settings.Current.DisplayTimeZone;
             using var scope = session.Database.Open();
-            var page = new ScanErrorRepository(scope).List(query);
-            foreach (var e in page)
-            {
-                Rows.Add(ToRow(e, zone));
-            }
-
-            HasMore = page.Count == PageSize;
-            var total = CountMatching(scope, query);
-            Summary = total == 0 ? "No errors match the filter." : $"{Rows.Count:N0} of {total:N0} shown";
-            if (!append)
-            {
-                TotalCount = total;
-            }
+            TotalCount = CountMatching(scope, CurrentQuery());
         }
         catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or System.IO.IOException)
         {
-            _logger.LogError(ex, "Loading errors failed");
+            _logger.LogError(ex, "Counting errors failed");
         }
 
-        OnPropertyChanged(nameof(HasRows));
-        if (!append)
-        {
-            ResetNumberedPages();
-        }
+        ResetNumberedPages();
     }
 
     private ScanErrorQuery CurrentQuery() => new()

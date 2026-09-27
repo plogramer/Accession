@@ -135,14 +135,15 @@ internal sealed partial class FakeShell : ObservableObject, IShellModel
     public FakeShell(FakeDashboard dashboard, bool scanning = false, bool readOnly = false, IMediaModel? media = null,
         IFilesModel? files = null, IReadOnlyDictionary<string, object>? screens = null)
     {
-        object? Screen(string key) => screens is not null && screens.TryGetValue(key, out var model) ? model : null;
+        // Screens a test doesn't give a model get a placeholder, which ScreenHost shows as "not available".
+        object Screen(string key) => screens is not null && screens.TryGetValue(key, out var model) ? model : new object();
         IsScanActive = scanning;
         IsReadOnly = readOnly;
         NavItems =
         [
             new ShellNavItem("Dashboard", "dashboard", "Overview", dashboard),
-            new ShellNavItem("Media", "media", "Inventory", media) { Badge = media is null ? string.Empty : "5" },
-            new ShellNavItem("Files", "files", "Inventory", files),
+            new ShellNavItem("Media", "media", "Inventory", media ?? Screen("Media")) { Badge = media is null ? string.Empty : "5" },
+            new ShellNavItem("Files", "files", "Inventory", files ?? Screen("Files")),
             new ShellNavItem("Categories", "categories", "Inventory", Screen("Categories")),
             new ShellNavItem("Scan Queue", "queue", "Scanning", Screen("Scan Queue")) { Badge = scanning ? "2" : string.Empty },
             new ShellNavItem("Errors", "errors", "Scanning", Screen("Errors")) { Badge = "39" },
@@ -180,7 +181,6 @@ internal sealed partial class FakeShell : ObservableObject, IShellModel
     public ICommand OpenSettingsCommand { get; } = new RelayCommand(() => { });
     public ICommand CloseInventoryCommand { get; } = new RelayCommand(() => { });
     public ICommand DismissNoticeCommand { get; } = new RelayCommand(() => { });
-    public ICommand OpenInClassicCommand { get; } = new RelayCommand(() => { });
 }
 
 /// <summary>The whole page: a screen plus theme, busy overlay, toasts and dialogs.</summary>
@@ -194,7 +194,6 @@ internal sealed partial class FakeApp(object screen) : ObservableObject, IAppMod
     public string BusyMessage { get; set; } = string.Empty;
     public bool CanCancelBusy => false;
     public ICommand CancelBusyCommand { get; } = new RelayCommand(() => { });
-    public ICommand SwitchToClassicCommand { get; } = new RelayCommand(() => { });
     public ICommand NewInventoryCommand { get; } = new RelayCommand(() => { });
     public ICommand OpenInventoryCommand { get; } = new RelayCommand(() => { });
     public ICommand OpenSettingsCommand { get; } = new RelayCommand(() => { });

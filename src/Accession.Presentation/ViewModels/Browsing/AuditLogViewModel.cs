@@ -38,7 +38,7 @@ public sealed partial class AuditLogViewModel : ViewModelBase, IAuditModel, IDis
         SelectedAction = ActionOptions[0];
         _host.MediaChanged += OnChanged;
         LoadUsers();
-        LoadPage(append: false);
+        ResetNumberedPages();
     }
 
     public IReadOnlyList<Option<AuditAction?>> ActionOptions { get; }
@@ -62,17 +62,12 @@ public sealed partial class AuditLogViewModel : ViewModelBase, IAuditModel, IDis
     [ObservableProperty]
     public partial DateTime? ToDate { get; set; }
 
-    public ObservableCollection<AuditRowVm> Rows { get; } = [];
-
     [ObservableProperty]
     public partial AuditRowVm? SelectedRow { get; set; }
 
-    [ObservableProperty]
-    public partial bool HasMore { get; set; }
-
     public string Details => SelectedRow?.Details is { Length: > 0 } json ? Pretty(json) : string.Empty;
 
-    // ---- Numbered pages and string filters (web UI) ----
+    // ---- Numbered pages and string filters ----
 
     public IReadOnlyList<int> PageSizes { get; } = [500, 1_000, 5_000, 10_000];
 
@@ -175,11 +170,8 @@ public sealed partial class AuditLogViewModel : ViewModelBase, IAuditModel, IDis
     private void Refresh()
     {
         LoadUsers();
-        LoadPage(append: false);
+        ResetNumberedPages();
     }
-
-    [RelayCommand]
-    private void LoadMore() => LoadPage(append: true);
 
     [RelayCommand]
     private void ClearFilters()
@@ -190,14 +182,14 @@ public sealed partial class AuditLogViewModel : ViewModelBase, IAuditModel, IDis
         MediaIdText = string.Empty;
         FromDate = ToDate = null;
         _loading = false;
-        LoadPage(append: false);
+        ResetNumberedPages();
     }
 
     private void Reload()
     {
         if (!_loading)
         {
-            LoadPage(append: false);
+            ResetNumberedPages();
         }
     }
 
@@ -229,52 +221,6 @@ public sealed partial class AuditLogViewModel : ViewModelBase, IAuditModel, IDis
         finally
         {
             _loading = false;
-        }
-    }
-
-    private void LoadPage(bool append)
-    {
-        if (_host.Session is not { } session)
-        {
-            return;
-        }
-
-        if (!append)
-        {
-            Rows.Clear();
-        }
-
-        var query = new AuditQuery
-        {
-            From = FromDate is { } from ? new DateTimeOffset(from.Date) : null,
-            To = ToDate is { } to ? new DateTimeOffset(to.Date.AddDays(1)) : null,
-            Actions = SelectedAction?.Value is { } action ? [action] : null,
-            UserName = SelectedUser?.Value,
-            MediaId = string.IsNullOrWhiteSpace(MediaIdText) ? null : MediaIdText.Trim(),
-            BeforeAuditId = append && Rows.Count > 0 ? Rows[^1].AuditId : null,
-            PageSize = PageSize,
-        };
-
-        try
-        {
-            var zone = _settings.Current.DisplayTimeZone;
-            var page = session.Audit.Query(query);
-            foreach (var entry in page)
-            {
-                Rows.Add(new AuditRowVm(entry.AuditId, TimeFormatter.Format(entry.OccurredAtUtc, zone), entry.UserName,
-                    entry.MachineName, entry.Action.ToString(), entry.MediaId ?? string.Empty, entry.Details ?? string.Empty));
-            }
-
-            HasMore = page.Count == PageSize;
-        }
-        catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or System.IO.IOException)
-        {
-            _logger.LogError(ex, "Loading the audit log failed");
-        }
-
-        if (!append)
-        {
-            ResetNumberedPages();
         }
     }
 
@@ -358,5 +304,5 @@ public sealed partial class AuditLogViewModel : ViewModelBase, IAuditModel, IDis
         }
     }
 
-    private void OnChanged(object? sender, EventArgs e) => LoadPage(append: false);
+    private void OnChanged(object? sender, EventArgs e) => ResetNumberedPages();
 }

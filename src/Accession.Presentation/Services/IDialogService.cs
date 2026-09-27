@@ -2,10 +2,10 @@ using Accession.Presentation.Mvvm;
 
 namespace Accession.Presentation.Services;
 
-/// <summary>Modal dialogs, message boxes and file/folder pickers, behind an interface so view models stay testable.</summary>
+/// <summary>Modal dialogs, messages and file/folder pickers, behind an interface so view models stay testable.</summary>
 public interface IDialogService
 {
-    /// <summary>Shows <paramref name="viewModel"/> in a modal dialog window and returns the dialog result.</summary>
+    /// <summary>Shows <paramref name="viewModel"/> as a modal dialog and returns the dialog result.</summary>
     bool? ShowDialog(DialogViewModelBase viewModel);
 
     void ShowInfo(string title, string message);

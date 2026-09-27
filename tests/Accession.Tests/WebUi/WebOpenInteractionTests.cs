@@ -155,19 +155,9 @@ public sealed class WebOpenInteractionTests
         public T Invoke<T>(Func<T> action) => action();
     }
 
-    private sealed class FolderPicker(string? folder) : IDialogService
+    private sealed class FolderPicker(string? folder) : INativeDialogs
     {
         public string? PickFolder(string title, string? initialDirectory = null) => folder;
-
-        public bool? ShowDialog(DialogViewModelBase viewModel) => throw new NotSupportedException();
-
-        public void ShowInfo(string title, string message) => throw new NotSupportedException();
-
-        public void ShowWarning(string title, string message) => throw new NotSupportedException();
-
-        public void ShowError(string title, string message, Exception? exception = null) => throw new NotSupportedException();
-
-        public bool Confirm(string title, string message) => throw new NotSupportedException();
 
         public string? PickOpenFile(string title, string filter, string? initialDirectory = null) => throw new NotSupportedException();
 

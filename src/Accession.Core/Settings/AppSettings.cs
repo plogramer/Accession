@@ -19,10 +19,7 @@ public sealed class AppSettings
     public string DefaultExportFolder { get; set; } = string.Empty;
     public bool SplitExportPerMedia { get; set; }
 
-    // Web UI (preview)
-    /// <summary>Shows the new web-based screens when an inventory is open.</summary>
-    public bool UseWebUi { get; set; }
-
+    // Web UI
     /// <summary>"system", "light" or "dark".</summary>
     public string WebTheme { get; set; } = WebThemes.System;
 

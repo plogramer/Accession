@@ -1,12 +1,10 @@
 # 002 – Web-style UI (Blazor Hybrid) – plan
 
-Status: **all screens and dialogs are in the web UI** (#65–#73). Tracked by epic #64. The classic screens are still
-available (View → New UI (preview) off, or "Classic UI" in the page) until the switch-over (#74), which waits for a
-check on Windows.
+Status: **done** (epic #64, #65–#74). The web UI is the only UI; the classic WPF screens were removed in #74.
 
 ## 1. Goal
 
-The classic WPF screens work but look like a default Windows app. The goal is a modern, web-app-style UI
+The classic WPF screens worked but looked like a default Windows app. The goal is a modern, web-app-style UI
 (side navigation, cards, clean tables, charts, light/dark themes). The app stays an installed Windows
 desktop app with the same evidence-handling guarantees.
 
@@ -32,14 +30,15 @@ between processes), WinUI 3/Avalonia (different native frameworks with no web lo
 
 ```
 Accession.App (WPF host, net10.0-windows10.0.17763.0, Razor SDK)
-  ├─ MainWindow → WebShellView (BlazorWebView, wwwroot/index.html); classic XAML views until #74
-  └─ Platform: WpfUiDispatcher : IUiDispatcher, WindowsDesktop : IDesktop, DialogService (native dialogs)
+  ├─ MainWindow → WebAppView (BlazorWebView, wwwroot/index.html)
+  └─ Platform: WpfUiDispatcher : IUiDispatcher, WindowsDesktop : IDesktop, WpfModalWaiter : IModalWaiter,
+               NativeDialogs : INativeDialogs (folder/file pickers)
 Accession.Presentation (net10.0 – no WPF)
-  ├─ ViewModels: WebShellViewModel : IShellModel, DashboardViewModel : IDashboardModel, … (shared with the classic views)
-  ├─ Services: InventoryHost, ScanHost, InventoryWorkflows, MediaWorkflows, navigation
+  ├─ ViewModels: WebAppViewModel : IAppModel, WebShellViewModel : IShellModel, DashboardViewModel : IDashboardModel, …
+  ├─ Services: InventoryHost, ScanHost, InventoryWorkflows, MediaWorkflows, WebDialogService, WebOpenInteraction
   └─ Platform: IUiDispatcher (Post/Defer/Invoke), IDesktop (clipboard, Explorer, URLs, exit)
 Accession.UI (Razor class library, net10.0 – no WPF)
-  ├─ Shell: AppShell, ScreenHost (page by model type, one error boundary per screen), MenuItem, ClassicOnlyPage
+  ├─ Shell: AppShell, ScreenHost (page by model type, one error boundary per screen), MenuItem
   ├─ Dashboard: DashboardPage, IDashboardModel, row types
   ├─ Components: DataTable/Column (sortable, selectable, virtualized), Pager, Dropdown, Tabs, SplitPanel,
   │              EmptyState, Modal, ToastService/ToastHost, ScreenErrorBoundary, Icon
@@ -55,38 +54,40 @@ Rules the prototype set, which the rest of the migration follows:
   them testable on any OS. The tests render them with `HtmlRenderer`, which also produces the preview pages.
 - **Commands that may open a Windows dialog run after the web event returns** (`await Task.Yield()` in
   `ObservingComponentBase.Run`), because a modal dialog inside a WebView2 event handler can block the WebView.
-- **The web view is disposed on a later dispatcher pass**, because "Close inventory" or "Switch to classic UI" is
-  clicked inside the page that is being replaced.
+- **The web view is disposed on a later dispatcher pass**, because it can be triggered from inside the page
+  that is being replaced.
 - **The WebView2 profile** is kept in `%LOCALAPPDATA%\Accession\WebView2`, because the default location next to the
   exe is read-only under Program Files.
-- **The page draws its own busy overlay** (from `BusyTracker`), below its dialogs. The window's WPF overlay is hidden
-  while the web UI shows: the .NET 10 web view is composited by WPF, so that overlay would cover the page's dialogs.
+- **The page draws its own busy overlay** (from `BusyTracker`), below its dialogs. The window has no WPF overlay: the
+  .NET 10 web view is composited by WPF, so a WPF overlay would cover the page's dialogs.
+- **No WebView2, no UI**: at start-up a missing WebView2 runtime is reported with a native message box (with the
+  download link) and the app exits. If the page fails to start or has not rendered within 20 s, a native message
+  points to the log and the app exits.
 - **The app targets Windows 10 1809+** (`net10.0-windows10.0.17763.0`): the web view's WebView2 composition control
   needs the Windows SDK projection, which is only included for versioned Windows targets.
 - **Themes**: `system` (follows Windows), `light` or `dark`. This is stored in settings (`WebTheme`).
 
-## 4. Prototype (this change)
+## 4. Prototype (#65)
 
-- **View → New UI (preview)** switches the open inventory to the web shell. The setting is remembered (`UseWebUi`).
+The prototype added the web shell next to the classic screens (View → New UI), with a way back to them. Both were
+removed in the switch-over (#74).
+
 - **Shell**: dark sidebar grouped Overview / Inventory / Scanning / Records, with badges for the scan queue and
   errors. The top bar has the matter, client and code, a lock/read-only chip and an offline chip, and live scan
   controls (pause, resume, cancel) while a scan runs. It also has Scan pending, Discover and Add media, plus a
-  "…" menu (Properties, Change root path, Matter link, Settings, Switch to classic UI, Close inventory). A
+  "…" menu (Properties, Change root path, Matter link, Settings, Close inventory). A
   status bar and notice/offline banners complete it.
 - **Dashboard**: KPI cards (media, files/folders, size, hashed with a progress bar, duplicates, errors), media
   filter dropdown, By media table, category bars (click to filter extensions, arrow to open files), extension
-  table with search, files-by-year column chart and largest files. It uses the same click-through filters as
-  the classic Dashboard.
-- Screens not migrated yet show "Open in classic UI". A Dashboard click-through carries its Files filter over
-  to the classic Files screen.
+  table with search, files-by-year column chart and largest files. Clicks open the Files screen with the matching filter.
 
 | Light | Dark |
 |---|---|
 | ![Dashboard, light](../docs/ui-prototype/dashboard-light.png) | ![Dashboard, dark](../docs/ui-prototype/dashboard-dark.png) |
 
-| Scan running | Screen not migrated yet |
-|---|---|
-| ![Scanning](../docs/ui-prototype/dashboard-scanning.png) | ![Classic only](../docs/ui-prototype/classic-only.png) |
+| Scan running |
+|---|
+| ![Scanning](../docs/ui-prototype/dashboard-scanning.png) |
 
 Screenshots are rendered from the components with sample data (see
 `tests/Accession.Tests/WebUi`; set `ACCESSION_UI_PREVIEW_DIR` to write the preview pages).
@@ -125,8 +126,8 @@ The web Files screen uses **pages** instead of an endless scrolling grid.
    The folder picker stays the native Windows dialog.
 8. **Keyboard and accessibility** (#73): shortcuts (Ctrl+O, F5, Ctrl+F), focus order, screen-reader labels,
    Windows high-contrast, and text scaling.
-9. **Switch-over** (#74): make the web UI the default, remove the classic XAML views and the View menu toggle, and
-   update docs. The installer (#59) checks for or bundles the WebView2 Evergreen runtime.
+9. **Switch-over** (#74): the web UI is the only UI; the classic XAML views, the View menu toggle and the `UseWebUi`
+   setting are removed. The installer (#59) checks for or bundles the WebView2 Evergreen runtime.
 
 Excel export (#9) and Quality (#10) continue in parallel. The export options dialog is built as a web
 dialog once #72 is in.

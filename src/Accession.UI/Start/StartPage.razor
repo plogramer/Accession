@@ -10,12 +10,6 @@
             </div>
         </div>
         <div class="start-top-actions">
-            @if (App is not null)
-            {
-                <button class="btn" title="Switch to the classic screens" @onclick="() => Run(App.SwitchToClassicCommand)">
-                    <Icon Name="classic" Size="16" /> Classic UI
-                </button>
-            }
             <ThemeSwitch />
             <button class="icon-btn icon-btn-lg" title="Settings" @onclick="() => Run(Model.OpenSettingsCommand)"><Icon Name="settings" /></button>
         </div>
@@ -99,7 +93,6 @@
 
     [Parameter, EditorRequired] public IStartModel Model { get; set; } = default!;
 
-    [CascadingParameter] public IAppModel? App { get; set; }
 
     private IEnumerable<RecentInventoryItem> Filtered => _search.Length == 0
         ? Model.RecentInventories

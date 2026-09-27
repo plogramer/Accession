@@ -12,7 +12,7 @@ namespace Accession.Presentation.Services;
 /// Answers the open workflow's questions with web dialogs (web UI). The open runs on a background thread,
 /// which waits here while the page shows the dialog; the folder picker stays the native Windows dialog.
 /// </summary>
-public sealed class WebOpenInteraction(DialogCenter dialogs, IDialogService nativeDialogs, IUiDispatcher ui, ISettingsService settings)
+public sealed class WebOpenInteraction(DialogCenter dialogs, INativeDialogs nativeDialogs, IUiDispatcher ui, ISettingsService settings)
     : IOpenInteraction
 {
     public const string Cancel = "cancel";

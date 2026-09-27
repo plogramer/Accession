@@ -26,9 +26,6 @@ public interface IAppModel : INotifyPropertyChanged
     bool CanCancelBusy { get; }
     ICommand CancelBusyCommand { get; }
 
-    /// <summary>Switches back to the classic (WPF) screens.</summary>
-    ICommand SwitchToClassicCommand { get; }
-
     /// <summary>Called by the page after its first render (the host's start-up check).</summary>
     void PageRendered();
 

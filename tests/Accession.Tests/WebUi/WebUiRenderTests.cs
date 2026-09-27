@@ -66,15 +66,16 @@ public sealed class WebUiRenderTests
     }
 
     [Fact]
-    public async Task Screen_not_in_web_ui_offers_the_classic_screen()
+    public async Task Screen_without_a_page_says_it_is_not_available()
     {
         var shell = new FakeShell(new FakeDashboard());
         shell.SelectedItem = shell.NavItems.First(n => n.Key == "Categories");
 
-        var html = await RenderAsync(shell, "classic-only");
+        var html = await RenderAsync(shell);
 
-        Assert.Contains("Open in classic UI", html);
+        Assert.Contains("This screen is not available.", html);
         Assert.DoesNotContain("By media", html);
+        Assert.DoesNotContain("classic", html, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -87,7 +88,7 @@ public sealed class WebUiRenderTests
         Assert.Contains("Fabrikam Arbitration", html);
         Assert.Contains("Not found", html);
         Assert.Contains("Version 0.1.0", html);
-        Assert.Contains("Classic UI", html);
+        Assert.DoesNotContain("Classic UI", html);
         Assert.DoesNotContain("sidebar", html);
     }
 

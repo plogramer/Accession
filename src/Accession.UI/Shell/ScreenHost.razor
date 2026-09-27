@@ -24,13 +24,11 @@
             <AuditPage Model="audit" />
             break;
         default:
-            <ClassicOnlyPage Title="@Item.Key" Icon="@Item.Icon" OpenCommand="OpenInClassicCommand" />
+            <EmptyState Icon="@Item.Icon" Title="@Item.Key"><p class="muted">This screen is not available.</p></EmptyState>
             break;
     }
 </ScreenErrorBoundary>
 
 @code {
     [Parameter, EditorRequired] public ShellNavItem Item { get; set; } = default!;
-
-    [Parameter, EditorRequired] public ICommand OpenInClassicCommand { get; set; } = default!;
 }

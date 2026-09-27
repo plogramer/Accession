@@ -118,10 +118,10 @@ public sealed class WebDialogServiceTests
     }
 
     [Fact]
-    public void Dialogs_without_a_web_form_use_the_native_window()
+    public void Dialogs_without_a_web_form_are_a_programming_error()
     {
-        Assert.True(_dialogs.ShowDialog(new UnknownDialog()));
-        Assert.True(_native.ShowedDialog);
+        Assert.Throws<NotSupportedException>(() => _dialogs.ShowDialog(new UnknownDialog()));
+        Assert.Empty(_center.Items);
     }
 
     private async Task<T> WaitFor<T>() where T : class
@@ -145,26 +145,9 @@ public sealed class WebDialogServiceTests
         public T Wait<T>(Task<T> task) => task.GetAwaiter().GetResult();
     }
 
-
-    private sealed class RecordingNative : IDialogService
+    private sealed class RecordingNative : INativeDialogs
     {
-        public bool ShowedDialog { get; private set; }
-
-        public bool? ShowDialog(DialogViewModelBase viewModel)
-        {
-            ShowedDialog = true;
-            return true;
-        }
-
         public string? PickFolder(string title, string? initialDirectory = null) => @"C:\picked";
-
-        public void ShowInfo(string title, string message) => throw new NotSupportedException();
-
-        public void ShowWarning(string title, string message) => throw new NotSupportedException();
-
-        public void ShowError(string title, string message, Exception? exception = null) => throw new NotSupportedException();
-
-        public bool Confirm(string title, string message) => throw new NotSupportedException();
 
         public string? PickOpenFile(string title, string filter, string? initialDirectory = null) => null;
 

@@ -12,7 +12,8 @@ Requirements: [`requirements/001-initial_requirements.md`](requirements/001-init
 
 | Project | Purpose |
 |---|---|
-| `src/Accession.App` | WPF host and classic screens (`net10.0-windows10.0.17763.0`, x64); hosts the web UI in a BlazorWebView |
+| `src/Accession.App` | WPF host (`net10.0-windows10.0.17763.0`, x64): the main window, which shows the web UI in a BlazorWebView, and the native pickers |
+| `src/Accession.Presentation` | View models and workflows behind the screens, no WPF references |
 | `src/Accession.UI` | Web UI (Blazor components and CSS), no WPF references – see `requirements/002-web-ui-plan.md` |
 | `src/Accession.Core` | Services, scanning, models – no UI references |
 | `src/Accession.Data` | SQLite data access |
@@ -33,7 +34,7 @@ dotnet test --solution Accession.sln -c Release
 dotnet run --project src/Accession.App
 ```
 
-To try the new web-style screens (preview), open an inventory and choose **View → New UI (preview)**.
+Without the WebView2 runtime Accession shows a message with the download link and exits.
 
 Tests use [Microsoft.Testing.Platform](https://aka.ms/dotnet-test-mtp) (opted in via `global.json`).
 

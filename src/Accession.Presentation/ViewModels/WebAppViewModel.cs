@@ -11,7 +11,7 @@ using Accession.UI.Components;
 namespace Accession.Presentation.ViewModels;
 
 /// <summary>
-/// The web UI's page (preview): the Start screen, or the inventory shell while an inventory is open,
+/// The web UI's page: the Start screen, or the inventory shell while an inventory is open,
 /// plus theme, busy overlay, notifications and dialogs. One web view serves both screens.
 /// </summary>
 public sealed class WebAppViewModel : ViewModelBase, IAppModel
@@ -71,8 +71,6 @@ public sealed class WebAppViewModel : ViewModelBase, IAppModel
 
     public ICommand CancelBusyCommand => _main.CancelBusyCommand;
 
-    public ICommand SwitchToClassicCommand => _main.LeaveWebUiCommand;
-
     public ICommand NewInventoryCommand => _main.NewInventoryCommand;
 
     public ICommand OpenInventoryCommand => _main.OpenInventoryCommand;
@@ -83,9 +81,6 @@ public sealed class WebAppViewModel : ViewModelBase, IAppModel
     public bool IsPageRendered { get; private set; }
 
     public void PageRendered() => IsPageRendered = true;
-
-    /// <summary>The web view did not start: go back to the classic screens and tell the user.</summary>
-    public void ReportStartFailure(string message) => _main.WebUiFailed(message);
 
     public override void OnNavigatedTo()
     {

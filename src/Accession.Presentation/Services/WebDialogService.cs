@@ -10,17 +10,14 @@ namespace Accession.Presentation.Services;
 /// Dialogs drawn by the web page. Calls stay synchronous (like modal windows): the caller waits in a nested
 /// message loop until the page answers. File and folder pickers remain the native Windows dialogs.
 /// </summary>
-public sealed class WebDialogService(DialogCenter center, IModalWaiter waiter, IDialogService native, IDesktop desktop) : IDialogService
+public sealed class WebDialogService(DialogCenter center, IModalWaiter waiter, INativeDialogs native, IDesktop desktop) : IDialogService
 {
     public bool? ShowDialog(DialogViewModelBase viewModel)
     {
         ArgumentNullException.ThrowIfNull(viewModel);
         var result = new TaskCompletionSource<bool?>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var form = DialogForms.Build(viewModel, () => result.TrySetResult(false));
-        if (form is null)
-        {
-            return native.ShowDialog(viewModel); // no web form for this dialog
-        }
+        var form = DialogForms.Build(viewModel, () => result.TrySetResult(false))
+            ?? throw new NotSupportedException($"There is no web form for {viewModel.GetType().Name}.");
 
         void OnClose(object? sender, bool? value) => result.TrySetResult(value);
         viewModel.CloseRequested += OnClose;

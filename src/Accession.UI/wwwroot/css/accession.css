@@ -244,14 +244,6 @@ button:disabled { cursor: default; opacity: .45; }
 
 .nav-badge.is-danger { background: #5b1a2c; color: #ffb3c4; }
 
-.nav-soon {
-    padding: 1px 6px;
-    border: 1px solid var(--side-border);
-    border-radius: 999px;
-    font-size: 10px;
-    color: var(--side-muted);
-}
-
 .sidebar-footer {
     display: flex;
     flex-direction: column;
@@ -1294,7 +1286,7 @@ kbd {
 @media (max-width: 900px) {
     /* Narrow windows and large text: the sidebar shows icons only. */
     :root { --sidebar-w: 64px; }
-    .brand > div, .nav-label, .nav-soon, .nav-group, .user-name, .theme-switch { display: none; }
+    .brand > div, .nav-label, .nav-group, .user-name, .theme-switch { display: none; }
     .brand { justify-content: center; padding: 16px 0; }
     .nav-item { justify-content: center; position: relative; }
     .nav-badge { position: absolute; top: 2px; right: 2px; min-width: 16px; padding: 0 4px; font-size: 10px; }

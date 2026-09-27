@@ -48,13 +48,20 @@ public partial class App : Application
                 _host.Services.GetRequiredService<IUserContext>().UserName,
                 Environment.MachineName);
 
+            // The whole UI is a web page: without the WebView2 runtime there is nothing to show.
+            if (_host.Services.GetRequiredService<IDesktop>().WebViewRuntimeVersion() is null)
+            {
+                MessageBox.Show(
+                    "Accession needs the Microsoft Edge WebView2 Runtime, which is not installed on this computer.\n\n" +
+                    "Install it from https://go.microsoft.com/fwlink/p/?LinkId=2124703 and start Accession again.",
+                    "Accession", MessageBoxButton.OK, MessageBoxImage.Error);
+                Shutdown(1);
+                return;
+            }
+
             var mainWindow = _host.Services.GetRequiredService<MainWindow>();
             MainWindow = mainWindow;
-
-            // Show the window before choosing the first screen: anything that asks or warns during start-up
-            // (e.g. a missing WebView2 runtime) then has a visible owner instead of hiding behind other windows.
             mainWindow.Show();
-            _host.Services.GetRequiredService<MainWindowViewModel>().Initialize();
         }
         catch (Exception ex)
         {
@@ -131,26 +138,19 @@ public partial class App : Application
         builder.Services.AddSingleton<IDesktop, WindowsDesktop>();
         builder.Services.AddSingleton<IModalWaiter, WpfModalWaiter>();
 
+        builder.Services.AddSingleton<INativeDialogs, NativeDialogs>();
+
         // UI services
-        builder.Services.AddSingleton<INavigationService, NavigationService>();
-        builder.Services.AddSingleton<DialogService>();
-        builder.Services.AddSingleton(sp => new WebDialogService(
-            sp.GetRequiredService<Accession.UI.Components.DialogCenter>(),
-            sp.GetRequiredService<IModalWaiter>(),
-            sp.GetRequiredService<DialogService>(),
-            sp.GetRequiredService<IDesktop>()));
-        builder.Services.AddSingleton<IDialogService, DialogRouter>();
+        builder.Services.AddSingleton<IDialogService, WebDialogService>();
         builder.Services.AddSingleton<IWindowPlacementService, WindowPlacementService>();
         builder.Services.AddSingleton<InventoryHost>();
-        builder.Services.AddSingleton<WpfOpenInteraction>();
-        builder.Services.AddSingleton<WebOpenInteraction>();
-        builder.Services.AddSingleton<IOpenInteraction, OpenInteractionRouter>();
+        builder.Services.AddSingleton<IOpenInteraction, WebOpenInteraction>();
         builder.Services.AddSingleton<InventoryWorkflows>();
         builder.Services.AddSingleton<MediaWorkflows>();
         builder.Services.AddSingleton<ScanHost>();
         builder.Services.AddSingleton<FileBrowserNavigator>();
 
-        // Web UI (preview)
+        // Web UI
         builder.Services.AddWpfBlazorWebView();
         builder.Services.AddSingleton(sp => new Accession.UI.Components.ToastService(sp.GetRequiredService<TimeProvider>()));
         builder.Services.AddSingleton<Accession.UI.Components.DialogCenter>();
@@ -161,14 +161,12 @@ public partial class App : Application
         // View models and windows
         builder.Services.AddSingleton<MainWindowViewModel>();
         builder.Services.AddTransient<StartViewModel>();
-        builder.Services.AddTransient<InventoryShellViewModel>();
         builder.Services.AddTransient<WebShellViewModel>();
         builder.Services.AddSingleton<Func<WebShellViewModel>>(sp => sp.GetRequiredService<WebShellViewModel>);
         builder.Services.AddSingleton<Func<StartViewModel>>(sp => sp.GetRequiredService<StartViewModel>);
-        builder.Services.AddTransient<WebAppViewModel>();
+        builder.Services.AddSingleton<WebAppViewModel>();
         builder.Services.AddTransient<MediaListViewModel>();
         builder.Services.AddTransient<Accession.Presentation.ViewModels.Dashboard.DashboardViewModel>();
-        builder.Services.AddTransient<Accession.Presentation.ViewModels.Browsing.FileBrowserViewModel>();
         builder.Services.AddTransient<Accession.Presentation.ViewModels.Browsing.WebFilesViewModel>();
         builder.Services.AddTransient<Accession.Presentation.ViewModels.Browsing.CategoriesViewModel>();
         builder.Services.AddTransient<Accession.Presentation.ViewModels.Browsing.AuditLogViewModel>();
@@ -235,10 +233,11 @@ public partial class App : Application
         try
         {
             var message = "An unexpected error occurred. You can continue working, but if the problem persists please restart Accession.";
-            var dialogs = _host?.Services.GetService<IDialogService>();
-            if (dialogs is not null)
+
+            // The page's error dialog only works once the page is up; before that, a native message box.
+            if (_host?.Services.GetService<WebAppViewModel>() is { IsPageRendered: true })
             {
-                dialogs.ShowError("Unexpected error", message, e.Exception);
+                _host.Services.GetRequiredService<IDialogService>().ShowError("Unexpected error", message, e.Exception);
             }
             else
             {

@@ -42,7 +42,4 @@ public interface IShellModel : INotifyPropertyChanged
     ICommand OpenSettingsCommand { get; }
     ICommand CloseInventoryCommand { get; }
     ICommand DismissNoticeCommand { get; }
-
-    /// <summary>Switches to the classic (WPF) screens, opening the selected screen there.</summary>
-    ICommand OpenInClassicCommand { get; }
 }

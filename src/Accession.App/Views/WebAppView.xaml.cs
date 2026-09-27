@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
+using Accession.App.Services;
 using Accession.Core.Runtime;
 using Accession.Presentation.ViewModels;
 using Accession.UI.App;
@@ -12,8 +13,8 @@ using Microsoft.Web.WebView2.Core;
 namespace Accession.App.Views;
 
 /// <summary>
-/// Hosts the web UI (Accession.UI) in a BlazorWebView. Logs WebView2 problems, and falls back to the classic
-/// screens if the page has not rendered within <see cref="StartTimeout"/>, so a failing web view never locks the user out.
+/// Hosts the web UI (Accession.UI) in a BlazorWebView. Logs WebView2 problems, and if the page cannot start
+/// (or has not rendered within <see cref="StartTimeout"/>) tells the user and exits instead of showing a blank window.
 /// </summary>
 public partial class WebAppView : UserControl
 {
@@ -22,6 +23,7 @@ public partial class WebAppView : UserControl
     private readonly ILogger<WebAppView> _logger = App.Services.GetRequiredService<ILogger<WebAppView>>();
     private BlazorWebView? _webView;
     private DispatcherTimer? _watchdog;
+    private bool _failed;
 
     public WebAppView()
     {
@@ -52,9 +54,7 @@ public partial class WebAppView : UserControl
         catch (Exception ex)
         {
             _logger.LogError(ex, "The web UI could not be created");
-            model.ReportStartFailure(
-                $"The new UI could not start ({ex.Message}), so Accession switched back to the classic screens.\n\n" +
-                $"Details are in the log: {AppPaths.LogFolder}");
+            Fail($"The window could not be drawn ({ex.Message}).");
         }
     }
 
@@ -135,14 +135,34 @@ public partial class WebAppView : UserControl
             watchdog.Stop();
             if (!model.IsPageRendered && ReferenceEquals(_watchdog, watchdog))
             {
-                _logger.LogError("The web UI did not render within {Seconds} s; switching to the classic screens", StartTimeout.TotalSeconds);
-                model.ReportStartFailure(
-                    $"The new UI did not start, so Accession switched back to the classic screens.\n\n" +
-                    $"Details are in the log: {AppPaths.LogFolder}");
+                _logger.LogError("The web UI did not render within {Seconds} s", StartTimeout.TotalSeconds);
+                Fail("The window could not be drawn.");
             }
         };
         _watchdog = watchdog;
         watchdog.Start();
+    }
+
+    /// <summary>
+    /// The page cannot show anything, including its own dialogs, so a native message explains and the app exits.
+    /// Exiting still closes the inventory and stops a scan (App.OnExit).
+    /// </summary>
+    private void Fail(string reason)
+    {
+        if (_failed)
+        {
+            return;
+        }
+
+        _failed = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
+        {
+            NativeDialogs.ShowMessage("Accession",
+                $"{reason} Accession needs the Microsoft Edge WebView2 Runtime to show its window.\n\n" +
+                $"Details are in the log: {AppPaths.LogFolder}",
+                MessageBoxImage.Error);
+            Application.Current.Shutdown(1);
+        });
     }
 
     private void DisposeWebView()

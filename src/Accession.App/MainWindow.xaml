@@ -1,67 +1,10 @@
 <Window x:Class="Accession.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="clr-namespace:Accession.App.Views"
         Title="{Binding Title}"
         Width="1200" Height="800" MinWidth="800" MinHeight="500"
         WindowStartupLocation="CenterScreen">
-    <DockPanel>
-        <Menu DockPanel.Dock="Top" Visibility="{Binding IsClassicMenuVisible, Converter={StaticResource BoolToVisibility}}">
-            <MenuItem Header="_File">
-                <MenuItem Header="_New Inventory…" Command="{Binding NewInventoryCommand}" />
-                <MenuItem Header="_Open Inventory…" Command="{Binding OpenInventoryCommand}" />
-                <MenuItem Header="_Close Inventory" Command="{Binding CloseInventoryCommand}" />
-                <Separator />
-                <MenuItem Header="_Settings…" Command="{Binding OpenSettingsCommand}" />
-                <Separator />
-                <MenuItem Header="E_xit" Command="{Binding ExitCommand}" />
-            </MenuItem>
-            <MenuItem Header="_Inventory">
-                <MenuItem Header="_Properties…" Command="{Binding ShowPropertiesCommand}" />
-                <MenuItem Header="_Change Root Path…" Command="{Binding ChangeRootPathCommand}" />
-                <MenuItem Header="_Discover Media" Command="{Binding DiscoverMediaCommand}" />
-                <Separator />
-                <MenuItem Header="Open _Matter Link" Command="{Binding OpenMatterLinkCommand}" />
-            </MenuItem>
-            <MenuItem Header="_Media" IsEnabled="{Binding HasSession}">
-                <MenuItem Header="_Add Media…" Command="{Binding AddMediaCommand}" />
-                <MenuItem Header="_Scan" IsEnabled="False" ToolTip="Select media on the Media screen and use Scan there" />
-                <MenuItem Header="_Delete Media…" IsEnabled="False" ToolTip="Select a media on the Media screen and use Delete there" />
-            </MenuItem>
-            <MenuItem Header="_Scan" IsEnabled="{Binding HasSession}">
-                <MenuItem Header="_Pause" Command="{Binding PauseScanCommand}" />
-                <MenuItem Header="_Resume" Command="{Binding ResumeScanCommand}" />
-                <MenuItem Header="_Cancel" Command="{Binding CancelScanCommand}" />
-            </MenuItem>
-            <MenuItem Header="_Export" IsEnabled="{Binding HasSession}">
-                <MenuItem Header="Export to _Excel…" IsEnabled="False" ToolTip="Coming with Excel export" />
-            </MenuItem>
-            <MenuItem Header="_View">
-                <MenuItem Header="_New UI (preview)" IsCheckable="True" IsChecked="{Binding UseWebUi}"
-                          ToolTip="Show the new web-style screens. The Dashboard is available; other screens open in the classic UI." />
-            </MenuItem>
-            <MenuItem Header="_Help">
-                <MenuItem Header="_Throw test exception" Command="{Binding ThrowTestExceptionCommand}"
-                          Visibility="{Binding IsDebugBuild, Converter={StaticResource BoolToVisibility}}" />
-            </MenuItem>
-        </Menu>
-
-        <Grid>
-            <ContentControl Content="{Binding CurrentScreen}" Focusable="False" />
-
-            <!-- Busy overlay: shown by BusyTracker only for operations longer than 300 ms. -->
-            <Grid Visibility="{Binding IsClassicBusyVisible, Converter={StaticResource BoolToVisibility}}" Background="#80FFFFFF">
-                <Border Background="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"
-                        BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}" BorderThickness="1"
-                        Padding="24,16" HorizontalAlignment="Center" VerticalAlignment="Center" MinWidth="320">
-                    <StackPanel>
-                        <TextBlock Text="{Binding Busy.Message}" TextWrapping="Wrap" />
-                        <ProgressBar IsIndeterminate="True" Height="6" Margin="0,12,0,0" />
-                        <Button Content="Cancel" Command="{Binding CancelBusyCommand}" HorizontalAlignment="Right"
-                                MinWidth="80" Margin="0,12,0,0"
-                                Visibility="{Binding Busy.CanCancel, Converter={StaticResource BoolToVisibility}}" />
-                    </StackPanel>
-                </Border>
-            </Grid>
-        </Grid>
-    </DockPanel>
+    <!-- The whole UI is the web page; its DataContext is set in code (WebAppViewModel). -->
+    <views:WebAppView x:Name="Page" />
 </Window>
