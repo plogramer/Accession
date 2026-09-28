@@ -151,7 +151,7 @@ public sealed class InventoryWorkflows
                 var opened = watch.ElapsedMilliseconds;
                 if (session is not null)
                 {
-                    // The screens are built on the UI thread, but read the database in the background.
+                    // The screens are built on the UI thread (they read the database in the background).
                     busy.Update("Loading the inventory…");
                     await Task.Delay(30); // let the page show the new message first
                     watch.Restart();

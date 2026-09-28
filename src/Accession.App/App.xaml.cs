@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Threading;
 using Accession.App.Platform;
 using Accession.App.Services;
+using Accession.App.Views;
 using Accession.Presentation.Platform;
 using Accession.Presentation.Services;
 using Accession.Presentation.ViewModels;
@@ -24,6 +25,7 @@ namespace Accession.App;
 public partial class App : Application
 {
     private IHost? _host;
+    private StallSpinner? _stallSpinner;
 
     /// <summary>The application's service provider; used by views that cannot get it by injection (the BlazorWebView).</summary>
     internal static IServiceProvider Services { get; private set; } = default!;
@@ -63,6 +65,11 @@ public partial class App : Application
             var mainWindow = _host.Services.GetRequiredService<MainWindow>();
             MainWindow = mainWindow;
             mainWindow.Show();
+
+            // The page cannot animate while the UI thread is busy: a spinner on its own thread covers those moments.
+            _stallSpinner = new StallSpinner(mainWindow, _host.Services.GetRequiredService<BusyTracker>(),
+                _host.Services.GetRequiredService<ISettingsService>());
+            _stallSpinner.Start();
         }
         catch (Exception ex)
         {
@@ -76,6 +83,7 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         // Synchronous on purpose: the process ends when OnExit returns, so logs must be flushed first.
+        _stallSpinner?.Dispose();
         try
         {
             // Normally closed by the main window; this covers other shutdown paths.

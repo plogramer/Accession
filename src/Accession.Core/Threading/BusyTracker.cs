@@ -40,7 +40,7 @@ public sealed class BusyTracker : INotifyPropertyChanged
     /// <summary>
     /// Shows the busy indicator now (no delay) until the returned scope is disposed. For work that also runs on the UI
     /// thread (e.g. building the screens of an inventory just opened): the indicator must be up before that thread is
-    /// busy, and it keeps animating meanwhile because the page is drawn by the web view's own process.
+    /// busy. The page cannot animate while it is; the desktop app covers those moments with a spinner of its own.
     /// </summary>
     public BusyScope Begin(string message)
     {
