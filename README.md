@@ -21,6 +21,32 @@ or collect them in saved searches.
 
 *Sample data. More screens are in the in-app help ([`src/Accession.App/wwwroot/help`](src/Accession.App/wwwroot/help/index.html)).*
 
+## Version history
+
+The version is set in [`Directory.Build.props`](Directory.Build.props) (`<Version>`) and shown in the app. Newest first.
+
+### 0.1 – 2026-09-28
+
+First version. Inventory schema version 3.
+
+- **Inventories** – create and open an inventory (one SQLite file per matter) with client and matter details and a matter
+  link; one user at a time edits it (lock), others can open it read-only; older inventories are upgraded with a backup;
+  an inventory left by a crash or a stopped scan opens again.
+- **Media** – add media folders under the root, or discover new ones; delete media; see each media's scans.
+- **Scanning** – a scan queue (one media at a time, in the background) that lists every folder and file with its metadata
+  and SHA-1; pause, resume, cancel, retry failed files; settable listing and hashing threads; network drops are retried;
+  source files are only read and their last-access times are kept.
+- **Dashboard** – totals, media, categories, extensions, duplicates, files by year and largest files, for all media or the
+  ones you tick; the slow sections are saved on the computer, so reopening a large inventory is quick.
+- **Files** – browse by media and folder with filters (name, extension, category, size, dates, hash status, duplicates,
+  errors, SHA-1); saved searches; right-click menus; copy files out as a copy batch (`.bat`), in the app (keeping or
+  renaming, with metadata, optional SHA-1 verify, several threads) or with *Copy To* (`<sha1>_<name>`), each with a CSV
+  manifest.
+- **Categories, Errors, Audit Log** – files by category and extension; files that could not be read, with retry; every
+  change with who, when and on which computer.
+- **Export** – the inventory, a Files view or the audit log to Excel.
+- **App** – help window with screenshots (F1), settings, light and dark themes, app icon.
+
 ## Solution layout
 
 | Project | Purpose |
