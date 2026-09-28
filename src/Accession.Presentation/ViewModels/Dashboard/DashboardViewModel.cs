@@ -509,8 +509,8 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDashboardModel,
         catch (Exception ex) when (Accession.Data.LongReads.IsInterrupted(ex))
         {
             // Something was written meanwhile (media added, scan queued): the long queries gave way. Try again shortly.
+            _ = RetrySlowAsync(token); // its timer starts now, before anyone sees the note below
             DuplicateNote = "paused while the inventory changes…";
-            _ = RetrySlowAsync(token);
         }
         catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or System.IO.IOException or InvalidOperationException)
         {
