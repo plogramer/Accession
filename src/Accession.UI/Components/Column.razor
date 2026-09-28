@@ -17,6 +17,9 @@
     /// <summary>Position among the table's columns; columns shown later (column chooser) keep their place.</summary>
     [Parameter] public int Order { get; set; }
 
+    /// <summary>Header content instead of <see cref="Title"/> (e.g. a tick box); the title stays the accessible name.</summary>
+    [Parameter] public RenderFragment? HeaderContent { get; set; }
+
     /// <summary>Cell content for an item.</summary>
     [Parameter] public RenderFragment<TItem>? ChildContent { get; set; }
 

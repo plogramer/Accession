@@ -23,6 +23,7 @@ public static class DialogForms
         SettingsViewModel vm => Settings(vm, dismiss),
         ErrorDialogViewModel vm => Error(vm, dismiss),
         ExportViewModel vm => Export(vm, dismiss),
+        SavedSearchViewModel vm => SavedSearch(vm, dismiss),
         _ => null,
     };
 
@@ -237,6 +238,28 @@ public static class DialogForms
             Dismiss = dismiss,
         };
     }
+
+    private static FormDialog SavedSearch(SavedSearchViewModel vm, Action dismiss) => new(
+        vm.Title,
+        [
+            new FormSection(null,
+            [
+                new TextField("Name", () => vm.Name, v => vm.Name = v) { AutoFocus = true, Wide = true, Error = () => vm.NameError },
+                new TextField("Description", () => vm.Description, v => vm.Description = v)
+                {
+                    Multiline = true, Wide = true, Placeholder = "Optional: why these files are collected",
+                },
+            ]),
+        ],
+        [
+            new FormButton("Cancel", vm.CancelCommand),
+            new FormButton(vm.SaveText, vm.SaveCommand, DialogChoiceStyle.Primary) { IsDefault = true },
+        ])
+    {
+        Width = "480px",
+        Observed = [vm],
+        Dismiss = dismiss,
+    };
 
     /// <summary>Export to Excel (section 8.15).</summary>
     private static FormDialog Export(ExportViewModel vm, Action dismiss) => new(

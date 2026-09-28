@@ -18,7 +18,14 @@
                         style="@(column.Width is null ? null : $"width:{column.Width}")"
                         aria-sort="@AriaSort(column)" @onclick="() => SortBy(column)">
                         <span class="th-content">
-                            @column.Title
+                            @if (column.HeaderContent is not null)
+                            {
+                                @column.HeaderContent
+                            }
+                            else
+                            {
+                                @column.Title
+                            }
                             @if (IsSorted(column))
                             {
                                 <Icon Name="@(SortDescending ? "arrow-down" : "arrow-up")" Size="13" />

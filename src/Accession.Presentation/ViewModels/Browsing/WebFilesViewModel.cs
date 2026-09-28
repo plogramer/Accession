@@ -8,6 +8,7 @@ using Accession.Core.Scanning;
 using Accession.Core.Settings;
 using Accession.Data;
 using Accession.Data.Browsing;
+using Accession.Data.SavedSearches;
 using Accession.Presentation.Mvvm;
 using Accession.Presentation.Platform;
 using Accession.Presentation.Services;
@@ -49,6 +50,8 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
     private bool _suppressApply;
     private HashSet<long> _mediaKeys = [];
     private readonly ExportWorkflow? _export;
+    private readonly SavedSearchWorkflow? _savedSearchWorkflow;
+    private readonly HashSet<long> _checked = [];
     private IReadOnlyList<SelectOption> _mediaRootOptions = [];
     private IReadOnlyList<long>? _mediaSet;
 
@@ -56,9 +59,11 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
     public const string MediaSetValue = "set";
 
     public WebFilesViewModel(InventoryHost host, FileBrowserQueries queries, CategoryQueries categories, ISettingsService settings,
-        IDesktop desktop, IDialogService dialogs, ToastService toasts, ILogger<WebFilesViewModel> logger, ExportWorkflow? export = null)
+        IDesktop desktop, IDialogService dialogs, ToastService toasts, ILogger<WebFilesViewModel> logger, ExportWorkflow? export = null,
+        SavedSearchWorkflow? savedSearches = null)
     {
         _export = export;
+        _savedSearchWorkflow = savedSearches;
         _host = host;
         _queries = queries;
         _categories = categories;
@@ -72,6 +77,218 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
         _host.MediaChanged += OnMediaChanged;
         LoadLookups();
         _ = ReloadAsync();
+    }
+
+    // ---- Saved searches ----
+
+    [ObservableProperty]
+    public partial string SideTab { get; set; } = "folders";
+
+    public ObservableCollection<SavedSearchRow> SavedSearches { get; } = [];
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(RemoveCheckedFromSavedSearchCommand), nameof(RemoveAllFromSavedSearchCommand))]
+    public partial SavedSearchRow? SelectedSavedSearch { get; set; }
+
+    public bool CanChangeSavedSearches => _savedSearchWorkflow?.CanChange ?? false;
+
+    ICommand IFilesModel.NewSavedSearchCommand => NewSavedSearchCommand;
+
+    ICommand IFilesModel.EditSavedSearchCommand => EditSavedSearchCommand;
+
+    ICommand IFilesModel.DeleteSavedSearchCommand => DeleteSavedSearchCommand;
+
+    ICommand IFilesModel.AddAllToSavedSearchCommand => AddAllToSavedSearchCommand;
+
+    ICommand IFilesModel.AddCheckedToSavedSearchCommand => AddCheckedToSavedSearchCommand;
+
+    ICommand IFilesModel.RemoveCheckedFromSavedSearchCommand => RemoveCheckedFromSavedSearchCommand;
+
+    ICommand IFilesModel.RemoveAllFromSavedSearchCommand => RemoveAllFromSavedSearchCommand;
+
+    // ---- Ticked rows ----
+
+    public IReadOnlySet<long> CheckedFileIds => _checked;
+
+    ICommand IFilesModel.ClearCheckedCommand => ClearCheckedCommand;
+
+    public void SetChecked(FileRow row, bool isChecked)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+        if (isChecked ? _checked.Add(row.FileId) : _checked.Remove(row.FileId))
+        {
+            OnCheckedChanged();
+        }
+    }
+
+    public void SetPageChecked(bool isChecked)
+    {
+        foreach (var row in Rows)
+        {
+            if (isChecked)
+            {
+                _checked.Add(row.FileId);
+            }
+            else
+            {
+                _checked.Remove(row.FileId);
+            }
+        }
+
+        OnCheckedChanged();
+    }
+
+    [RelayCommand]
+    private void ClearChecked()
+    {
+        _checked.Clear();
+        OnCheckedChanged();
+    }
+
+    private void OnCheckedChanged()
+    {
+        OnPropertyChanged(nameof(CheckedFileIds));
+        AddCheckedToSavedSearchCommand.NotifyCanExecuteChanged();
+        RemoveCheckedFromSavedSearchCommand.NotifyCanExecuteChanged();
+    }
+
+    [RelayCommand(CanExecute = nameof(CanChangeSavedSearches))]
+    private void NewSavedSearch()
+    {
+        if (_savedSearchWorkflow!.Create() is { } id)
+        {
+            LoadSavedSearches();
+            SelectSavedSearch(id);
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanChangeSavedSearches))]
+    private void EditSavedSearch(SavedSearchRow? row)
+    {
+        if (row is not null && Info(row) is { } info && _savedSearchWorkflow!.Edit(info))
+        {
+            LoadSavedSearches();
+            if (SelectedSavedSearch is not null)
+            {
+                ActiveFilters = Describe(_activeFilter);
+            }
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanChangeSavedSearches))]
+    private void DeleteSavedSearch(SavedSearchRow? row)
+    {
+        if (row is not null && Info(row) is { } info && _savedSearchWorkflow!.Delete(info))
+        {
+            var wasShown = SelectedSavedSearch?.Id == row.Id;
+            LoadSavedSearches(); // drops the selection if it was the deleted one
+            if (wasShown)
+            {
+                Apply(); // back to all media
+            }
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanAddAll))]
+    private async Task AddAllToSavedSearch(SavedSearchRow? target)
+    {
+        if (await _savedSearchWorkflow!.AddAsync(target?.Id, target?.Name, _activeFilter) is not null)
+        {
+            LoadSavedSearches(); // new counts; the results stay in view
+        }
+    }
+
+    private bool CanAddAll(SavedSearchRow? target) => CanChangeSavedSearches && TotalCount > 0 && target?.Id != SelectedSavedSearch?.Id;
+
+    [RelayCommand(CanExecute = nameof(CanAddChecked))]
+    private async Task AddCheckedToSavedSearch(SavedSearchRow? target)
+    {
+        if (await _savedSearchWorkflow!.AddAsync(target?.Id, target?.Name, new FileFilter { FileIds = [.. _checked] }) is not null)
+        {
+            ClearChecked();
+            LoadSavedSearches();
+        }
+    }
+
+    private bool CanAddChecked(SavedSearchRow? target) => CanChangeSavedSearches && _checked.Count > 0 && (target is null || target.Id != SelectedSavedSearch?.Id);
+
+    [RelayCommand(CanExecute = nameof(CanRemoveChecked))]
+    private async Task RemoveCheckedFromSavedSearch()
+    {
+        if (SelectedSavedSearch is { } shown
+            && await _savedSearchWorkflow!.RemoveAsync(shown.Id, shown.Name, new FileFilter { FileIds = [.. _checked] }, _checked.Count))
+        {
+            ClearChecked();
+            LoadSavedSearches();
+            await ReloadAsync();
+        }
+    }
+
+    private bool CanRemoveChecked() => CanChangeSavedSearches && SelectedSavedSearch is not null && _checked.Count > 0;
+
+    [RelayCommand(CanExecute = nameof(CanRemoveAll))]
+    private async Task RemoveAllFromSavedSearch()
+    {
+        if (SelectedSavedSearch is { } shown && await _savedSearchWorkflow!.RemoveAsync(shown.Id, shown.Name, _activeFilter, TotalCount))
+        {
+            ClearChecked();
+            LoadSavedSearches();
+            await ReloadAsync();
+        }
+    }
+
+    private bool CanRemoveAll() => CanChangeSavedSearches && SelectedSavedSearch is not null && TotalCount > 0;
+
+    partial void OnTotalCountChanged(long value)
+    {
+        AddAllToSavedSearchCommand.NotifyCanExecuteChanged();
+        RemoveAllFromSavedSearchCommand.NotifyCanExecuteChanged();
+    }
+
+    private SavedSearchInfo? Info(SavedSearchRow row) =>
+        _savedSearchWorkflow?.List().FirstOrDefault(s => s.SavedSearchId == row.Id);
+
+    private void LoadSavedSearches()
+    {
+        var unit = _settings.Current.SizeUnit;
+        var culture = CultureInfo.CurrentCulture;
+        var selectedId = SelectedSavedSearch?.Id;
+        SavedSearches.Clear();
+        foreach (var s in _savedSearchWorkflow?.List() ?? [])
+        {
+            SavedSearches.Add(new SavedSearchRow(s.SavedSearchId, s.Name, s.Description ?? string.Empty, s.FileCount,
+                s.FileCount == 1 ? "1 file" : $"{s.FileCount.ToString("N0", culture)} files", SizeFormatter.Format(s.TotalBytes, unit)));
+        }
+
+        // Keep the shown saved search selected (the row objects are new) without reloading the files.
+        _suppressApply = true;
+        SelectedSavedSearch = SavedSearches.FirstOrDefault(s => s.Id == selectedId);
+        _suppressApply = false;
+        OnPropertyChanged(nameof(CanChangeSavedSearches));
+        NewSavedSearchCommand.NotifyCanExecuteChanged();
+    }
+
+    private void SelectSavedSearch(long id)
+    {
+        SideTab = "saved";
+        SelectedSavedSearch = SavedSearches.FirstOrDefault(s => s.Id == id);
+    }
+
+    partial void OnSelectedSavedSearchChanged(SavedSearchRow? value)
+    {
+        if (_suppressApply)
+        {
+            return;
+        }
+
+        if (value is not null && SelectedFolder is not null)
+        {
+            _suppressApply = true;
+            SelectedFolder = null; // a saved search replaces the folder
+            _suppressApply = false;
+        }
+
+        Apply();
     }
 
     // ---- Tree ----
@@ -222,6 +439,7 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
             IncludeSubfolders = filter.IncludeSubfolders;
             HashStatusValue = filter.HashStatus?.ToString() ?? string.Empty;
             SelectedFolder = null;
+            SelectedSavedSearch = null;
         }
         finally
         {
@@ -284,6 +502,7 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
         _suppressApply = true;
         ClearFields();
         SelectedFolder = null;
+        SelectedSavedSearch = null;
         _suppressApply = false;
         Apply();
     }
@@ -360,10 +579,19 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
 
     partial void OnSelectedFolderChanged(FolderTreeNode? value)
     {
-        if (!_suppressApply)
+        if (_suppressApply)
         {
-            Apply();
+            return;
         }
+
+        if (value is not null && SelectedSavedSearch is not null)
+        {
+            _suppressApply = true;
+            SelectedSavedSearch = null; // a folder replaces the saved search
+            _suppressApply = false;
+        }
+
+        Apply();
     }
 
     /// <summary>
@@ -403,6 +631,12 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
 
     private void Activate(FileFilter filter)
     {
+        if (_checked.Count > 0)
+        {
+            _checked.Clear(); // ticks belong to the previous results
+            OnCheckedChanged();
+        }
+
         _activeFilter = filter;
         ActiveFilters = Describe(filter);
         _ = ReloadAsync();
@@ -469,6 +703,7 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
         {
             MediaKey = long.TryParse(MediaValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var mediaKey) ? mediaKey : null,
             MediaKeys = MediaValue == MediaSetValue ? _mediaSet : null,
+            SavedSearchId = SelectedSavedSearch?.Id,
             FolderId = SelectedFolder?.Info.FolderId,
             IncludeSubfolders = IncludeSubfolders,
             CategoryId = int.TryParse(CategoryValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var categoryId) ? categoryId : null,
@@ -491,6 +726,11 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
         var labels = new List<string>();
         var culture = CultureInfo.CurrentCulture;
         var unit = _settings.Current.SizeUnit;
+        if (filter.SavedSearchId is { } savedSearchId)
+        {
+            labels.Add("Saved search: " + (SavedSearches.FirstOrDefault(s => s.Id == savedSearchId)?.Name ?? "?"));
+        }
+
         if (filter.MediaKey is { } key)
         {
             labels.Add("Media " + (MediaOptions.FirstOrDefault(o => o.Value == key.ToString(CultureInfo.InvariantCulture))?.Label ?? "?"));
@@ -607,6 +847,7 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
             }
 
             SelectedFolder = null;
+            LoadSavedSearches();
         }
         catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or IOException)
         {

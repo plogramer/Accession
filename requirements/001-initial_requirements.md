@@ -250,6 +250,17 @@ flowchart TD
 | BRW-04 | Context menu: *Copy path* (full UNC path), *Copy SHA-1*, *Show duplicates*, *Open containing folder* (Explorer). The app never opens or launches the file itself. |
 | BRW-05 | *Export current view* sends the filtered result to Excel (section 5.9). |
 
+### 5.8a Saved searches
+
+| ID | Requirement |
+|---|---|
+| SAV-01 | A **saved search** is a named, fixed list of files kept in the inventory (shared by everyone who opens it): **Name** (required, unique ignoring case, at most 100 characters) and optional **Description**. |
+| SAV-02 | The Files screen's left panel has two tabs: **Folders** (the folder tree) and **Saved searches** (each with its file count and total size; description as tooltip). Saved searches can be created, renamed/edited and deleted (deleting asks first and never touches the files). |
+| SAV-03 | Files are added with **Add to saved search**: *all results* (every file matching the current filters, on all pages) or the *ticked rows*, into an existing saved search or a new one. Files already in the list are skipped. |
+| SAV-04 | Clicking a saved search shows its files; the filters narrow within it. While one is shown, *Remove ticked* and *Remove all results* take files out of it. *Export current view* exports exactly its (filtered) files. |
+| SAV-05 | Files are remembered by media, folder path and file name, so they stay in a saved search after a rescan. Deleting a media removes its files from saved searches. |
+| SAV-06 | Changes are audited (created, changed, deleted, files added/removed with counts). A read-only inventory shows saved searches but cannot change them. Saved searches need schema v2; older inventories are upgraded (with a backup) when opened. |
+
 ### 5.9 Excel export
 
 | ID | Requirement |

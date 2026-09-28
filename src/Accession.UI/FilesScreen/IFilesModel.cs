@@ -12,6 +12,49 @@ public interface IFilesModel : INotifyPropertyChanged, IRefreshableScreen
     ObservableCollection<FolderTreeNode> Folders { get; }
     FolderTreeNode? SelectedFolder { get; set; }
 
+    // ---- Saved searches (the side panel's second tab) ----
+
+    /// <summary>"folders" or "saved".</summary>
+    string SideTab { get; set; }
+
+    ObservableCollection<SavedSearchRow> SavedSearches { get; }
+
+    /// <summary>The saved search whose files are shown; setting it leaves the folder tree, and vice versa.</summary>
+    SavedSearchRow? SelectedSavedSearch { get; set; }
+
+    /// <summary>False on a read-only inventory.</summary>
+    bool CanChangeSavedSearches { get; }
+
+    ICommand NewSavedSearchCommand { get; }
+
+    /// <summary>Parameter: the <see cref="SavedSearchRow"/>.</summary>
+    ICommand EditSavedSearchCommand { get; }
+
+    /// <summary>Parameter: the <see cref="SavedSearchRow"/>.</summary>
+    ICommand DeleteSavedSearchCommand { get; }
+
+    /// <summary>Adds every file matching the filters. Parameter: the target <see cref="SavedSearchRow"/>, or null for a new one.</summary>
+    ICommand AddAllToSavedSearchCommand { get; }
+
+    /// <summary>Adds the ticked rows. Parameter: the target <see cref="SavedSearchRow"/>, or null for a new one.</summary>
+    ICommand AddCheckedToSavedSearchCommand { get; }
+
+    /// <summary>Removes the ticked rows from the saved search being shown.</summary>
+    ICommand RemoveCheckedFromSavedSearchCommand { get; }
+
+    /// <summary>Removes every file matching the filters from the saved search being shown.</summary>
+    ICommand RemoveAllFromSavedSearchCommand { get; }
+
+    // ---- Ticked rows (kept across pages until the filters change) ----
+    IReadOnlySet<long> CheckedFileIds { get; }
+
+    void SetChecked(FileRow row, bool isChecked);
+
+    /// <summary>Ticks or unticks every row on the current page.</summary>
+    void SetPageChecked(bool isChecked);
+
+    ICommand ClearCheckedCommand { get; }
+
     // ---- Filters (applied with ApplyCommand) ----
     string NameContains { get; set; }
     string ExtensionText { get; set; }

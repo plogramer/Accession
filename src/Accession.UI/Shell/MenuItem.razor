@@ -1,4 +1,4 @@
-<button class="menu-item" role="menuitem" disabled="@(!Command.CanExecute(null))" @onclick="Execute">
+<button class="menu-item" role="menuitem" disabled="@(!Command.CanExecute(CommandParameter))" @onclick="Execute">
     <Icon Name="@Icon" Size="16" />
     <span>@Text</span>
 </button>
@@ -10,12 +10,14 @@
 
     [Parameter, EditorRequired] public ICommand Command { get; set; } = default!;
 
+    [Parameter] public object? CommandParameter { get; set; }
+
     private async Task Execute()
     {
         await Task.Yield(); // see ObservingComponentBase.Run
-        if (Command.CanExecute(null))
+        if (Command.CanExecute(CommandParameter))
         {
-            Command.Execute(null);
+            Command.Execute(CommandParameter);
         }
     }
 }

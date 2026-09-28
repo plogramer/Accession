@@ -23,6 +23,35 @@ public sealed class FilesPageTests
     }
 
     [Fact]
+    public async Task Saved_searches_tab_lists_them_and_the_table_offers_ticks_and_add()
+    {
+        var html = await RenderInShell(new FakeFiles(savedSearchShown: true, ticked: 3), "files-saved-searches");
+
+        Assert.Contains("Saved searches", html);
+        Assert.Contains("Privileged", html);
+        Assert.Contains("1,204 files · 2.31 GB", html);
+        Assert.Contains("title=\"Emails with outside counsel\"", html); // description as tooltip
+        Assert.Contains("New saved search", html);
+        Assert.DoesNotContain("Include subfolders", html); // the Folders tab is not shown
+        Assert.Contains("aria-label=\"Tick every file on this page\"", html);
+        Assert.Contains("3 ticked", html);
+        Assert.Contains("Add to saved search", html);
+        Assert.Contains("Remove ticked", html);
+        Assert.Contains("Remove all results", html);
+    }
+
+    [Fact]
+    public async Task Folders_tab_by_default_without_remove_buttons()
+    {
+        var html = await RenderInShell(new FakeFiles());
+
+        Assert.Contains("Include subfolders", html);
+        Assert.Contains("<span class=\"tab-badge\">3</span>", html); // saved searches count on the tab
+        Assert.DoesNotContain("Remove all results", html);
+        Assert.DoesNotContain(" ticked", html);
+    }
+
+    [Fact]
     public async Task Pager_while_counting_offers_next_but_not_last()
     {
         var html = await RenderInShell(new FakeFiles(rows: 1_000, counting: true));

@@ -15,19 +15,61 @@
     <SplitPanel SideWidth="250px">
         <Side>
             <section class="card tree-card">
-                <div class="card-header"><h3>Folders</h3></div>
-                <div class="tree" role="tree">
-                    <div class="tree-row @(Model.SelectedFolder is null ? "is-selected" : null)" style="padding-left:6px" @onclick="() => Model.SelectedFolder = null">
-                        <span class="tree-toggle"></span>
-                        <Icon Name="dashboard" Size="15" Class="tree-icon" />
-                        <span class="tree-name">All media</span>
+                <Tabs Items="SideTabs" ActiveKey="@Model.SideTab" ActiveKeyChanged="key => Model.SideTab = key" />
+                @if (Model.SideTab == "saved")
+                {
+                    <div class="tree saved-list" role="listbox" aria-label="Saved searches">
+                        @foreach (var saved in Model.SavedSearches)
+                        {
+                            var selected = saved.Id == Model.SelectedSavedSearch?.Id;
+                            <div class="saved-row @(selected ? "is-selected" : null)" role="option" aria-selected="@(selected ? "true" : "false")"
+                                 title="@saved.Description" @onclick="() => Model.SelectedSavedSearch = saved">
+                                <Icon Name="bookmark" Size="15" Class="tree-icon" />
+                                <div class="saved-text">
+                                    <span class="saved-name truncate">@saved.Name</span>
+                                    <span class="muted small">@saved.Files · @saved.Size</span>
+                                </div>
+                                @if (Model.CanChangeSavedSearches)
+                                {
+                                    <div @onclick:stopPropagation="true">
+                                        <Dropdown TriggerClass="icon-btn" Title="@($"Actions for {saved.Name}")">
+                                            <Trigger><Icon Name="more" Size="15" /></Trigger>
+                                            <ChildContent>
+                                                <MenuItem Icon="edit" Text="Edit name and description" Command="Model.EditSavedSearchCommand" CommandParameter="saved" />
+                                                <MenuItem Icon="trash" Text="Delete saved search" Command="Model.DeleteSavedSearchCommand" CommandParameter="saved" />
+                                            </ChildContent>
+                                        </Dropdown>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        @if (Model.SavedSearches.Count == 0)
+                        {
+                            <div class="saved-empty muted small">No saved searches yet. Filter the files, then use <strong>Add to saved search</strong>, or create one here.</div>
+                        }
                     </div>
-                    <FolderTree Nodes="Model.Folders" Model="Model" />
-                </div>
-                <label class="tree-footer check-row">
-                    <input type="checkbox" checked="@Model.IncludeSubfolders" @onchange="e => SetAndApply(() => Model.IncludeSubfolders = e.Value is true)" />
-                    Include subfolders
-                </label>
+                    <div class="tree-footer">
+                        <button class="btn btn-sm" disabled="@Disabled(Model.NewSavedSearchCommand)" @onclick="() => Run(Model.NewSavedSearchCommand)">
+                            <Icon Name="plus" Size="14" /> New saved search
+                        </button>
+                    </div>
+                }
+                else
+                {
+                    <div class="tree" role="tree">
+                        <div class="tree-row @(Model.SelectedFolder is null && Model.SelectedSavedSearch is null ? "is-selected" : null)" style="padding-left:6px"
+                             @onclick="ShowAllMedia">
+                            <span class="tree-toggle"></span>
+                            <Icon Name="dashboard" Size="15" Class="tree-icon" />
+                            <span class="tree-name">All media</span>
+                        </div>
+                        <FolderTree Nodes="Model.Folders" Model="Model" />
+                    </div>
+                    <label class="tree-footer check-row">
+                        <input type="checkbox" checked="@Model.IncludeSubfolders" @onchange="e => SetAndApply(() => Model.IncludeSubfolders = e.Value is true)" />
+                        Include subfolders
+                    </label>
+                }
             </section>
         </Side>
         <Main>
@@ -142,11 +184,74 @@
                     </Dropdown>
                 </div>
 
-                <DataTable TItem="FileRow" Items="Model.Rows" Label="Files" Virtualize="true" MaxHeight="calc(100vh - 470px)" Class="files-table"
+                @* Saved searches: what is shown, ticked rows, and add / remove. *@
+                <div class="bulk-bar">
+                    @if (Model.SelectedSavedSearch is { } shown)
+                    {
+                        <span class="bulk-context"><Icon Name="bookmark" Size="14" /> Saved search <strong>@shown.Name</strong></span>
+                    }
+                    @if (Model.CheckedFileIds.Count > 0)
+                    {
+                        <button class="chip chip-btn" title="Untick all" @onclick="() => Run(Model.ClearCheckedCommand)">
+                            @Model.CheckedFileIds.Count.ToString("N0") ticked <Icon Name="x" Size="12" />
+                        </button>
+                    }
+                    else if (Model.CanChangeSavedSearches)
+                    {
+                        <span class="muted small">Tick files, or use all results, to collect them in a saved search.</span>
+                    }
+                    <span class="card-header-spacer"></span>
+                    @if (Model.SelectedSavedSearch is not null && Model.CanChangeSavedSearches)
+                    {
+                        @if (Model.CheckedFileIds.Count > 0)
+                        {
+                            <button class="btn btn-sm" disabled="@Disabled(Model.RemoveCheckedFromSavedSearchCommand)" @onclick="() => Run(Model.RemoveCheckedFromSavedSearchCommand)">Remove ticked</button>
+                        }
+                        <button class="btn btn-sm" disabled="@Disabled(Model.RemoveAllFromSavedSearchCommand)" @onclick="() => Run(Model.RemoveAllFromSavedSearchCommand)"
+                                title="Remove every file shown (all pages) from this saved search">Remove all results</button>
+                    }
+                    @if (Model.CanChangeSavedSearches)
+                    {
+                        <Dropdown TriggerClass="btn btn-sm" Title="Add files to a saved search" Wide="true">
+                            <Trigger><Icon Name="bookmark" Size="14" /> Add to saved search <Icon Name="chevron-down" Size="13" /></Trigger>
+                            <ChildContent>
+                                @if (Model.CheckedFileIds.Count > 0)
+                                {
+                                    <div class="menu-header"><span>Add @Model.CheckedFileIds.Count.ToString("N0") ticked to</span></div>
+                                    @foreach (var saved in Model.SavedSearches.Where(s => s.Id != Model.SelectedSavedSearch?.Id))
+                                    {
+                                        <MenuItem Icon="bookmark" Text="@saved.Name" Command="Model.AddCheckedToSavedSearchCommand" CommandParameter="saved" />
+                                    }
+                                    <MenuItem Icon="plus" Text="New saved search…" Command="Model.AddCheckedToSavedSearchCommand" />
+                                    <div class="menu-sep"></div>
+                                }
+                                <div class="menu-header"><span>Add all @Model.TotalCount.ToString("N0") results to</span></div>
+                                @foreach (var saved in Model.SavedSearches.Where(s => s.Id != Model.SelectedSavedSearch?.Id))
+                                {
+                                    <MenuItem Icon="bookmark" Text="@saved.Name" Command="Model.AddAllToSavedSearchCommand" CommandParameter="saved" />
+                                }
+                                <MenuItem Icon="plus" Text="New saved search…" Command="Model.AddAllToSavedSearchCommand" />
+                            </ChildContent>
+                        </Dropdown>
+                    }
+                </div>
+
+                <DataTable TItem="FileRow" Items="Model.Rows" Label="Files" Virtualize="true" MaxHeight="calc(100vh - 515px)" Class="files-table"
                            SortKey="@Model.SortKey" SortDescending="Model.SortDescending" OnSort="Model.SortByAsync"
                            SelectedItem="Model.SelectedRow" SelectedItemChanged="row => Model.SelectedRow = row"
                            IsLoading="Model.IsLoading" EmptyText="No files match these filters.">
                     <Columns>
+                        <Column TItem="FileRow" Title="Tick" Order="-1" Class="check-cell">
+                            <HeaderContent>
+                                <input type="checkbox" title="Tick every file on this page" aria-label="Tick every file on this page"
+                                       checked="@(Model.Rows.Count > 0 && Model.Rows.All(r => Model.CheckedFileIds.Contains(r.FileId)))"
+                                       @onclick:stopPropagation="true" @onchange="e => Model.SetPageChecked(e.Value is true)" />
+                            </HeaderContent>
+                            <ChildContent>
+                                <input type="checkbox" aria-label="@($"Tick {context.Name}")" checked="@Model.CheckedFileIds.Contains(context.FileId)"
+                                       @onclick:stopPropagation="true" @onchange="e => Model.SetChecked(context, e.Value is true)" />
+                            </ChildContent>
+                        </Column>
                         <Column TItem="FileRow" Title="Name" SortKey="name" Order="0" Class="name-cell">
                             <span title="@context.RelativePath">@context.Name</span>
                         </Column>
@@ -223,10 +328,22 @@
         ("sha1", "SHA-1"), ("copies", "Copies"),
     ];
 
+    private static readonly IReadOnlyList<TabItem> FolderTab = [new("folders", "Folders"), new("saved", "Saved searches")];
+
     [Parameter, EditorRequired] public IFilesModel Model { get; set; } = default!;
 
-    protected override void OnParametersSet() => Observe(Model, Model.Folders, Model.CopyPathCommand, Model.CopySha1Command,
-        Model.OpenContainingFolderCommand, Model.ShowCopiesCommand);
+    private IReadOnlyList<TabItem> SideTabs =>
+        [FolderTab[0], new("saved", "Saved searches", Model.SavedSearches.Count > 0 ? Model.SavedSearches.Count.ToString("N0") : null)];
+
+    private void ShowAllMedia()
+    {
+        Model.SelectedSavedSearch = null;
+        Model.SelectedFolder = null;
+    }
+
+    protected override void OnParametersSet() => Observe(Model, Model.Folders, Model.SavedSearches, Model.CopyPathCommand, Model.CopySha1Command,
+        Model.OpenContainingFolderCommand, Model.ShowCopiesCommand, Model.AddAllToSavedSearchCommand, Model.AddCheckedToSavedSearchCommand,
+        Model.RemoveCheckedFromSavedSearchCommand, Model.RemoveAllFromSavedSearchCommand, Model.NewSavedSearchCommand);
 
     private bool Show(string key) => Model.VisibleColumns.Contains(key);
 

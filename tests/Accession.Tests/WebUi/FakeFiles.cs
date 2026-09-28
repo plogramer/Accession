@@ -9,9 +9,17 @@ namespace Accession.Tests.WebUi;
 /// <summary>Sample Files screen data.</summary>
 internal sealed partial class FakeFiles : ObservableObject, IFilesModel
 {
-    public FakeFiles(int rows = 40, bool counting = false)
+    public FakeFiles(int rows = 40, bool counting = false, bool savedSearchShown = false, int ticked = 0)
     {
         IsCounting = counting;
+        SavedSearches.Add(new SavedSearchRow(1, "Privileged", "Emails with outside counsel", 1_204, "1,204 files", "2.31 GB"));
+        SavedSearches.Add(new SavedSearchRow(2, "Board minutes 2021", string.Empty, 86, "86 files", "412.7 MB"));
+        SavedSearches.Add(new SavedSearchRow(3, "Hot documents", "For the first review round", 0, "0 files", "0 B"));
+        if (savedSearchShown)
+        {
+            SideTab = "saved";
+            SelectedSavedSearch = SavedSearches[0];
+        }
         string[] folders = [@"\Users\jsmith\Mail\", @"\Shares\Finance\2021\Q3\", @"\Users\jsmith\Documents\Board\", @"\Engineering\CAD\"];
         string[] exts = ["msg", "xlsx", "pdf", "docx", "jpg"];
         var list = new List<FileRow>();
@@ -27,6 +35,11 @@ internal sealed partial class FakeFiles : ObservableObject, IFilesModel
         }
 
         Rows = list;
+        foreach (var row in list.Take(ticked))
+        {
+            _checked.Add(row.FileId);
+        }
+
         SelectedRow = list.Count > 3 ? list[3] : null;
         Folders.Add(new FolderTreeNode(new FolderInfo(1, "123-123_001", true, false), _ => [
             new FolderInfo(11, "Users", true, false), new FolderInfo(12, "Shares", true, false), new FolderInfo(13, "Engineering", false, false),
@@ -35,8 +48,25 @@ internal sealed partial class FakeFiles : ObservableObject, IFilesModel
         SelectedFolder = Folders[0].Children[1];
     }
 
+    private readonly HashSet<long> _checked = [];
+
     public ObservableCollection<FolderTreeNode> Folders { get; } = [];
     public FolderTreeNode? SelectedFolder { get; set; }
+    public string SideTab { get; set; } = "folders";
+    public ObservableCollection<SavedSearchRow> SavedSearches { get; } = [];
+    public SavedSearchRow? SelectedSavedSearch { get; set; }
+    public bool CanChangeSavedSearches => true;
+    public ICommand NewSavedSearchCommand { get; } = new RelayCommand(() => { });
+    public ICommand EditSavedSearchCommand { get; } = new RelayCommand<object?>(_ => { });
+    public ICommand DeleteSavedSearchCommand { get; } = new RelayCommand<object?>(_ => { });
+    public ICommand AddAllToSavedSearchCommand { get; } = new RelayCommand<object?>(_ => { });
+    public ICommand AddCheckedToSavedSearchCommand { get; } = new RelayCommand<object?>(_ => { });
+    public ICommand RemoveCheckedFromSavedSearchCommand { get; } = new RelayCommand(() => { });
+    public ICommand RemoveAllFromSavedSearchCommand { get; } = new RelayCommand(() => { });
+    public IReadOnlySet<long> CheckedFileIds => _checked;
+    public void SetChecked(FileRow row, bool isChecked) { }
+    public void SetPageChecked(bool isChecked) { }
+    public ICommand ClearCheckedCommand { get; } = new RelayCommand(() => { });
     public string NameContains { get; set; } = "invoice";
     public string ExtensionText { get; set; } = string.Empty;
     public IReadOnlyList<SelectOption> MediaOptions { get; } = [new(string.Empty, "All media"), new("1", "123-123_001"), new("2", "123-123_002")];
