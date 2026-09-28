@@ -7,5 +7,5 @@ namespace Accession.Data.Migrations;
 /// </summary>
 internal static class KnownMigrations
 {
-    public static IReadOnlyList<IMigration> All { get; } = [];
+    public static IReadOnlyList<IMigration> All { get; } = [new V002SavedSearches()];
 }

@@ -1,3 +1,4 @@
+using Dapper;
 using Accession.Core.Inventories;
 using Accession.Core.Model;
 using Accession.Data.Repositories;
@@ -116,6 +117,7 @@ public sealed class MediaService
         var scanData = new ScanDataRepository(scope);
         var totals = scanData.ComputeTotals(mediaKey);
         scanData.DeleteForMedia(mediaKey);
+        var savedSearchFiles = scope.Connection.Execute("DELETE FROM SavedSearchFile WHERE MediaKey = @mediaKey", new { mediaKey }, scope.Transaction);
         media.SoftDelete(mediaKey, _timeProvider.GetUtcNow(), session.UserName);
         session.Audit.Write(scope, AuditAction.MediaDeleted, item.MediaId, new
         {
@@ -124,6 +126,7 @@ public sealed class MediaService
             totals.FileCount,
             totals.TotalBytes,
             totals.ErrorCount,
+            SavedSearchFilesRemoved = savedSearchFiles,
         });
         transaction.Commit();
         return totals;

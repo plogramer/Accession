@@ -13,6 +13,12 @@ public sealed class MigrationTests : IDisposable
     private readonly TestInventory _inventory = new();
     private readonly FakeTimeProvider _time = new(new DateTimeOffset(2026, 10, 1, 8, 30, 0, TimeSpan.Zero));
 
+    public MigrationTests()
+    {
+        // The runner tests below use test-only v2 migrations, so start from a v1 file.
+        SchemaDowngrade.ToV1(_inventory.DbPath);
+    }
+
     public void Dispose() => _inventory.Dispose();
 
     /// <summary>Test-only v2: adds a column.</summary>
@@ -47,10 +53,28 @@ public sealed class MigrationTests : IDisposable
     [Fact]
     public void New_inventory_is_current()
     {
-        var inspection = SchemaInspector.Inspect(_inventory.DbPath);
+        using var fresh = new TestInventory();
+        var inspection = SchemaInspector.Inspect(fresh.DbPath);
 
         Assert.Equal(SchemaState.Current, inspection.State);
         Assert.Equal(InventorySchema.CurrentVersion, inspection.FileVersion);
+    }
+
+    [Fact]
+    public void Version_1_inventory_gets_the_saved_search_tables_and_keeps_its_data()
+    {
+        using (var scope = _inventory.Database.Open())
+        {
+            scope.Connection.Execute("INSERT INTO Media (MediaId, RelativePath, Status, AddedAtUtc, AddedBy) VALUES ('M1', '\\M1\\', 'New', '2026-01-01T00:00:00.0000000Z', 'u')");
+        }
+
+        var result = new MigrationRunner(_time).Upgrade(_inventory.DbPath, @"CORP\jdoe", "0.2.0");
+
+        Assert.Equal((1, 2), (result.FromVersion, result.ToVersion));
+        Assert.Equal(SchemaState.Current, SchemaInspector.Inspect(_inventory.DbPath).State);
+        using var check = _inventory.Database.Open();
+        Assert.Equal(2, check.Connection.ExecuteScalar<long>("SELECT COUNT(*) FROM sqlite_master WHERE name IN ('SavedSearch', 'SavedSearchFile')"));
+        Assert.Equal("M1", check.Connection.ExecuteScalar<string>("SELECT MediaId FROM Media"));
     }
 
     [Fact]

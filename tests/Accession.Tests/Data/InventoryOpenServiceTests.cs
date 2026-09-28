@@ -167,19 +167,19 @@ public sealed class InventoryOpenServiceTests : IDisposable
     [Fact]
     public void Older_schema_upgrades_after_confirmation_with_backup_and_audit()
     {
-        SetSchemaVersion(0);
+        SchemaDowngrade.ToV1(_inventory.DbPath);
 
         var session = Open(new Interaction { UpgradeAnswer = true })!;
 
-        Assert.Equal(1, session.Config.SchemaVersion);
-        Assert.Single(Directory.GetFiles(_inventory.Temp.Path, "*.v0.*.bak"));
+        Assert.Equal(2, session.Config.SchemaVersion);
+        Assert.Single(Directory.GetFiles(_inventory.Temp.Path, "*.v1.*.bak"));
         Assert.Contains(AuditAction.SchemaUpgraded, AuditActions());
     }
 
     [Fact]
     public void Declining_upgrade_opens_nothing()
     {
-        SetSchemaVersion(0);
+        SchemaDowngrade.ToV1(_inventory.DbPath);
 
         Assert.Null(Open(new Interaction { UpgradeAnswer = false }));
         Assert.Empty(Directory.GetFiles(_inventory.Temp.Path, "*.bak"));
@@ -221,7 +221,7 @@ public sealed class InventoryOpenServiceTests : IDisposable
     public void Read_only_is_not_possible_when_an_upgrade_is_needed()
     {
         Open(new Interaction(), @"CORP\asmith", "WS-203");
-        SetSchemaVersion(0);
+        SchemaDowngrade.ToV1(_inventory.DbPath);
         var interaction = new Interaction();
         interaction.LockAnswers.Enqueue(LockConflictChoice.OpenReadOnly);
 

@@ -31,6 +31,12 @@ public sealed record FileFilter
     /// <summary>Limit to these media (e.g. the Dashboard's media selection). An empty set matches no files.</summary>
     public IReadOnlyCollection<long>? MediaKeys { get; init; }
 
+    /// <summary>Only files in this saved search.</summary>
+    public long? SavedSearchId { get; init; }
+
+    /// <summary>Only these files (e.g. the rows ticked in the table).</summary>
+    public IReadOnlyCollection<long>? FileIds { get; init; }
+
     /// <summary>Limit to this folder (and its subfolders when <see cref="IncludeSubfolders"/>).</summary>
     public long? FolderId { get; init; }
 

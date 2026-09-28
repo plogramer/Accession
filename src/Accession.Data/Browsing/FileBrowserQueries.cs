@@ -173,7 +173,8 @@ public sealed class FileBrowserQueries
         return scope.Connection.QuerySingle<FileTotals>(new CommandDefinition(sql, parameters, commandTimeout: 0, cancellationToken: cancellationToken));
     }
 
-    private static (StringBuilder Where, DynamicParameters Parameters) BuildWhere(DbScope scope, FileFilter filter)
+    /// <summary>The WHERE clause (over <c>f</c> File, <c>m</c> Media, <c>fo</c> Folder, <c>cat</c> category) for a filter.</summary>
+    internal static (StringBuilder Where, DynamicParameters Parameters) BuildWhere(DbScope scope, FileFilter filter)
     {
         var where = new StringBuilder("1 = 1");
         var p = new DynamicParameters();
@@ -182,6 +183,25 @@ public sealed class FileBrowserQueries
         {
             where.Append(" AND f.MediaKey = @mediaKey");
             p.Add("mediaKey", mediaKey);
+        }
+
+        if (filter.SavedSearchId is { } savedSearchId)
+        {
+            // Resolved to FileIds first, so SQLite looks the files up by rowid instead of scanning File.
+            where.Append(
+                """
+                 AND f.FileId IN (SELECT sf.FileId FROM SavedSearchFile s
+                      JOIN Folder sfo ON sfo.MediaKey = s.MediaKey AND sfo.RelativePath = s.FolderPath
+                      JOIN File sf ON sf.FolderId = sfo.FolderId AND sf.Name = s.Name
+                      WHERE s.SavedSearchId = @savedSearchId)
+                """);
+            p.Add("savedSearchId", savedSearchId);
+        }
+
+        if (filter.FileIds is { } fileIds)
+        {
+            where.Append(" AND f.FileId IN (SELECT value FROM json_each(@fileIds))");
+            p.Add("fileIds", System.Text.Json.JsonSerializer.Serialize(fileIds));
         }
 
         if (filter.MediaKeys is { } mediaKeys)

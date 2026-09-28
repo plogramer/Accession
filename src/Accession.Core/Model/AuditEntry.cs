@@ -26,6 +26,11 @@ public enum AuditAction
     ScanCompleted,
     ScanFailed,
     ExportCreated,
+    SavedSearchCreated,
+    SavedSearchChanged,
+    SavedSearchDeleted,
+    SavedSearchFilesAdded,
+    SavedSearchFilesRemoved,
 }
 
 /// <summary>One row of <c>AuditLog</c>. Audit rows are never updated or deleted.</summary>

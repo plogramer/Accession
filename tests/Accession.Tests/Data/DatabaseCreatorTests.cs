@@ -22,7 +22,7 @@ public sealed class DatabaseCreatorTests : IDisposable
 
         Assert.Equal(
             ["AuditLog", "ExtensionCategory", "File", "FileCategory", "Folder", "InventoryConfig", "InventoryLock",
-             "Media", "MediaExtensionSummary", "ScanError", "ScanLog", "SchemaMigration"],
+             "Media", "MediaExtensionSummary", "SavedSearch", "SavedSearchFile", "ScanError", "ScanLog", "SchemaMigration"],
             tables);
     }
 
