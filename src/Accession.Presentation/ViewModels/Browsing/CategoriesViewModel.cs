@@ -30,7 +30,7 @@ public sealed partial class CategoriesViewModel : ViewModelBase, ICategoriesMode
         _navigator = navigator;
         _logger = logger;
         _host.MediaChanged += OnMediaChanged;
-        Load();
+        _ = LoadAsync();
     }
 
     public ObservableCollection<CategoryRowVm> Categories { get; } = [];
@@ -66,30 +66,47 @@ public sealed partial class CategoriesViewModel : ViewModelBase, ICategoriesMode
 
     partial void OnSelectedCategoryChanged(CategoryRowVm? value) => LoadExtensions();
 
-    private void Load()
+    private int _loadVersion;
+
+    /// <summary>
+    /// Counts files per category in the background (a GROUP BY over every file: seconds on a large inventory, and scans
+    /// report changes often), then shows them.
+    /// </summary>
+    private async Task LoadAsync()
     {
         if (_host.Session is not { } session)
         {
             return;
         }
 
-        var selected = SelectedCategory?.CategoryId;
-        var unit = _settings.Current.SizeUnit;
-        Categories.Clear();
+        var version = ++_loadVersion;
+        IReadOnlyList<CategoryCount> categories;
         try
         {
-            foreach (var c in _queries.Categories(session.Database))
-            {
-                Categories.Add(new CategoryRowVm(c.CategoryId, c.Name, c.Description ?? string.Empty,
-                    c.FileCount.ToString("N0", CultureInfo.CurrentCulture), SizeFormatter.Format(c.TotalBytes, unit), c.FileCount));
-            }
+            categories = await Task.Run(() => _queries.Categories(session.Database));
         }
         catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or System.IO.IOException)
         {
             _logger.LogError(ex, "Loading categories failed");
+            return;
+        }
+
+        if (version != _loadVersion)
+        {
+            return; // a newer load is on its way
+        }
+
+        var selected = SelectedCategory?.CategoryId;
+        var unit = _settings.Current.SizeUnit;
+        Categories.Clear();
+        foreach (var c in categories)
+        {
+            Categories.Add(new CategoryRowVm(c.CategoryId, c.Name, c.Description ?? string.Empty,
+                c.FileCount.ToString("N0", CultureInfo.CurrentCulture), SizeFormatter.Format(c.TotalBytes, unit), c.FileCount));
         }
 
         SelectedCategory = Categories.FirstOrDefault(c => c.CategoryId == selected) ?? Categories.FirstOrDefault();
+        LoadExtensions(); // the counts of the selected category changed too
     }
 
     private void LoadExtensions()
@@ -115,5 +132,5 @@ public sealed partial class CategoriesViewModel : ViewModelBase, ICategoriesMode
         }
     }
 
-    private void OnMediaChanged(object? sender, EventArgs e) => Load();
+    private void OnMediaChanged(object? sender, EventArgs e) => _ = LoadAsync();
 }

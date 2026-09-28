@@ -78,7 +78,23 @@ public sealed class InventoryHost : ObservableObject
         OnPropertyChanged(nameof(Notice));
     }
 
-    public void NotifyMediaChanged() => _ui.Post(() => MediaChanged?.Invoke(this, EventArgs.Empty));
+    public void NotifyMediaChanged()
+    {
+        // Scans report status changes in bursts (queueing 100 media, each scan's start and end): while one notification
+        // waits for the UI thread, later ones are folded into it, so the screens reload once per burst.
+        if (Interlocked.Exchange(ref _mediaChangedPending, 1) == 1)
+        {
+            return;
+        }
+
+        _ui.Post(() =>
+        {
+            Volatile.Write(ref _mediaChangedPending, 0);
+            MediaChanged?.Invoke(this, EventArgs.Empty);
+        });
+    }
+
+    private int _mediaChangedPending;
 
     /// <summary>Notifies bindings after the session's config or state changed.</summary>
     public void Refresh() => OnPropertyChanged(string.Empty);

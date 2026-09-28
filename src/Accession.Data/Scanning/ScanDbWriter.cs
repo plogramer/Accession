@@ -6,12 +6,16 @@ namespace Accession.Data.Scanning;
 
 /// <summary>
 /// The single database writer for a scan (SCN-22). Producers send <see cref="WriteCommand"/>s through a bounded
-/// channel (back-pressure); one task applies them on one connection and commits every <c>batchSize</c> rows or
-/// every 2 seconds, whichever comes first.
+/// channel (back-pressure); one task applies them on one connection and commits every <c>batchSize</c> rows, every
+/// 2 seconds, or as soon as no rows have come for <see cref="IdleCommitDelay"/>, whichever comes first. The idle commit
+/// releases the write lock quickly, so other writers (queueing scans, adding media) never wait long for an idle batch.
 /// </summary>
 public sealed class ScanDbWriter : IAsyncDisposable
 {
     public static readonly TimeSpan MaxBatchAge = TimeSpan.FromSeconds(2);
+
+    /// <summary>An open batch is committed when no rows arrive for this long.</summary>
+    public static readonly TimeSpan IdleCommitDelay = TimeSpan.FromMilliseconds(200);
 
     private readonly Channel<object> _channel;
     private readonly int _batchSize;
@@ -112,7 +116,7 @@ public sealed class ScanDbWriter : IAsyncDisposable
 
                     var waitForData = reader.WaitToReadAsync().AsTask();
                     using var delayCancel = new CancellationTokenSource();
-                    var delay = Task.Delay(remaining, _timeProvider, delayCancel.Token);
+                    var delay = Task.Delay(remaining < IdleCommitDelay ? remaining : IdleCommitDelay, _timeProvider, delayCancel.Token);
                     if (await Task.WhenAny(waitForData, delay).ConfigureAwait(false) == delay)
                     {
                         Commit();

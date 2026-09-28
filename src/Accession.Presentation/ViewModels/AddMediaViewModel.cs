@@ -82,14 +82,15 @@ public sealed partial class AddMediaViewModel : DialogViewModelBase
         OnPropertyChanged(nameof(HasCandidates));
     }
 
+    /// <summary>Adds in the background: the insert can wait for a running scan's database batch.</summary>
     [RelayCommand(CanExecute = nameof(CanAdd))]
-    private void Add()
+    private async Task Add()
     {
         var paths = Candidates.Where(c => c.IsChecked).Select(c => c.FullPath).ToList();
         AddMediaResult result;
         try
         {
-            result = _media.Add(_session, paths);
+            result = await Task.Run(() => _media.Add(_session, paths));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or Microsoft.Data.Sqlite.SqliteException)
         {

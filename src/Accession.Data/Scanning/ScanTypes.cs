@@ -33,3 +33,6 @@ public sealed class ScanFinishedEventArgs(ScanQueueItem item, ScanOutcome outcom
     /// <summary>Failure reason, when <see cref="Outcome"/> is Failed.</summary>
     public string? Message { get; } = message;
 }
+
+/// <summary>A media that could not be queued, and why.</summary>
+public sealed record EnqueueProblem(long MediaKey, string MediaId, string Reason);

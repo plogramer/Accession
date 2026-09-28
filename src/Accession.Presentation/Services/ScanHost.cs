@@ -69,34 +69,41 @@ public sealed class ScanHost : ObservableObject
     /// <summary>One line for the status bar, e.g. "Scanning 123-123_002 – Hashing 48 % – 182 MB/s".</summary>
     public string StatusText { get; private set; } = string.Empty;
 
-    /// <summary>Queues scans; shows the reasons for media that could not be queued.</summary>
-    public void Enqueue(IEnumerable<(Media Media, ScanType Type)> requests)
+    /// <summary>
+    /// Queues scans in the background (queueing writes to the database, which can wait for a running scan's batch) and
+    /// then shows the reasons for media that could not be queued. The UI thread never waits for it.
+    /// </summary>
+    public Task EnqueueAsync(IEnumerable<(Media Media, ScanType Type)> requests)
     {
+        ArgumentNullException.ThrowIfNull(requests);
         if (_coordinator is not { } coordinator)
         {
             _dialogs.ShowWarning("Scan", "Scanning is not available: the inventory is read-only or the root folder cannot be reached.");
-            return;
+            return Task.CompletedTask;
         }
 
-        var problems = new List<string>();
-        foreach (var (media, type) in requests)
+        var list = requests.Select(r => (r.Media.MediaKey, r.Type)).ToList();
+        return Task.Run(() =>
         {
+            IReadOnlyList<string> problems;
             try
             {
-                coordinator.Enqueue(media.MediaKey, type);
+                problems = [.. coordinator.EnqueueMany(list).Select(p => $"• {p.MediaId}: {p.Reason}")];
             }
             catch (Exception ex) when (ex is InvalidOperationException or Microsoft.Data.Sqlite.SqliteException or System.IO.IOException)
             {
-                problems.Add($"• {media.MediaId}: {ex.Message}");
+                problems = [$"• {ex.Message}"];
             }
-        }
 
-        if (problems.Count > 0)
-        {
-            _dialogs.ShowWarning("Scan", "Some media could not be queued:\n\n" + string.Join(Environment.NewLine, problems));
-        }
-
-        Refresh();
+            _ui.Post(() =>
+            {
+                Refresh();
+                if (problems.Count > 0)
+                {
+                    _dialogs.ShowWarning("Scan", "Some media could not be queued:\n\n" + string.Join(Environment.NewLine, problems));
+                }
+            });
+        });
     }
 
     public void MoveUp(long mediaKey) => Run(c => c.MoveUp(mediaKey));

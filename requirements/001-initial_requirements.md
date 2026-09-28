@@ -155,7 +155,7 @@ flowchart TD
 
 | ID | Requirement |
 |---|---|
-| SCN-01 | The user selects one or more media and chooses **Scan** (never scanned / incomplete) or **Rescan** (completed). Selected media are added to the **scan queue**. |
+| SCN-01 | The user selects one or more media and chooses **Scan** (never scanned / incomplete) or **Rescan** (completed). Selected media are added to the **scan queue**. Scans run in the background; queueing (also from *Add media* with "Start scanning") happens off the UI thread in one database transaction, and the screens reload once per burst of status changes, so the app stays responsive while scanning. |
 | SCN-02 | Media are scanned **one after another** (FIFO). Within a media, work is **multi-threaded** (see 5.5.3). The queue can be reordered and items removed before they start. |
 | SCN-03 | **Rescan replaces previous results**: at the start of a full scan, all `Folder`, `File`, `ScanError` and summary rows of the media are deleted, then the scan runs. Confirmation required when data exists. |
 | SCN-04 | Every scan run (full or resume) is recorded in `ScanLog` with start/end time, user, machine, app version, thread settings, outcome and counts. `Media.ScanCount` counts full scans. |
@@ -183,7 +183,7 @@ flowchart TD
 |---|---|
 | SCN-20 | **Phase 1 – Enumeration**: folders are enumerated in parallel (default **4** threads, configurable 1–16). File metadata is read from the directory listing (no file open needed). |
 | SCN-21 | **Phase 2 – Hashing**: files with a pending hash are hashed by a worker pool (default **4** threads, configurable 1–32), streaming with a 1 MB buffer. Hashing may start while enumeration is still running. |
-| SCN-22 | All database writes go through **one writer** that commits in batches (default 10,000 rows or 2 seconds, whichever comes first). |
+| SCN-22 | All database writes go through **one writer** that commits in batches (default 10,000 rows or 2 seconds, whichever comes first), and as soon as no rows have come for 200 ms, so an idle batch never holds the write lock. |
 | SCN-23 | Must support **10 million+ files per inventory** without degrading the UI. Grids use UI virtualization and paged queries. |
 | SCN-24 | Progress shows: current media, phase, folders/files found, files hashed / total, bytes hashed / total, throughput (files/s, MB/s), elapsed time, ETA, errors so far. |
 | SCN-25 | At the end of a scan the app computes summary data (per media and per extension counts and bytes), updates `Media` totals and status (`Completed`, or `CompletedWithErrors` if errors exist), and closes the `ScanLog` entry. |

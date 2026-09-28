@@ -131,44 +131,81 @@ public sealed class ScanCoordinator : IAsyncDisposable
     /// <summary>Adds a media to the queue (SCN-01). Throws if the media cannot be scanned in its current state.</summary>
     public void Enqueue(long mediaKey, ScanType type)
     {
+        if (EnqueueMany([(mediaKey, type)]) is [var problem, ..])
+        {
+            throw new InvalidOperationException(problem.Reason);
+        }
+    }
+
+    /// <summary>
+    /// Adds several media to the queue in one database transaction, so queueing many media waits for the database once
+    /// even while a scan is writing. Media that cannot be queued are returned with the reason; the others are queued.
+    /// Call it off the UI thread: the transaction can wait for the running scan's batch to commit.
+    /// </summary>
+    public IReadOnlyList<EnqueueProblem> EnqueueMany(IEnumerable<(long MediaKey, ScanType Type)> requests)
+    {
+        ArgumentNullException.ThrowIfNull(requests);
         _session.EnsureWritable();
         if (!_session.IsRootAvailable)
         {
             throw new InvalidOperationException("The root folder is not available.");
         }
 
-        using var scope = _session.Database.Open();
-        var repo = new MediaRepository(scope);
-        var media = repo.Get(mediaKey) ?? throw new InvalidOperationException("The media does not exist.");
-        lock (_gate)
+        var problems = new List<EnqueueProblem>();
+        var accepted = new List<ScanQueueItem>();
+        using (var scope = _session.Database.Open())
         {
-            if (_current?.MediaKey == mediaKey || _waiting.Any(w => w.MediaKey == mediaKey))
+            var repo = new MediaRepository(scope);
+            using var transaction = scope.BeginTransaction();
+            foreach (var (mediaKey, type) in requests)
             {
-                throw new InvalidOperationException($"'{media.MediaId}' is already in the scan queue.");
+                if (repo.Get(mediaKey) is not { } media)
+                {
+                    problems.Add(new EnqueueProblem(mediaKey, mediaKey.ToString(System.Globalization.CultureInfo.InvariantCulture), "The media does not exist."));
+                    continue;
+                }
+
+                bool queued;
+                lock (_gate)
+                {
+                    queued = _current?.MediaKey == mediaKey || _waiting.Any(w => w.MediaKey == mediaKey);
+                }
+
+                var reason = queued || accepted.Any(a => a.MediaKey == mediaKey)
+                    ? $"'{media.MediaId}' is already in the scan queue."
+                    : CannotScanReason(media, type);
+                if (reason is not null)
+                {
+                    problems.Add(new EnqueueProblem(mediaKey, media.MediaId, reason));
+                    continue;
+                }
+
+                repo.SetStatus(mediaKey, MediaStatus.Queued);
+                _session.Audit.Write(scope, AuditAction.ScanQueued, media.MediaId, new { ScanType = type.ToString() });
+                accepted.Add(new ScanQueueItem(mediaKey, media.MediaId, type, media.Status));
             }
-        }
 
-        var reason = CannotScanReason(media, type);
-        if (reason is not null)
-        {
-            throw new InvalidOperationException(reason);
-        }
-
-        using (var transaction = scope.BeginTransaction())
-        {
-            repo.SetStatus(mediaKey, MediaStatus.Queued);
-            _session.Audit.Write(scope, AuditAction.ScanQueued, media.MediaId, new { ScanType = type.ToString() });
             transaction.Commit();
         }
 
-        lock (_gate)
+        if (accepted.Count == 0)
         {
-            _waiting.Add(new ScanQueueItem(mediaKey, media.MediaId, type, media.Status));
+            return problems;
         }
 
-        RaiseStatus(mediaKey, MediaStatus.Queued);
+        lock (_gate)
+        {
+            _waiting.AddRange(accepted);
+        }
+
+        foreach (var item in accepted)
+        {
+            RaiseStatus(item.MediaKey, MediaStatus.Queued);
+        }
+
         StateChanged?.Invoke(this, EventArgs.Empty);
-        _signal.Release();
+        _signal.Release(accepted.Count);
+        return problems;
     }
 
     /// <summary>Why a media cannot be scanned with <paramref name="type"/>, or null if it can.</summary>

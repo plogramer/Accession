@@ -122,20 +122,22 @@ public sealed class ScanDbWriterTests : IDisposable
     }
 
     [Fact]
-    public async Task Idle_batch_is_committed_after_two_seconds()
+    public async Task Idle_batch_is_committed_soon_so_the_write_lock_is_released()
     {
         var ids = Ids();
         var root = ids.NextFolderId();
         await using var writer = new ScanDbWriter(_inventory.Database, batchSize: 1_000_000, TimeProvider.System);
         await writer.WriteAsync(new InsertFolderCommand(Folder(root, null, @"\M1\")));
 
+        var watch = System.Diagnostics.Stopwatch.StartNew();
         var deadline = DateTime.UtcNow.AddSeconds(10);
         while (Count("SELECT COUNT(*) FROM Folder") == 0 && DateTime.UtcNow < deadline)
         {
-            await Task.Delay(100, TestContext.Current.CancellationToken);
+            await Task.Delay(20, TestContext.Current.CancellationToken);
         }
 
         Assert.Equal(1, Count("SELECT COUNT(*) FROM Folder"));
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(1.5), $"Committed after {watch.Elapsed.TotalMilliseconds:0} ms."); // not the 2 s batch age
         await writer.CompleteAsync();
     }
 

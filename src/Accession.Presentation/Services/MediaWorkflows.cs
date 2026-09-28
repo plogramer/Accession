@@ -198,7 +198,7 @@ public sealed class MediaWorkflows
             .ToList();
         if (requests.Count > 0)
         {
-            _scans.Enqueue(requests);
+            _ = _scans.EnqueueAsync(requests);
             _host.SetNotice(_host.Session?.OpenNotice ?? string.Empty);
         }
     }
@@ -228,7 +228,7 @@ public sealed class MediaWorkflows
             return;
         }
 
-        _scans.Enqueue(requests);
+        _ = _scans.EnqueueAsync(requests);
     }
 
     public void OpenInExplorer(Media media)
@@ -262,7 +262,7 @@ public sealed class MediaWorkflows
             _host.NotifyMediaChanged();
             if (dialog.StartScanning && dialog.Added.Count > 0)
             {
-                _scans.Enqueue(dialog.Added.Select(m => (m, ScanType.Full)));
+                _ = _scans.EnqueueAsync([.. dialog.Added.Select(m => (m, ScanType.Full))]);
             }
 
             _ = RunDiscoveryAsync(DiscoveryMode.Silent);

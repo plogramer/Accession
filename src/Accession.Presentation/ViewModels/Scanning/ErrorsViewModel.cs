@@ -214,7 +214,7 @@ public sealed partial class ErrorsViewModel : ViewModelBase, IErrorsModel, IDisp
 
         if (media is not null)
         {
-            _scans.Enqueue([(media, ScanType.RetryFailed)]);
+            _ = _scans.EnqueueAsync([(media, ScanType.RetryFailed)]);
         }
     }
 
