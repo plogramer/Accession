@@ -46,8 +46,9 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDashboardModel,
 
     public DashboardViewModel(InventoryHost host, ScanHost scans, DashboardQueries queries, ISettingsService settings,
         FileBrowserNavigator navigator, ILogger<DashboardViewModel> logger,
-        IUiDispatcher ui, TimeProvider time)
+        IUiDispatcher ui, TimeProvider time, DashboardCache? cache = null)
     {
+        _cache = cache;
         _ui = ui;
         _time = time;
         _navigator = navigator;
@@ -63,6 +64,8 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDashboardModel,
         LoadMediaFilter();
         _ = ReloadAsync();
     }
+
+    private readonly DashboardCache? _cache;
 
     /// <summary>The latest dashboard load (for tests).</summary>
     internal Task LastLoad { get; private set; } = Task.CompletedTask;
@@ -477,14 +480,27 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDashboardModel,
         DuplicateNote = "calculating…";
         try
         {
-            var slow = await Task.Run(() => (
-                Duplicates: _queries.Duplicates(database, filter, token),
-                PerMedia: _queries.DuplicatesByMedia(database, filter, token),
-                Years: _queries.ByYear(database, filter, token),
-                Largest: _queries.LargestFiles(database, filter, token)), token);
+            var inventory = session.Config.InventoryGuid;
+            var slow = await Task.Run(() =>
+            {
+                // Duplicates and years read every file (tens of seconds on millions of files): use the results saved on this
+                // computer while the inventory's data is unchanged.
+                var version = _cache is null ? null : DashboardCache.DataVersion(database, _queries);
+                var saved = version is null ? null : _cache!.Get(inventory, version, filter);
+                var sections = saved ?? new SlowDashboard(
+                    _queries.Duplicates(database, filter, token),
+                    _queries.DuplicatesByMedia(database, filter, token),
+                    _queries.ByYear(database, filter, token));
+                if (saved is null && version is not null && !token.IsCancellationRequested)
+                {
+                    _cache!.Put(inventory, version, filter, sections);
+                }
+
+                return (Sections: sections, Largest: _queries.LargestFiles(database, filter, token));
+            }, token);
             if (!token.IsCancellationRequested)
             {
-                ShowSlow(slow.Duplicates, slow.PerMedia, slow.Years, slow.Largest, unit, zone);
+                ShowSlow(slow.Sections.Duplicates, slow.Sections.PerMedia, slow.Sections.Years, slow.Largest, unit, zone);
             }
         }
         catch (Exception ex) when (ex is OperationCanceledException || token.IsCancellationRequested)

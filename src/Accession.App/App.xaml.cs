@@ -135,6 +135,8 @@ public partial class App : Application
         builder.Services.AddSingleton(sp => new Accession.Data.Queries.DashboardQueries(
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), AppPaths.AppFolderName, "Queries", "Dashboard"),
             sp.GetRequiredService<ILogger<Accession.Data.Queries.DashboardQueries>>()));
+        builder.Services.AddSingleton(sp => new Accession.Data.Queries.DashboardCache(
+            AppPaths.DashboardCacheFolder, sp.GetRequiredService<ILogger<Accession.Data.Queries.DashboardCache>>()));
 
         // Platform
         builder.Services.AddSingleton<IUiDispatcher, WpfUiDispatcher>();

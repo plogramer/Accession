@@ -237,7 +237,7 @@ flowchart TD
 | DSH-08 | **Largest Files**: top 100 by size (Media ID, relative path, size, modified). |
 | DSH-09 | Clicking a row (media, category, extension, year) opens the **File browser** with that filter applied, together with the dashboard's media selection (one media or several). |
 | DSH-10 | Dashboard data is produced by **named SQL query sets** kept separate from the UI code (embedded resource files, one query per widget) so they can be replaced by the SQL queries the business owner will provide. The queries in this document are placeholders. |
-| DSH-11 | Dashboard must load in **≤ 3 seconds for 10M files** for the summary tiles, By Media, By Category and By Extension sections, using the summary tables filled at scan end (SCN-25). Duplicates, By Year and Largest Files may load in the background with a busy indicator. |
+| DSH-11 | Dashboard must load in **≤ 3 seconds for 10M files** for the summary tiles, By Media, By Category and By Extension sections, using the summary tables filled at scan end (SCN-25). Duplicates, By Year and Largest Files may load in the background with a busy indicator. Duplicates, duplicates per media and By Year are saved on the computer per inventory and media selection (%LOCALAPPDATA%\Accession\cache\dashboard) and reused while the inventory's data is unchanged (a fingerprint of the Media and ScanLog tables and the query texts), so reopening a large inventory shows them at once; a scan, rescan, retry or media deletion recalculates them once. |
 | DSH-12 | Sizes are shown in the unit chosen in settings (section 5.11). |
 
 ### 5.8 File browser

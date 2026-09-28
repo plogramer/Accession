@@ -15,4 +15,7 @@ public static class AppPaths
 
     /// <summary><c>%LOCALAPPDATA%\Accession\logs</c></summary>
     public static string LogFolder => Path.Combine(LocalDataFolder, "logs");
+
+    /// <summary><c>%LOCALAPPDATA%\Accession\cache\dashboard</c>: slow Dashboard sections saved per inventory.</summary>
+    public static string DashboardCacheFolder => Path.Combine(LocalDataFolder, "cache", "dashboard");
 }
