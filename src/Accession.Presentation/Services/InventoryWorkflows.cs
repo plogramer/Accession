@@ -15,7 +15,7 @@ public sealed class InventoryWorkflows
 {
     private readonly IDesktop _desktop;
 
-    public const string FileFilter = "Accession inventory (*.sqlite)|*.sqlite|All files (*.*)|*.*";
+    public const string FileFilter = Accession.Core.Inventories.InventoryFileName.OpenFilter;
 
     private readonly InventoryHost _host;
     private readonly IDialogService _dialogs;

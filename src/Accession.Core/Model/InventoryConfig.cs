@@ -30,6 +30,6 @@ public sealed class InventoryConfig
     public DateTimeOffset? LastOpenedAtUtc { get; set; }
     public string? LastOpenedBy { get; set; }
 
-    /// <summary>Where the .sqlite file was last opened from.</summary>
+    /// <summary>Where the inventory file was last opened from.</summary>
     public string? LastDbPath { get; set; }
 }

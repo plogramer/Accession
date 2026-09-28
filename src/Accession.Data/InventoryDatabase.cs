@@ -10,7 +10,7 @@ public sealed class InventoryDatabase
         IsReadOnly = isReadOnly;
     }
 
-    /// <summary>Full path of the .sqlite file.</summary>
+    /// <summary>Full path of the inventory file (.accession, or .sqlite before version 0.2).</summary>
     public string Path { get; }
 
     public bool IsReadOnly { get; }
