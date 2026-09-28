@@ -619,6 +619,7 @@ button:disabled { cursor: default; opacity: .45; }
 
 .table-wrap { overflow-x: auto; }
 .table-scroll { max-height: 372px; overflow-y: auto; }
+.table-fill { flex: 1 1 0; min-height: 0; max-height: none; }
 .table { width: 100%; border-collapse: separate; border-spacing: 0; }
 
 .table th {
@@ -1010,8 +1011,19 @@ button:disabled { cursor: default; opacity: .45; }
 
 /* Files screen */
 
-.page-files .split { align-items: start; }
+/* Screens that fit the window (Files, Categories): the page itself never scrolls; its tables, tree and lists do. */
+.page-fill { height: 100%; display: flex; flex-direction: column; padding-bottom: 20px; }
+.page-fill > .page-header { flex: none; }
+.page-fill > .split, .page-fill > .master-detail { flex: 1; min-height: 0; grid-template-rows: minmax(0, 1fr); align-items: stretch; }
+.page-fill .split-side, .page-fill .split-main { display: flex; flex-direction: column; gap: 14px; }
+.page-fill .split-main > .card, .page-fill .master-detail > .card { flex: none; min-height: 0; margin-bottom: 0; }
+.page-fill .split-main > .files-card { flex: 1; }
+.page-fill .detail { position: static; }
+.page-fill .table-fill { min-height: 160px; } /* on a very short window the page scrolls rather than the table vanishing */
+.page-fill .files-card > :not(.table-fill), .page-fill .master-detail > .card > :not(.table-fill) { flex: none; }
+
 .tree-card { margin: 0; position: sticky; top: 0; max-height: calc(100vh - 200px); }
+.page-fill .tree-card { position: static; flex: 1; min-height: 0; max-height: none; }
 .tree { flex: 1; overflow: auto; padding: 6px; min-height: 120px; }
 .tree-row { display: flex; align-items: center; gap: 6px; height: 30px; padding-right: 8px; border-radius: 7px; cursor: pointer; white-space: nowrap; color: var(--text-2); }
 .tree-row:hover { background: var(--surface-hover); }
@@ -1351,6 +1363,7 @@ kbd {
     .topbar { flex-wrap: wrap; }
     .matter { max-width: 100%; }
     .master-detail.has-detail, .master-detail.has-detail.detail-wide { grid-template-columns: minmax(0, 1fr); }
+    .page-fill > .master-detail.has-detail { grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
     .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
@@ -1358,7 +1371,7 @@ kbd {
     .start-body { grid-template-columns: minmax(0, 1fr); gap: 28px; padding: 28px 24px; }
     .grid-2 { grid-template-columns: minmax(0, 1fr); }
     .master-detail.has-detail { grid-template-columns: minmax(0, 1fr) 340px; }
-    .page-files .split { grid-template-columns: minmax(0, 1fr); }
-    .page-files .tree-card { position: static; max-height: 280px; }
+    .page-files .split { grid-template-columns: minmax(0, 1fr); grid-template-rows: 170px minmax(0, 1fr); gap: 12px; }
+    .page-files .tree-card { position: static; max-height: none; }
     .topbar-actions .btn:not(.btn-primary) { display: none; }
 }

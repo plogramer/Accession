@@ -1,6 +1,6 @@
 @inherits ObservingComponentBase
 
-<div class="page page-wide">
+<div class="page page-wide page-fill page-categories">
     <div class="page-header">
         <div>
             <h2>Categories</h2>
@@ -14,7 +14,7 @@
     <div class="master-detail has-detail detail-wide">
         <section class="card">
             <div class="card-header"><h3>All categories</h3><span class="muted small">@Model.Categories.Count(c => c.FileCount > 0) with files</span></div>
-            <DataTable TItem="CategoryRowVm" Items="Model.Categories" Label="Categories" SelectedItem="Model.SelectedCategory"
+            <DataTable TItem="CategoryRowVm" Items="Model.Categories" Label="Categories" Fill="true" SelectedItem="Model.SelectedCategory"
                        SelectedItemChanged="row => Model.SelectedCategory = row" RowClass="@(c => c.FileCount == 0 ? "is-empty" : null)">
                 <Columns>
                     <Column TItem="CategoryRowVm" Title="Category" Class="strong">@context.Name</Column>
@@ -44,7 +44,7 @@
                     <button class="btn btn-primary" disabled="@(category.FileCount == 0)" @onclick="() => Run(Model.ShowFilesCommand)"><Icon Name="files" Size="16" /> Browse @category.Name files</button>
                 </div>
                 <h4 class="detail-section">Extensions</h4>
-                <DataTable TItem="ExtensionCountVm" Items="Model.Extensions" Class="table-compact" MaxHeight="calc(100vh - 420px)"
+                <DataTable TItem="ExtensionCountVm" Items="Model.Extensions" Class="table-compact" Fill="true"
                            OnRowClick="e => OpenExtension(e)" RowClass="@(e => e.HasFiles ? null : "is-empty")" EmptyText="No extensions.">
                     <Columns>
                         <Column TItem="ExtensionCountVm" Title="Extension"><span class="ext">@context.Extension</span></Column>

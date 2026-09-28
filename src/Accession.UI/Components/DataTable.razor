@@ -6,7 +6,7 @@
 @* Table with sticky header, sortable columns, a selected row and optional row virtualization (large pages). *@
 <CascadingValue Value="this" IsFixed="true">@Columns</CascadingValue>
 
-<div class="table-wrap @(MaxHeight is null ? null : "table-scroll")" style="@(MaxHeight is null ? null : $"max-height:{MaxHeight}")"
+<div class="table-wrap @(Fill ? "table-scroll table-fill" : MaxHeight is null ? null : "table-scroll")" style="@(Fill || MaxHeight is null ? null : $"max-height:{MaxHeight}")"
      @ref="_container" tabindex="@(KeyboardNavigation ? "0" : null)" data-keynav="@(KeyboardNavigation ? "true" : null)"
      role="@(KeyboardNavigation ? "grid" : null)" aria-label="@Label" @onkeydown="OnKeyDown">
     <table class="table @Class" aria-busy="@(IsLoading ? "true" : "false")">
@@ -94,6 +94,9 @@
 
     /// <summary>CSS max-height; the table scrolls inside with a sticky header.</summary>
     [Parameter] public string? MaxHeight { get; set; }
+
+    /// <summary>Takes the rest of its (flex column) parent and scrolls inside, instead of a fixed <see cref="MaxHeight"/>.</summary>
+    [Parameter] public bool Fill { get; set; }
 
     [Parameter] public string? Class { get; set; }
 
