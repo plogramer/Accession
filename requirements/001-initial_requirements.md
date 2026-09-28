@@ -317,7 +317,7 @@ flowchart TD
 | NFR-01 | **Scale**: 10M+ files and 100+ media per inventory. |
 | NFR-02 | **Responsiveness**: the UI thread never runs I/O or DB queries; any operation over 300 ms shows a busy indicator; long operations can be cancelled. |
 | NFR-03 | **Durability**: the database stays consistent after a crash or power loss (transactions; resume per 5.5.4). |
-| NFR-04 | **SQLite on network shares**: use `journal_mode=DELETE` (WAL is not safe over SMB), `synchronous=FULL`, `foreign_keys=ON`, `page_size=8192` (set at creation). Keep write transactions batched. |
+| NFR-04 | **SQLite on network shares**: use `journal_mode=DELETE` (WAL is not safe over SMB), `synchronous=FULL`, `foreign_keys=ON`, `page_size=8192` (set at creation). Keep write transactions batched. An inventory left with an interrupted write (hot journal, e.g. the app or computer stopped during a scan) is recovered when it is next opened, even read-only: the file is opened read-write once so SQLite rolls the journal back (only the last committed state is kept). If the file cannot be written, opening explains that someone with write access must open it once. |
 | NFR-05 | **Evidence integrity**: no writes under the root folder (SCN-40). Verified by an automated test that compares timestamps and hashes before and after a scan. |
 | NFR-06 | **Hash correctness**: SHA-1 verified against known test vectors and a reference tool on a test data set. |
 | NFR-07 | **Logging**: application log (Serilog, rolling daily, 30 days) for diagnostics, separate from the audit trail. No evidence content is logged. |

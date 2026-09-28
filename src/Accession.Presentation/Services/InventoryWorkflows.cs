@@ -136,7 +136,8 @@ public sealed class InventoryWorkflows
                 await _media.RunDiscoveryAsync(DiscoveryMode.OnOpen);
             }
         }
-        catch (Exception ex) when (ex is NotAnInventoryException or SchemaTooNewException or InventoryInUseException)
+        catch (Exception ex) when (ex is NotAnInventoryException or SchemaTooNewException or InventoryInUseException
+                                       or Accession.Data.InventoryNeedsRecoveryException)
         {
             _dialogs.ShowError("Cannot open inventory", ex.Message);
         }
