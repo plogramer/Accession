@@ -11,6 +11,9 @@ public sealed record CopyRequest(FileFilter Filter, string Destination, CopyNami
 {
     /// <summary>"12 ticked files", "All results: Media MED001": recorded in the audit entry.</summary>
     public string? ScopeText { get; init; }
+
+    /// <summary>Files copied at the same time (Copy files, Copy To; the batch ignores it). Settings → Copy threads.</summary>
+    public int Threads { get; init; } = 1;
 }
 
 public sealed record CopyProgress(long FilesDone, long TotalFiles, long BytesDone, long TotalBytes, long Copied, long Skipped, long Failed);

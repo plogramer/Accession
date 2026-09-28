@@ -228,6 +228,15 @@ public static class DialogForms
                     },
                     new CheckField("Split exports into one workbook per media", () => vm.SplitExportPerMedia, v => vm.SplitExportPerMedia = v),
                 ]),
+                new FormSection("Copying",
+                [
+                    new NumberField("Copy threads", () => vm.CopyThreads, v => vm.CopyThreads = v,
+                        SettingsLimits.MinCopyThreads, SettingsLimits.MaxCopyThreads)
+                    {
+                        Hint = vm.CopyThreadsRange + " files at a time (Copy files, Copy To). More helps with many small files; for large files the disks are the limit.",
+                        Error = () => Errors(nameof(vm.CopyThreads)),
+                    },
+                ]),
             ],
             [
                 new FormButton("Restore defaults", vm.RestoreDefaultsCommand) { IsSecondary = true },

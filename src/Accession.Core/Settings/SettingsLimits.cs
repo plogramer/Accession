@@ -11,6 +11,11 @@ public static class SettingsLimits
     public const int MinHashingThreads = 1;
     public const int MaxHashingThreads = 32;
 
+    /// <summary>Files copied at the same time by Copy files and Copy To.</summary>
+    public const int DefaultCopyThreads = 4;
+    public const int MinCopyThreads = 1;
+    public const int MaxCopyThreads = 16;
+
     public const int DefaultDbBatchSize = 10_000;
     public const int MinDbBatchSize = 1_000;
     public const int MaxDbBatchSize = 100_000;

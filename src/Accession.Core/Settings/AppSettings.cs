@@ -19,6 +19,10 @@ public sealed class AppSettings
     public string DefaultExportFolder { get; set; } = string.Empty;
     public bool SplitExportPerMedia { get; set; }
 
+    // Copying
+    /// <summary>Files copied at the same time by Copy files and Copy To.</summary>
+    public int CopyThreads { get; set; } = SettingsLimits.DefaultCopyThreads;
+
     // Web UI
     /// <summary>"system", "light" or "dark".</summary>
     public string WebTheme { get; set; } = WebThemes.System;
@@ -63,6 +67,7 @@ public sealed class AppSettings
         DbBatchSize = defaults.DbBatchSize;
         DefaultExportFolder = defaults.DefaultExportFolder;
         SplitExportPerMedia = defaults.SplitExportPerMedia;
+        CopyThreads = defaults.CopyThreads;
     }
 
     /// <summary>Clamps values to their allowed ranges and repairs missing or invalid entries.</summary>
@@ -81,6 +86,7 @@ public sealed class AppSettings
         EnumerationThreads = Math.Clamp(EnumerationThreads, SettingsLimits.MinEnumerationThreads, SettingsLimits.MaxEnumerationThreads);
         HashingThreads = Math.Clamp(HashingThreads, SettingsLimits.MinHashingThreads, SettingsLimits.MaxHashingThreads);
         DbBatchSize = Math.Clamp(DbBatchSize, SettingsLimits.MinDbBatchSize, SettingsLimits.MaxDbBatchSize);
+        CopyThreads = Math.Clamp(CopyThreads, SettingsLimits.MinCopyThreads, SettingsLimits.MaxCopyThreads);
         DefaultExportFolder = DefaultExportFolder?.Trim() ?? string.Empty;
         WebTheme = WebThemes.Normalize(WebTheme);
         if (!SettingsLimits.FilePageSizes.Contains(FilesPageSize))

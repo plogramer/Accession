@@ -37,6 +37,8 @@ public sealed partial class SettingsViewModel : DialogViewModelBase
 
     public string HashingThreadsRange => $"{SettingsLimits.MinHashingThreads}–{SettingsLimits.MaxHashingThreads}";
 
+    public string CopyThreadsRange => $"{SettingsLimits.MinCopyThreads}–{SettingsLimits.MaxCopyThreads}";
+
     public string DbBatchSizeRange => $"{SettingsLimits.MinDbBatchSize:N0}–{SettingsLimits.MaxDbBatchSize:N0}";
 
     public string DocumentsFolder => Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
@@ -67,6 +69,13 @@ public sealed partial class SettingsViewModel : DialogViewModelBase
     [Range(SettingsLimits.MinDbBatchSize, SettingsLimits.MaxDbBatchSize,
         ErrorMessage = "Enter a number from 1,000 to 100,000.")]
     public partial int DbBatchSize { get; set; }
+
+    [ObservableProperty]
+    [NotifyDataErrorInfo]
+    [NotifyCanExecuteChangedFor(nameof(OkCommand))]
+    [Range(SettingsLimits.MinCopyThreads, SettingsLimits.MaxCopyThreads,
+        ErrorMessage = "Enter a number from 1 to 16.")]
+    public partial int CopyThreads { get; set; }
 
     /// <summary>Empty means the Documents folder.</summary>
     [ObservableProperty]
@@ -111,6 +120,7 @@ public sealed partial class SettingsViewModel : DialogViewModelBase
             s.DbBatchSize = DbBatchSize;
             s.DefaultExportFolder = DefaultExportFolder;
             s.SplitExportPerMedia = SplitExportPerMedia;
+            s.CopyThreads = CopyThreads;
         });
         Close(true);
     }
@@ -129,6 +139,7 @@ public sealed partial class SettingsViewModel : DialogViewModelBase
         DbBatchSize = settings.DbBatchSize;
         DefaultExportFolder = settings.DefaultExportFolder;
         SplitExportPerMedia = settings.SplitExportPerMedia;
+        CopyThreads = settings.CopyThreads;
     }
 }
 

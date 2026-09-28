@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Threading.Channels;
 using Accession.Core.Copying;
 using Accession.Core.Model;
 using Accession.Core.Time;
@@ -182,87 +183,174 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
         Check(Validate(session, request, order.Count));
         var totalBytes = order.Sum(o => o.SizeBytes);
 
-        long done = 0, copied = 0, verified = 0, skipped = 0, failed = 0, bytes = 0, warnings = 0;
-        var cancelled = false;
+        long done = 0, copied = 0, verified = 0, skipped = 0, failed = 0, bytes = 0, warnings = 0, lastReport = 0;
+        var threads = Math.Clamp(request.Threads, 1, Accession.Core.Settings.SettingsLimits.MaxCopyThreads);
         var preserveFolders = options.PreserveMetadata && request.Naming.Mode == CopyNamingMode.PreserveStructure;
         var seenFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var createdFolders = new List<(string Source, string Destination)>();
         Directory.CreateDirectory(request.Destination);
 
+        var cancelled = false;
+        CopyProgress Snapshot() => new(Interlocked.Read(ref done), order.Count, Interlocked.Read(ref bytes), totalBytes,
+            Interlocked.Read(ref copied), Interlocked.Read(ref skipped), Interlocked.Read(ref failed));
+
         using (var manifest = new CsvWriter(request.ManifestPath, ManifestHeaders))
         {
-            var lastReport = 0L;
-            var fileBytes = 0L;
-            try
+            // Files finish out of order with several threads; the manifest still lists them in copy order.
+            var manifestGate = new Lock();
+            var pending = new Dictionary<long, string?[]>();
+            var nextRow = 0L;
+
+            void Record(long index, string?[] row)
             {
-                foreach (var file in Rows(session, order, cancellationToken))
+                lock (manifestGate)
                 {
-                    fileBytes = 0;
-                    cancellationToken.ThrowIfCancellationRequested();
-                    var (source, destination) = Paths(root, request, file, done);
-                    if (preserveFolders)
+                    pending[index] = row;
+                    while (pending.Remove(nextRow, out var next))
                     {
-                        NoteFolders(root, request.Destination, file.FolderPath, seenFolders, createdFolders);
+                        manifest.WriteRow(next);
+                        nextRow++;
                     }
-
-                    void Read(long read)
-                    {
-                        bytes += read;
-                        fileBytes += read;
-                        if (bytes - lastReport >= 64L << 20)
-                        {
-                            lastReport = bytes;
-                            progress?.Report(new CopyProgress(done, order.Count, bytes, totalBytes, copied, skipped, failed));
-                        }
-                    }
-
-                    CopyFileResult result;
-                    if (request.Naming.Mode == CopyNamingMode.Sha1Name)
-                    {
-                        (result, destination) = CopyNamedBySha1(source, destination, request.Destination, file, options, Read, cancellationToken);
-                    }
-                    else
-                    {
-                        result = _copier.Copy(source, destination!, options, Read, cancellationToken);
-                    }
-
-                    done++;
-                    var message = result.Message;
-                    switch (result.Outcome)
-                    {
-                        case CopyOutcome.Copied:
-                        case CopyOutcome.Verified:
-                            copied++;
-                            verified += result.Outcome == CopyOutcome.Verified ? 1 : 0;
-                            warnings += message is null ? 0 : 1;
-                            if (result.Sha1 is { } readHash && file.Sha1 is { Length: > 0 } inventoryHash
-                                && !string.Equals(readHash, inventoryHash, StringComparison.OrdinalIgnoreCase))
-                            {
-                                message = Join(message, $"The file's SHA-1 is now {readHash}, not the inventory's: it changed after the scan.");
-                            }
-
-                            break;
-                        case CopyOutcome.Skipped:
-                            skipped++;
-                            bytes -= fileBytes; // copied under a temporary name, then found to be there already
-                            break;
-                        default:
-                            failed++;
-                            bytes -= fileBytes; // the partial copy was deleted
-                            break;
-                    }
-
-                    fileBytes = 0;
-                    WriteManifestRow(manifest, done, destination, source, file, result.Outcome.ToString(), message);
-                    progress?.Report(new CopyProgress(done, order.Count, bytes, totalBytes, copied, skipped, failed));
                 }
             }
-            catch (OperationCanceledException)
+
+            using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            var work = Channel.CreateBounded<CopyWork>(new BoundedChannelOptions(threads * 4) { SingleWriter = true });
+
+            // One producer: reads the files in copy order, names them (sequential numbers follow this order) and notes the
+            // folders this copy creates (folder times are set at the end).
+            var producer = Task.Run(async () =>
             {
-                cancelled = true;
-                bytes -= fileBytes; // the file being copied was deleted
+                try
+                {
+                    long index = 0;
+                    foreach (var file in Rows(session, order, stop.Token))
+                    {
+                        var (source, destination) = Paths(root, request, file, index);
+                        if (preserveFolders)
+                        {
+                            NoteFolders(root, request.Destination, file.FolderPath, seenFolders, createdFolders);
+                        }
+
+                        await work.Writer.WriteAsync(new CopyWork(index++, file, source, destination), stop.Token).ConfigureAwait(false);
+                    }
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    stop.Cancel(); // e.g. the database cannot be read: stop the workers too
+                    throw;
+                }
+                finally
+                {
+                    work.Writer.TryComplete();
+                }
+            }, CancellationToken.None);
+
+            async Task Worker()
+            {
+                try
+                {
+                    await foreach (var item in work.Reader.ReadAllAsync(stop.Token).ConfigureAwait(false))
+                    {
+                        var fileBytes = 0L;
+                        void Read(long read)
+                        {
+                            fileBytes += read;
+                            var total = Interlocked.Add(ref bytes, read);
+                            var last = Interlocked.Read(ref lastReport);
+                            if (total - last >= 64L << 20 && Interlocked.CompareExchange(ref lastReport, total, last) == last)
+                            {
+                                progress?.Report(Snapshot());
+                            }
+                        }
+
+                        CopyFileResult result;
+                        var destination = item.Destination;
+                        try
+                        {
+                            if (request.Naming.Mode == CopyNamingMode.Sha1Name)
+                            {
+                                (result, destination) = CopyNamedBySha1(item.Source, destination, request.Destination, item.File, options, Read, stop.Token);
+                            }
+                            else
+                            {
+                                result = _copier.Copy(item.Source, destination!, options, Read, stop.Token);
+                            }
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            Interlocked.Add(ref bytes, -fileBytes); // the partial copy was deleted
+                            return;
+                        }
+
+                        var message = result.Message;
+                        switch (result.Outcome)
+                        {
+                            case CopyOutcome.Copied:
+                            case CopyOutcome.Verified:
+                                Interlocked.Increment(ref copied);
+                                if (result.Outcome == CopyOutcome.Verified)
+                                {
+                                    Interlocked.Increment(ref verified);
+                                }
+
+                                if (message is not null)
+                                {
+                                    Interlocked.Increment(ref warnings);
+                                }
+
+                                if (result.Sha1 is { } readHash && item.File.Sha1 is { Length: > 0 } inventoryHash
+                                    && !string.Equals(readHash, inventoryHash, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    message = Join(message, $"The file's SHA-1 is now {readHash}, not the inventory's: it changed after the scan.");
+                                }
+
+                                break;
+                            case CopyOutcome.Skipped:
+                                Interlocked.Increment(ref skipped);
+                                Interlocked.Add(ref bytes, -fileBytes); // copied under a temporary name, then found to be there already
+                                break;
+                            default:
+                                Interlocked.Increment(ref failed);
+                                Interlocked.Add(ref bytes, -fileBytes); // the partial copy was deleted
+                                break;
+                        }
+
+                        Interlocked.Increment(ref done);
+                        Record(item.Index, ManifestRow(item.Index + 1, destination, item.Source, item.File, result.Outcome.ToString(), message));
+                        progress?.Report(Snapshot());
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    // Cancelled while waiting for the next file.
+                }
+            }
+
+            var workers = Enumerable.Range(0, threads).Select(_ => Task.Run(Worker, CancellationToken.None)).ToList();
+            try
+            {
+                Task.WhenAll([producer, .. workers]).GetAwaiter().GetResult();
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // The user cancelled: what was copied stays; the manifest says so below.
+            }
+
+            cancelled = cancellationToken.IsCancellationRequested && done < order.Count;
+            lock (manifestGate)
+            {
+                // Rows after a file that was being copied when the copy was cancelled.
+                foreach (var row in pending.OrderBy(p => p.Key).Select(p => p.Value))
+                {
+                    manifest.WriteRow(row);
+                }
+            }
+
+            if (cancelled)
+            {
                 manifest.WriteRow([null, null, null, null, null, null, null, "Stopped",
-                    $"Cancelled by the user after {done.ToString("N0", CultureInfo.InvariantCulture)} of {order.Count.ToString("N0", CultureInfo.InvariantCulture)} files. The files below this row in copy order were not copied."]);
+                    $"Cancelled by the user after {done.ToString("N0", CultureInfo.InvariantCulture)} of {order.Count.ToString("N0", CultureInfo.InvariantCulture)} files. The files not listed above were not copied."]);
             }
 
             if (preserveFolders)
@@ -336,6 +424,12 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             TryDelete(temporary);
+            if (File.Exists(destination))
+            {
+                // Another thread copied the same content under the same name a moment earlier.
+                return (new CopyFileResult(CopyOutcome.Skipped, 0, result.Sha1, "Already exists at the destination (same SHA-1 and name)"), destination);
+            }
+
             return (new CopyFileResult(CopyOutcome.Failed, 0, result.Sha1, ex.Message), destination);
         }
     }
@@ -433,11 +527,17 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
     }
 
     private static void WriteManifestRow(CsvWriter manifest, long number, string? destination, string source, CopySourceRow file, string outcome, string? message) =>
-        manifest.WriteRow([
-            number.ToString(CultureInfo.InvariantCulture), destination, source, file.MediaId, file.SizeBytes.ToString(CultureInfo.InvariantCulture),
-            file.ModifiedUtc is { } modified ? modified.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) : null,
-            file.Sha1, outcome, message,
-        ]);
+        manifest.WriteRow(ManifestRow(number, destination, source, file, outcome, message));
+
+    private static string?[] ManifestRow(long number, string? destination, string source, CopySourceRow file, string outcome, string? message) =>
+    [
+        number.ToString(CultureInfo.InvariantCulture), destination, source, file.MediaId, file.SizeBytes.ToString(CultureInfo.InvariantCulture),
+        file.ModifiedUtc is { } modified ? modified.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) : null,
+        file.Sha1, outcome, message,
+    ];
+
+    /// <summary>A file handed from the producer to a copy worker; <see cref="Index"/> is its place in copy order (0-based).</summary>
+    private sealed record CopyWork(long Index, CopySourceRow File, string Source, string? Destination);
 
     private void WriteBatchHeader(StreamWriter bat, InventorySession session, CopyRequest request, CopyCommandTemplate template, long files, long bytes)
     {

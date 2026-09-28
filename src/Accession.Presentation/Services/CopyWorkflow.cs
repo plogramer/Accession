@@ -77,7 +77,7 @@ public sealed class CopyWorkflow(
             return;
         }
 
-        var request = dialog.Request!;
+        var request = dialog.Request! with { Threads = settings.Current.CopyThreads };
         var options = dialog.Options;
         try
         {
@@ -103,7 +103,7 @@ public sealed class CopyWorkflow(
             return;
         }
 
-        var request = dialog.Request!;
+        var request = dialog.Request! with { Threads = settings.Current.CopyThreads };
         var options = dialog.Options;
         try
         {
@@ -191,14 +191,15 @@ public sealed class CopyWorkflow(
 
         public void Report(CopyProgress value)
         {
-            // At most five updates a second: small files can go by in the thousands.
+            // At most five updates a second: small files can go by in the thousands. Reports come from several copy threads.
             var now = Environment.TickCount64;
-            if (now - _lastUpdate < 200 && value.FilesDone < value.TotalFiles)
+            var last = Interlocked.Read(ref _lastUpdate);
+            var final = value.FilesDone >= value.TotalFiles;
+            if (!final && (now - last < 200 || Interlocked.CompareExchange(ref _lastUpdate, now, last) != last))
             {
                 return;
             }
 
-            _lastUpdate = now;
             var culture = CultureInfo.CurrentCulture;
             var percent = value.TotalBytes > 0 ? (int)Math.Min(100, 100 * value.BytesDone / value.TotalBytes)
                 : value.TotalFiles <= 0 ? 0 : (int)Math.Min(100, 100 * value.FilesDone / value.TotalFiles);

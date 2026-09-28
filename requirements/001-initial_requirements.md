@@ -308,6 +308,7 @@ flowchart TD
 | DB batch size | 10,000 | Advanced |
 | Default export folder | Documents | |
 | Split export per media | Off | |
+| Copy threads | 4 | 1–16. Files copied at the same time by *Copy files* and *Copy To* (CPY-06); the manifest stays in copy order. |
 | Recent inventories | — | Up to 15 |
 
 ## 6. Non-Functional Requirements
