@@ -22,6 +22,24 @@ public class BusyTrackerTests
     }
 
     [Fact]
+    public void Begin_shows_busy_at_once_updates_the_message_and_hides_on_dispose()
+    {
+        var tracker = new BusyTracker(_time);
+
+        using (var busy = tracker.Begin("Opening inventory…"))
+        {
+            Assert.True(tracker.IsBusy); // no delay: the indicator is up before the UI thread gets busy
+            Assert.Equal("Opening inventory…", tracker.Message);
+            Assert.False(tracker.CanCancel);
+
+            busy.Update("Loading the inventory…");
+            Assert.Equal("Loading the inventory…", tracker.Message);
+        }
+
+        Assert.False(tracker.IsBusy);
+    }
+
+    [Fact]
     public async Task Quick_work_never_shows_busy()
     {
         var tracker = new BusyTracker(_time);

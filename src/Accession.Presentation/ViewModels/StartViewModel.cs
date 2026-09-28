@@ -79,8 +79,15 @@ public sealed partial class StartViewModel : ViewModelBase, IStartModel
 
     private void OnSettingsChanged(object? sender, SettingsChangedEventArgs e) => _ui.Post(() => LoadRecent(e.Settings));
 
+    private int _recentVersion;
+
+    /// <summary>
+    /// Lists the recent inventories at once and checks in the background whether each file still exists: on a network
+    /// share that is not reachable, the check can take many seconds per file.
+    /// </summary>
     private void LoadRecent(AppSettings settings)
     {
+        var version = ++_recentVersion;
         RecentInventories.Clear();
         foreach (var recent in settings.RecentInventories)
         {
@@ -88,9 +95,28 @@ public sealed partial class StartViewModel : ViewModelBase, IStartModel
                 recent.DisplayName,
                 recent.Path,
                 TimeFormatter.Format(recent.LastOpenedUtc, settings.DisplayTimeZone),
-                File.Exists(recent.Path)));
+                Exists: true));
         }
 
         OnPropertyChanged(nameof(HasRecentInventories));
+        foreach (var item in RecentInventories.ToList())
+        {
+            _ = Task.Run(() =>
+            {
+                if (File.Exists(item.Path))
+                {
+                    return;
+                }
+
+                _ui.Post(() =>
+                {
+                    var index = RecentInventories.IndexOf(item);
+                    if (version == _recentVersion && index >= 0)
+                    {
+                        RecentInventories[index] = item with { Exists = false };
+                    }
+                });
+            });
+        }
     }
 }

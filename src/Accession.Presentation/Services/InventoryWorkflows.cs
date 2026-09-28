@@ -82,8 +82,14 @@ public sealed class InventoryWorkflows
 
         try
         {
-            var session = await _busy.RunAsync(_ => Task.FromResult(_creation.Create(request)), "Creating inventory…");
-            Activate(session);
+            using (var busy = _busy.Begin("Creating inventory…"))
+            {
+                var session = await Task.Run(() => _creation.Create(request));
+                busy.Update("Loading the inventory…");
+                await Task.Delay(30); // let the page show the new message first
+                Activate(session);
+            }
+
             await _media.RunDiscoveryAsync(dialog.ShowDiscoveredMedia ? DiscoveryMode.OnOpen : DiscoveryMode.Silent);
         }
         catch (InventoryValidationException ex)
@@ -106,7 +112,14 @@ public sealed class InventoryWorkflows
             return;
         }
 
-        if (!File.Exists(path))
+        // On a network share even "does the file exist" can take seconds: check it with the progress shown.
+        bool exists;
+        using (_busy.Begin("Opening inventory…"))
+        {
+            exists = await Task.Run(() => File.Exists(path));
+        }
+
+        if (!exists)
         {
             if (_dialogs.Confirm("Inventory not found", $"The file '{path}' was not found.\n\nRemove it from the recent list?"))
             {
@@ -128,11 +141,22 @@ public sealed class InventoryWorkflows
 
         try
         {
-            // On a background thread: the open may ask questions, and web dialogs need the UI thread free to answer.
-            var session = await _busy.RunAsync(_ => Task.Run(() => _opener.Open(path, _interaction)), "Opening inventory…");
+            InventorySession? session;
+            using (var busy = _busy.Begin("Opening inventory…"))
+            {
+                // On a background thread: the open may ask questions, and web dialogs need the UI thread free to answer.
+                session = await Task.Run(() => _opener.Open(path, _interaction));
+                if (session is not null)
+                {
+                    // Building the screens runs on the UI thread; the progress stays up (and animates) meanwhile.
+                    busy.Update("Loading the inventory…");
+                    await Task.Delay(30); // let the page show the new message first
+                    Activate(session);
+                }
+            }
+
             if (session is not null)
             {
-                Activate(session);
                 await _media.RunDiscoveryAsync(DiscoveryMode.OnOpen);
             }
         }

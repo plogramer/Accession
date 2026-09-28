@@ -37,6 +37,18 @@ public sealed class BusyTracker : INotifyPropertyChanged
     /// <summary>Whether the most recent visible operation can be cancelled.</summary>
     public bool CanCancel { get; private set; }
 
+    /// <summary>
+    /// Shows the busy indicator now (no delay) until the returned scope is disposed. For work that also runs on the UI
+    /// thread (e.g. building the screens of an inventory just opened): the indicator must be up before that thread is
+    /// busy, and it keeps animating meanwhile because the page is drawn by the web view's own process.
+    /// </summary>
+    public BusyScope Begin(string message)
+    {
+        var operation = new Operation(message, null);
+        Show(operation);
+        return new BusyScope(this, operation);
+    }
+
     public async Task RunAsync(Func<CancellationToken, Task> work, string message, bool cancellable = false)
     {
         ArgumentNullException.ThrowIfNull(work);
@@ -171,7 +183,24 @@ public sealed class BusyTracker : INotifyPropertyChanged
     private void OnPropertyChanged([CallerMemberName] string? name = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
-    private sealed class Operation(string message, CancellationTokenSource? cancellation)
+    /// <summary>A busy indicator shown by <see cref="Begin"/>; disposing it hides it.</summary>
+    public sealed class BusyScope : IDisposable
+    {
+        private readonly BusyTracker _owner;
+        private readonly Operation _operation;
+
+        internal BusyScope(BusyTracker owner, Operation operation)
+        {
+            _owner = owner;
+            _operation = operation;
+        }
+
+        public void Update(string message) => _owner.UpdateMessage(_operation, message);
+
+        public void Dispose() => _owner.Hide(_operation);
+    }
+
+    internal sealed class Operation(string message, CancellationTokenSource? cancellation)
     {
         public string Message { get; set; } = message;
 
