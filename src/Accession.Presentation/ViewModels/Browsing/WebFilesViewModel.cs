@@ -52,11 +52,12 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
     private readonly ExportWorkflow? _export;
     private readonly SavedSearchWorkflow? _savedSearchWorkflow;
     private readonly HashSet<long> _checked = [];
-    private IReadOnlyList<SelectOption> _mediaRootOptions = [];
+    // The "where" of the view is one of: the tree's SelectedFolder (a media root or a folder), SelectedSavedSearch,
+    // a set of media handed over by the Dashboard, or a media without folders yet (not in the tree).
     private IReadOnlyList<long>? _mediaSet;
-
-    /// <summary>Media option value for a set of media handed over by another screen.</summary>
-    public const string MediaSetValue = "set";
+    private long? _mediaWithoutFolders;
+    private Dictionary<long, FolderTreeNode> _mediaRoots = [];
+    private Dictionary<long, string> _mediaNames = [];
 
     public WebFilesViewModel(InventoryHost host, FileBrowserQueries queries, CategoryQueries categories, ISettingsService settings,
         IDesktop desktop, IDialogService dialogs, ToastService toasts, ILogger<WebFilesViewModel> logger, ExportWorkflow? export = null,
@@ -281,10 +282,13 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
             return;
         }
 
-        if (value is not null && SelectedFolder is not null)
+        if (value is not null)
         {
+            // A saved search replaces the folder or media set being shown.
             _suppressApply = true;
-            SelectedFolder = null; // a saved search replaces the folder
+            SelectedFolder = null;
+            _mediaSet = null;
+            _mediaWithoutFolders = null;
             _suppressApply = false;
         }
 
@@ -306,11 +310,7 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
     [ObservableProperty]
     public partial string ExtensionText { get; set; } = string.Empty;
 
-    [ObservableProperty]
-    public partial IReadOnlyList<SelectOption> MediaOptions { get; private set; } = [];
 
-    [ObservableProperty]
-    public partial string MediaValue { get; set; } = string.Empty;
 
     [ObservableProperty]
     public partial IReadOnlyList<SelectOption> CategoryOptions { get; private set; } = [];
@@ -353,7 +353,51 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
     public partial string FilterError { get; private set; } = string.Empty;
 
     [ObservableProperty]
-    public partial IReadOnlyList<string> ActiveFilters { get; private set; } = [];
+    public partial IReadOnlyList<FilterChip> ActiveFilters { get; private set; } = [];
+
+    ICommand IFilesModel.RemoveFilterCommand => RemoveFilterCommand;
+
+    /// <summary>All media: leaves the folder, saved search or media set being shown (the other filters stay).</summary>
+    public void ShowAllMedia()
+    {
+        _suppressApply = true;
+        ClearWhere();
+        _suppressApply = false;
+        Apply();
+    }
+
+    /// <summary>Removes one filter (the × on its chip). "where" removes the media, folder or saved search.</summary>
+    [RelayCommand]
+    private void RemoveFilter(string? key)
+    {
+        _suppressApply = true;
+        switch (key)
+        {
+            case FilterKeys.Where: ClearWhere(); break;
+            case FilterKeys.Category: CategoryValue = string.Empty; break;
+            case FilterKeys.Extension: ExtensionText = string.Empty; break;
+            case FilterKeys.Name: NameContains = string.Empty; break;
+            case FilterKeys.MinSize: MinSizeText = string.Empty; break;
+            case FilterKeys.MaxSize: MaxSizeText = string.Empty; break;
+            case FilterKeys.ModifiedFrom: ModifiedFromText = string.Empty; break;
+            case FilterKeys.ModifiedTo: ModifiedToText = string.Empty; break;
+            case FilterKeys.Hash: HashStatusValue = string.Empty; break;
+            case FilterKeys.Duplicates: DuplicatesOnly = false; break;
+            case FilterKeys.Errors: ErrorsOnly = false; break;
+            case FilterKeys.Sha1: Sha1Text = string.Empty; break;
+        }
+
+        _suppressApply = false;
+        Apply();
+    }
+
+    private void ClearWhere()
+    {
+        SelectedFolder = null;
+        SelectedSavedSearch = null;
+        _mediaSet = null;
+        _mediaWithoutFolders = null;
+    }
 
     // ---- Table ----
 
@@ -424,8 +468,26 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
         try
         {
             ClearFields();
-            SetMediaSet(filter.MediaKeys);
-            MediaValue = filter.MediaKeys is not null ? MediaSetValue : filter.MediaKey?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
+            ClearWhere();
+            if (filter.MediaKeys is { } keys)
+            {
+                _mediaSet = [.. keys];
+            }
+            else if (filter.MediaKey is { } key)
+            {
+                // "Browse files" for a media: select it in the Media tree, so it is visible and the next tree click replaces it.
+                if (_mediaRoots.TryGetValue(key, out var root))
+                {
+                    SideTab = "folders";
+                    SelectedFolder = root;
+                    root.IsExpanded = true;
+                }
+                else
+                {
+                    _mediaWithoutFolders = key;
+                }
+            }
+
             CategoryValue = filter.CategoryId?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
             ExtensionText = filter.Extension is null ? string.Empty : filter.Extension.Length == 0 ? "(none)" : filter.Extension;
             ModifiedFromText = filter.ModifiedFrom?.UtcDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? string.Empty;
@@ -438,8 +500,6 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
             NameContains = filter.NameContains ?? string.Empty;
             IncludeSubfolders = filter.IncludeSubfolders;
             HashStatusValue = filter.HashStatus?.ToString() ?? string.Empty;
-            SelectedFolder = null;
-            SelectedSavedSearch = null;
         }
         finally
         {
@@ -449,7 +509,7 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
         // Exact sizes (largest-file click-through) are kept exactly, not rounded through the text boxes.
         if (TryBuildFilter(out var built))
         {
-            Activate(built with { MinSize = filter.MinSize, MaxSize = filter.MaxSize, FolderId = filter.FolderId });
+            Activate(built with { MinSize = filter.MinSize, MaxSize = filter.MaxSize });
         }
     }
 
@@ -501,15 +561,14 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
     {
         _suppressApply = true;
         ClearFields();
-        SelectedFolder = null;
-        SelectedSavedSearch = null;
+        ClearWhere();
         _suppressApply = false;
         Apply();
     }
 
     [RelayCommand(CanExecute = nameof(CanExportView))]
     private Task ExportView() =>
-        _export!.ExportAsync(filesView: _activeFilter, filesViewText: ActiveFilters.Count == 0 ? string.Empty : string.Join(" · ", ActiveFilters));
+        _export!.ExportAsync(filesView: _activeFilter, filesViewText: ActiveFilters.Count == 0 ? string.Empty : string.Join(" · ", ActiveFilters.Select(c => c.Label)));
 
     private bool CanExportView() => _export is not null && _host.HasSession;
 
@@ -584,46 +643,23 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
             return;
         }
 
-        if (value is not null && SelectedSavedSearch is not null)
+        if (value is not null)
         {
+            // A media or folder in the tree replaces the saved search or media set being shown; the other filters stay.
             _suppressApply = true;
-            SelectedSavedSearch = null; // a folder replaces the saved search
+            SelectedSavedSearch = null;
+            _mediaSet = null;
+            _mediaWithoutFolders = null;
             _suppressApply = false;
         }
 
         Apply();
     }
 
-    /// <summary>
-    /// A set of media from another screen (the Dashboard's selection) is shown as an extra media option while it is in
-    /// use; choosing another media, or clearing the filters, drops it.
-    /// </summary>
-    private void SetMediaSet(IReadOnlyCollection<long>? keys)
-    {
-        _mediaSet = keys is null ? null : [.. keys];
-        UpdateMediaOptions();
-    }
-
-    private void UpdateMediaOptions()
-    {
-        MediaOptions = _mediaSet is { } set
-            ? [new(string.Empty, "All media"), new(MediaSetValue, $"{set.Count:N0} media from Dashboard"), .. _mediaRootOptions]
-            : [new(string.Empty, "All media"), .. _mediaRootOptions];
-    }
-
-    partial void OnMediaValueChanged(string value)
-    {
-        if (value != MediaSetValue && _mediaSet is not null)
-        {
-            SetMediaSet(null);
-        }
-    }
-
     private void ClearFields()
     {
         NameContains = ExtensionText = MinSizeText = MaxSizeText = Sha1Text = ModifiedFromText = ModifiedToText = string.Empty;
-        MediaValue = CategoryValue = HashStatusValue = string.Empty;
-        SetMediaSet(null);
+        CategoryValue = HashStatusValue = string.Empty;
         IncludeSubfolders = true;
         DuplicatesOnly = ErrorsOnly = false;
         FilterError = string.Empty;
@@ -701,8 +737,8 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
         var extension = ExtensionText.Trim().TrimStart('.');
         filter = new FileFilter
         {
-            MediaKey = long.TryParse(MediaValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var mediaKey) ? mediaKey : null,
-            MediaKeys = MediaValue == MediaSetValue ? _mediaSet : null,
+            MediaKey = _mediaWithoutFolders,
+            MediaKeys = _mediaSet,
             SavedSearchId = SelectedSavedSearch?.Id,
             FolderId = SelectedFolder?.Info.FolderId,
             IncludeSubfolders = IncludeSubfolders,
@@ -721,87 +757,91 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
         return true;
     }
 
-    private IReadOnlyList<string> Describe(FileFilter filter)
+    private IReadOnlyList<FilterChip> Describe(FileFilter filter)
     {
-        var labels = new List<string>();
+        var chips = new List<FilterChip>();
         var culture = CultureInfo.CurrentCulture;
         var unit = _settings.Current.SizeUnit;
+        void Add(string key, string label) => chips.Add(new FilterChip(key, label));
+
         if (filter.SavedSearchId is { } savedSearchId)
         {
-            labels.Add("Saved search: " + (SavedSearches.FirstOrDefault(s => s.Id == savedSearchId)?.Name ?? "?"));
+            Add(FilterKeys.Where, "Saved search: " + (SavedSearches.FirstOrDefault(s => s.Id == savedSearchId)?.Name ?? "?"));
         }
 
         if (filter.MediaKey is { } key)
         {
-            labels.Add("Media " + (MediaOptions.FirstOrDefault(o => o.Value == key.ToString(CultureInfo.InvariantCulture))?.Label ?? "?"));
+            Add(FilterKeys.Where, "Media " + _mediaNames.GetValueOrDefault(key, "?"));
         }
 
         if (filter.MediaKeys is { } keys)
         {
-            labels.Add(keys.Count == 1 ? "1 media" : $"{keys.Count.ToString("N0", culture)} media");
+            Add(FilterKeys.Where, keys.Count == 1 ? "1 media from Dashboard" : $"{keys.Count.ToString("N0", culture)} media from Dashboard");
         }
 
         if (filter.FolderId is not null && SelectedFolder is { } folder)
         {
-            labels.Add((filter.IncludeSubfolders ? "In " : "Only in ") + folder.Info.Name);
+            Add(FilterKeys.Where, folder.Depth == 0 && filter.IncludeSubfolders
+                ? "Media " + folder.Info.Name
+                : (filter.IncludeSubfolders ? "In " : "Only in ") + folder.Info.Name);
         }
 
         if (filter.CategoryId is { } category)
         {
-            labels.Add(CategoryOptions.FirstOrDefault(o => o.Value == category.ToString(CultureInfo.InvariantCulture))?.Label ?? "Category");
+            Add(FilterKeys.Category, CategoryOptions.FirstOrDefault(o => o.Value == category.ToString(CultureInfo.InvariantCulture))?.Label ?? "Category");
         }
 
         if (filter.Extension is { } extension)
         {
-            labels.Add(extension.Length == 0 ? "No extension" : "." + extension);
+            Add(FilterKeys.Extension, extension.Length == 0 ? "No extension" : "." + extension);
         }
 
         if (filter.NameContains is { } name)
         {
-            labels.Add($"Name “{name}”");
+            Add(FilterKeys.Name, $"Name “{name}”");
         }
 
         if (filter.MinSize is { } minSize)
         {
-            labels.Add("≥ " + SizeFormatter.Format(minSize, unit));
+            Add(FilterKeys.MinSize, "≥ " + SizeFormatter.Format(minSize, unit));
         }
 
         if (filter.MaxSize is { } maxSize)
         {
-            labels.Add("≤ " + SizeFormatter.Format(maxSize, unit));
+            Add(FilterKeys.MaxSize, "≤ " + SizeFormatter.Format(maxSize, unit));
         }
 
         if (filter.ModifiedFrom is { } from)
         {
-            labels.Add("Modified from " + from.UtcDateTime.ToString("yyyy-MM-dd", culture));
+            Add(FilterKeys.ModifiedFrom, "Modified from " + from.UtcDateTime.ToString("yyyy-MM-dd", culture));
         }
 
         if (filter.ModifiedTo is { } to)
         {
-            labels.Add("Modified to " + to.UtcDateTime.AddDays(-1).ToString("yyyy-MM-dd", culture));
+            Add(FilterKeys.ModifiedTo, "Modified to " + to.UtcDateTime.AddDays(-1).ToString("yyyy-MM-dd", culture));
         }
 
         if (filter.HashStatus is { } status)
         {
-            labels.Add(HashOptions.First(o => o.Value == status.ToString()).Label);
+            Add(FilterKeys.Hash, HashOptions.First(o => o.Value == status.ToString()).Label);
         }
 
         if (filter.DuplicatesOnly)
         {
-            labels.Add("Duplicates only");
+            Add(FilterKeys.Duplicates, "Duplicates only");
         }
 
         if (filter.ErrorsOnly)
         {
-            labels.Add("Errors only");
+            Add(FilterKeys.Errors, "Errors only");
         }
 
         if (filter.Sha1 is { } sha1)
         {
-            labels.Add("SHA-1 " + sha1[..Math.Min(10, sha1.Length)] + "…");
+            Add(FilterKeys.Sha1, "SHA-1 " + sha1[..Math.Min(10, sha1.Length)] + "…");
         }
 
-        return labels;
+        return chips;
     }
 
     private string FormatSize(long? bytes)
@@ -829,23 +869,24 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
             var roots = _queries.MediaRoots(database);
             _mediaKeys = roots.Select(r => r.MediaKey).ToHashSet();
             Folders.Clear();
+            _mediaRoots = [];
             foreach (var root in roots)
             {
-                Folders.Add(new FolderTreeNode(ToInfo(root), id => _queries.ChildFolders(database, id).Select(ToInfo).ToList()));
+                var node = new FolderTreeNode(ToInfo(root), id => _queries.ChildFolders(database, id).Select(ToInfo).ToList());
+                Folders.Add(node);
+                _mediaRoots[root.MediaKey] = node;
             }
 
-            _mediaRootOptions = [.. roots.Select(r => new SelectOption(r.MediaKey.ToString(CultureInfo.InvariantCulture), r.Name))];
-            UpdateMediaOptions();
+            using (var scope = database.Open())
+            {
+                _mediaNames = new Accession.Data.Repositories.MediaRepository(scope).ListActive().ToDictionary(m => m.MediaKey, m => m.MediaId);
+            }
+
             CategoryOptions =
             [
                 new(string.Empty, "All categories"),
                 .. _categories.Categories(database).Select(c => new SelectOption(c.CategoryId.ToString(CultureInfo.InvariantCulture), c.Name)),
             ];
-            if (MediaOptions.All(o => o.Value != MediaValue))
-            {
-                MediaValue = string.Empty;
-            }
-
             SelectedFolder = null;
             LoadSavedSearches();
         }

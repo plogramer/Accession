@@ -112,6 +112,11 @@
                 container.scrollTop = bottom - container.clientHeight;
             }
         },
+        // Scrolls a list's selected row (e.g. the media chosen with "Browse files") into view.
+        scrollSelectedIntoView: function (container) {
+            const selected = container && container.querySelector(".is-selected");
+            selected && selected.scrollIntoView({ block: "nearest" });
+        },
         focus: function (element) {
             element && element.focus();
         },

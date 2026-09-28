@@ -1,4 +1,6 @@
 @inherits ObservingComponentBase
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
 
 <div class="page page-wide page-files">
     <div class="page-header">
@@ -56,7 +58,7 @@
                 }
                 else
                 {
-                    <div class="tree" role="tree">
+                    <div class="tree" role="tree" @ref="_tree">
                         <div class="tree-row @(Model.SelectedFolder is null && Model.SelectedSavedSearch is null ? "is-selected" : null)" style="padding-left:6px"
                              @onclick="ShowAllMedia">
                             <span class="tree-toggle"></span>
@@ -82,12 +84,6 @@
                     </div>
                     <input class="input input-ext" placeholder="Extension" title="Extension without the dot; (none) for files without one"
                            value="@Model.ExtensionText" @oninput="e => Model.ExtensionText = e.Value?.ToString() ?? string.Empty" />
-                    <select class="input" title="Media" value="@Model.MediaValue" @onchange="e => Model.MediaValue = e.Value?.ToString() ?? string.Empty">
-                        @foreach (var option in Model.MediaOptions)
-                        {
-                            <option value="@option.Value">@option.Label</option>
-                        }
-                    </select>
                     <select class="input" title="Category" value="@Model.CategoryValue" @onchange="e => Model.CategoryValue = e.Value?.ToString() ?? string.Empty">
                         @foreach (var option in Model.CategoryOptions)
                         {
@@ -138,9 +134,13 @@
                 {
                     <div class="chips-row">
                         <span class="muted small">Filtered by</span>
-                        @foreach (var label in Model.ActiveFilters)
+                        @foreach (var chip in Model.ActiveFilters)
                         {
-                            <span class="chip">@label</span>
+                            <span class="chip chip-removable">
+                                @chip.Label
+                                <button class="chip-x" title="@($"Remove {chip.Label}")" aria-label="@($"Remove {chip.Label}")"
+                                        @onclick="() => Run(Model.RemoveFilterCommand, chip.Key)"><Icon Name="x" Size="11" /></button>
+                            </span>
                         }
                         <button class="link-btn" @onclick="() => Run(Model.ClearFiltersCommand)">Clear all</button>
                     </div>
@@ -236,7 +236,7 @@
                     }
                 </div>
 
-                <DataTable TItem="FileRow" Items="Model.Rows" Label="Files" Virtualize="true" MaxHeight="calc(100vh - 515px)" Class="files-table"
+                <DataTable TItem="FileRow" Items="Model.Rows" Label="Files" Virtualize="true" MaxHeight="max(260px, calc(100vh - 515px))" Class="files-table"
                            SortKey="@Model.SortKey" SortDescending="Model.SortDescending" OnSort="Model.SortByAsync"
                            SelectedItem="Model.SelectedRow" SelectedItemChanged="row => Model.SelectedRow = row"
                            IsLoading="Model.IsLoading" EmptyText="No files match these filters.">
@@ -328,17 +328,26 @@
         ("sha1", "SHA-1"), ("copies", "Copies"),
     ];
 
-    private static readonly IReadOnlyList<TabItem> FolderTab = [new("folders", "Folders"), new("saved", "Saved searches")];
+    private static readonly IReadOnlyList<TabItem> FolderTab = [new("folders", "Media"), new("saved", "Saved searches")];
 
     [Parameter, EditorRequired] public IFilesModel Model { get; set; } = default!;
 
     private IReadOnlyList<TabItem> SideTabs =>
         [FolderTab[0], new("saved", "Saved searches", Model.SavedSearches.Count > 0 ? Model.SavedSearches.Count.ToString("N0") : null)];
 
-    private void ShowAllMedia()
+    private ElementReference _tree;
+    private FolderTreeNode? _scrolledTo;
+
+    private void ShowAllMedia() => Model.ShowAllMedia();
+
+    /// <summary>A media chosen on another screen ("Browse files") may be far down the tree: bring it into view once.</summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        Model.SelectedSavedSearch = null;
-        Model.SelectedFolder = null;
+        if (Model.SideTab == "folders" && Model.SelectedFolder is { Depth: 0 } media && !ReferenceEquals(media, _scrolledTo))
+        {
+            _scrolledTo = media;
+            await JS.InvokeVoidAsync("accession.scrollSelectedIntoView", _tree);
+        }
     }
 
     protected override void OnParametersSet() => Observe(Model, Model.Folders, Model.SavedSearches, Model.CopyPathCommand, Model.CopySha1Command,

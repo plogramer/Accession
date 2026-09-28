@@ -32,7 +32,7 @@ public sealed class FilesPageTests
         Assert.Contains("1,204 files · 2.31 GB", html);
         Assert.Contains("title=\"Emails with outside counsel\"", html); // description as tooltip
         Assert.Contains("New saved search", html);
-        Assert.DoesNotContain("Include subfolders", html); // the Folders tab is not shown
+        Assert.DoesNotContain("Include subfolders", html); // the Media tab is not shown
         Assert.Contains("aria-label=\"Tick every file on this page\"", html);
         Assert.Contains("3 ticked", html);
         Assert.Contains("Add to saved search", html);
@@ -41,11 +41,14 @@ public sealed class FilesPageTests
     }
 
     [Fact]
-    public async Task Folders_tab_by_default_without_remove_buttons()
+    public async Task Media_tab_by_default_with_removable_chips()
     {
-        var html = await RenderInShell(new FakeFiles());
+        var html = await RenderInShell(new FakeFiles(), "files-media-tab");
 
         Assert.Contains("Include subfolders", html);
+        Assert.Contains(">Media<", html); // the tree's tab is called Media
+        Assert.DoesNotContain("title=\"Media\" value=", html); // no Media drop-down in the filter bar
+        Assert.Contains("aria-label=\"Remove In Shares\"", html); // each chip can be removed on its own
         Assert.Contains("<span class=\"tab-badge\">3</span>", html); // saved searches count on the tab
         Assert.DoesNotContain("Remove all results", html);
         Assert.DoesNotContain(" ticked", html);

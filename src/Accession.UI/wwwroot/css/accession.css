@@ -1036,6 +1036,9 @@ button:disabled { cursor: default; opacity: .45; }
 .saved-name { font-weight: 500; }
 .saved-empty { padding: 10px 8px; line-height: 1.5; }
 .bulk-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 44px; padding: 6px 16px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
+.chip-removable { gap: 4px; padding-right: 4px; }
+.chip-x { display: grid; place-items: center; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 999px; background: none; color: var(--muted); cursor: pointer; }
+.chip-x:hover { background: var(--border); color: var(--text); }
 .bulk-context { display: inline-flex; align-items: center; gap: 6px; color: var(--primary-text); font-size: 13px; }
 
 .filter-card { margin-bottom: 14px; }

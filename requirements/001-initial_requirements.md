@@ -246,9 +246,10 @@ flowchart TD
 |---|---|
 | BRW-01 | Left: folder tree (Media → folders), loaded lazily. Right: virtualized file grid. |
 | BRW-02 | Columns: Media ID, Name, Extension, Category, Relative Path, Size, Created, Modified, Accessed, SHA-1, Hash Status, Duplicate count. Columns can be shown/hidden and sorted. |
-| BRW-03 | Filters: media, folder (with/without subfolders), category, extension, size range, modified date range, hash status, "duplicates only", name contains, exact SHA-1. |
+| BRW-03 | Filters: media and folder in the tree (with/without subfolders), category, extension, size range, modified date range, hash status, "duplicates only", name contains, exact SHA-1. |
 | BRW-04 | Context menu: *Copy path* (full UNC path), *Copy SHA-1*, *Show duplicates*, *Open containing folder* (Explorer). The app never opens or launches the file itself. |
 | BRW-05 | *Export current view* sends the filtered result to Excel (section 5.9). |
+| BRW-06 | The view has one **location**: a media or folder in the **Media** tab's tree, a saved search, or the Dashboard's media selection. Choosing another location replaces it; the other filters (category, extension, name, size, dates, hash status, duplicates, errors, SHA-1) stay, so a Dashboard click-through can be narrowed folder by folder. *Browse files* (Media screen, Dashboard) selects the media in the tree. Each applied filter is shown as a chip with its own ×; *Clear all* removes everything. |
 
 ### 5.8a Saved searches
 

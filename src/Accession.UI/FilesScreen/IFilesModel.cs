@@ -58,8 +58,6 @@ public interface IFilesModel : INotifyPropertyChanged, IRefreshableScreen
     // ---- Filters (applied with ApplyCommand) ----
     string NameContains { get; set; }
     string ExtensionText { get; set; }
-    IReadOnlyList<SelectOption> MediaOptions { get; }
-    string MediaValue { get; set; }
     IReadOnlyList<SelectOption> CategoryOptions { get; }
     string CategoryValue { get; set; }
     IReadOnlyList<SelectOption> HashStatusOptions { get; }
@@ -80,8 +78,14 @@ public interface IFilesModel : INotifyPropertyChanged, IRefreshableScreen
     string Sha1Text { get; set; }
     string FilterError { get; }
 
-    /// <summary>Short labels of the applied filters, e.g. "Media 123-123_001", "Email", ".msg".</summary>
-    IReadOnlyList<string> ActiveFilters { get; }
+    /// <summary>The applied filters as chips, e.g. "Media 123-123_001", "Email", ".msg".</summary>
+    IReadOnlyList<FilterChip> ActiveFilters { get; }
+
+    /// <summary>Removes one filter; parameter: the chip's <see cref="FilterChip.Key"/>.</summary>
+    ICommand RemoveFilterCommand { get; }
+
+    /// <summary>Shows all media: leaves the media, folder or saved search (other filters stay).</summary>
+    void ShowAllMedia();
 
     ICommand ApplyCommand { get; }
     ICommand ClearFiltersCommand { get; }

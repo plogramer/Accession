@@ -69,7 +69,7 @@ public sealed class FilesSavedSearchTests : IDisposable
         vm.SelectedSavedSearch = row;
         await Idle(vm);
         Assert.Equal(30, vm.TotalCount);
-        Assert.Contains("Saved search: PDFs", vm.ActiveFilters);
+        Assert.Contains(vm.ActiveFilters, c => c.Label == "Saved search: PDFs");
 
         vm.SelectedFolder = vm.Folders[0];
         await Idle(vm);
@@ -138,7 +138,7 @@ public sealed class FilesSavedSearchTests : IDisposable
         vm.EditSavedSearchCommand.Execute(vm.SavedSearches[0]);
         Assert.Equal("New name", vm.SavedSearches[0].Name);
         Assert.Equal("New name", vm.SelectedSavedSearch!.Name);
-        Assert.Contains("Saved search: New name", vm.ActiveFilters);
+        Assert.Contains(vm.ActiveFilters, c => c.Label == "Saved search: New name");
 
         _dialogs.Answer = true;
         vm.DeleteSavedSearchCommand.Execute(vm.SavedSearches[0]);

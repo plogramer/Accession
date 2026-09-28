@@ -69,8 +69,6 @@ internal sealed partial class FakeFiles : ObservableObject, IFilesModel
     public ICommand ClearCheckedCommand { get; } = new RelayCommand(() => { });
     public string NameContains { get; set; } = "invoice";
     public string ExtensionText { get; set; } = string.Empty;
-    public IReadOnlyList<SelectOption> MediaOptions { get; } = [new(string.Empty, "All media"), new("1", "123-123_001"), new("2", "123-123_002")];
-    public string MediaValue { get; set; } = string.Empty;
     public IReadOnlyList<SelectOption> CategoryOptions { get; } = [new(string.Empty, "All categories"), new("1", "Email")];
     public string CategoryValue { get; set; } = string.Empty;
     public IReadOnlyList<SelectOption> HashStatusOptions { get; } = [new(string.Empty, "Any hash status")];
@@ -85,7 +83,9 @@ internal sealed partial class FakeFiles : ObservableObject, IFilesModel
     public bool ErrorsOnly { get; set; }
     public string Sha1Text { get; set; } = string.Empty;
     public string FilterError { get; set; } = string.Empty;
-    public IReadOnlyList<string> ActiveFilters { get; } = ["In Shares", "Name “invoice”"];
+    public IReadOnlyList<FilterChip> ActiveFilters { get; } = [new(FilterKeys.Where, "In Shares"), new(FilterKeys.Name, "Name “invoice”")];
+    public ICommand RemoveFilterCommand { get; } = new RelayCommand<object?>(_ => { });
+    public void ShowAllMedia() { }
     public ICommand ApplyCommand { get; } = new RelayCommand(() => { });
     public ICommand ClearFiltersCommand { get; } = new RelayCommand(() => { });
     public IReadOnlyList<FileRow> Rows { get; }

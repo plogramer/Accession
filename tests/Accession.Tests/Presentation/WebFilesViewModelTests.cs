@@ -4,6 +4,7 @@ using Accession.Presentation.Services;
 using Accession.Presentation.ViewModels.Browsing;
 using Accession.Tests.TestSupport;
 using Accession.UI.Components;
+using Accession.UI.FilesScreen;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Accession.Tests.Presentation;
@@ -102,7 +103,49 @@ public sealed class WebFilesViewModelTests : IDisposable
 
         Assert.Equal(300, vm.TotalCount);
         Assert.All(vm.Rows, r => Assert.Equal("M2", r.MediaId));
-        Assert.Contains("Media M2", vm.ActiveFilters);
+        Assert.Contains("Media M2", Labels(vm));
+        Assert.Equal("M2", vm.SelectedFolder?.Info.Name); // selected in the Media tree
+        Assert.Equal("folders", vm.SideTab);
+    }
+
+    [Fact]
+    public async Task Browsing_a_media_then_clicking_another_media_shows_that_media_not_nothing()
+    {
+        using var vm = await Create();
+        vm.ApplyPreset(new FileFilter { MediaKey = _m2 });
+        await Idle(vm);
+
+        var m1 = vm.Folders.First(f => f.Info.Name == "M1");
+        m1.IsExpanded = true;
+        vm.SelectedFolder = m1.Children.Single(c => c.Info.Name == "mail");
+        await Idle(vm);
+
+        Assert.Equal(400, vm.TotalCount);
+        Assert.Equal(["In mail"], Labels(vm));
+    }
+
+    [Fact]
+    public async Task Tree_navigation_keeps_the_other_filters_and_a_chip_removes_one()
+    {
+        using var vm = await Create();
+        vm.ApplyPreset(new FileFilter { MediaKey = _m1, Extension = "msg" });
+        await Idle(vm);
+        Assert.Equal(1_250, vm.TotalCount);
+
+        vm.SelectedFolder = vm.Folders.First(f => f.Info.Name == "M1").Children.Single(c => c.Info.Name == "mail");
+        await Idle(vm);
+        Assert.Equal(200, vm.TotalCount); // .msg files in mail
+        Assert.Equal(["In mail", ".msg"], Labels(vm));
+
+        vm.RemoveFilterCommand.Execute(FilterKeys.Extension);
+        await Idle(vm);
+        Assert.Equal(400, vm.TotalCount);
+
+        vm.RemoveFilterCommand.Execute(FilterKeys.Where);
+        await Idle(vm);
+        Assert.Null(vm.SelectedFolder);
+        Assert.Equal(2_800, vm.TotalCount);
+        Assert.Empty(vm.ActiveFilters);
     }
 
     [Fact]
@@ -114,9 +157,7 @@ public sealed class WebFilesViewModelTests : IDisposable
         await Idle(vm);
 
         Assert.Equal(300, vm.TotalCount);
-        Assert.Equal(WebFilesViewModel.MediaSetValue, vm.MediaValue);
-        Assert.Contains(vm.MediaOptions, o => o.Label == "2 media from Dashboard");
-        Assert.Contains("2 media", vm.ActiveFilters);
+        Assert.Equal(["2 media from Dashboard", ".xlsx"], Labels(vm));
 
         vm.ApplyPreset(new FileFilter { MediaKeys = [_m2] });
         await Idle(vm);
@@ -136,21 +177,29 @@ public sealed class WebFilesViewModelTests : IDisposable
     }
 
     [Fact]
-    public async Task Choosing_another_media_or_clearing_drops_the_dashboard_media_set()
+    public async Task A_tree_click_all_media_or_clearing_drops_the_dashboard_media_set()
     {
         using var vm = await Create();
-        vm.ApplyPreset(new FileFilter { MediaKeys = [_m1, _m2] });
+        vm.ApplyPreset(new FileFilter { MediaKeys = [_m2] });
         await Idle(vm);
 
-        vm.MediaValue = _m2.ToString(System.Globalization.CultureInfo.InvariantCulture);
-        Assert.DoesNotContain(vm.MediaOptions, o => o.Value == WebFilesViewModel.MediaSetValue);
+        vm.SelectedFolder = vm.Folders.First(f => f.Info.Name == "M1");
+        await Idle(vm);
+        Assert.Equal(2_500, vm.TotalCount);
+        Assert.Equal(["Media M1"], Labels(vm));
 
-        vm.ApplyPreset(new FileFilter { MediaKeys = [_m1, _m2] });
+        vm.ApplyPreset(new FileFilter { MediaKeys = [_m2] });
+        await Idle(vm);
+        vm.ShowAllMedia();
+        await Idle(vm);
+        Assert.Equal(2_800, vm.TotalCount);
+
+        vm.ApplyPreset(new FileFilter { MediaKeys = [_m2] });
         await Idle(vm);
         vm.ClearFiltersCommand.Execute(null);
         await Idle(vm);
-        Assert.DoesNotContain(vm.MediaOptions, o => o.Value == WebFilesViewModel.MediaSetValue);
         Assert.Equal(2_800, vm.TotalCount);
+        Assert.Empty(vm.ActiveFilters);
     }
 
     [Fact]
@@ -177,7 +226,7 @@ public sealed class WebFilesViewModelTests : IDisposable
         await Idle(vm);
 
         Assert.Equal(400, vm.TotalCount);
-        Assert.Contains("In mail", vm.ActiveFilters);
+        Assert.Contains("In mail", Labels(vm));
     }
 
     [Fact]
@@ -225,6 +274,8 @@ public sealed class WebFilesViewModelTests : IDisposable
         await Idle(vm);
         return vm;
     }
+
+    private static List<string> Labels(WebFilesViewModel vm) => [.. vm.ActiveFilters.Select(c => c.Label)];
 
     private static async Task Idle(WebFilesViewModel vm)
     {
