@@ -32,7 +32,7 @@ public sealed class WebUiRenderTests
     [Fact]
     public async Task By_media_table_has_a_checkbox_per_media_and_dims_unselected_ones()
     {
-        var html = await RenderAsync(new FakeShell(new FakeDashboard(false, 4, 5)), "dashboard-selection");
+        var html = await RenderAsync(new FakeShell(new FakeDashboard(false, 0, 4, 5)), "dashboard-selection");
 
         Assert.Contains("Tick media to update the dashboard", html);
         Assert.Contains("aria-label=\"Select all media\"", html);
@@ -44,9 +44,19 @@ public sealed class WebUiRenderTests
     }
 
     [Fact]
+    public async Task By_media_table_keeps_a_fixed_height_with_many_media()
+    {
+        var html = await RenderAsync(new FakeShell(new FakeDashboard(extraMedia: 120)), "dashboard-many-media");
+
+        Assert.Contains("class=\"table-wrap table-scroll by-media-scroll\"", html); // scrolls inside; the charts stay close
+        Assert.Contains("aria-label=\"Include 123-200_125\"", html);
+        Assert.Contains("By category", html);
+    }
+
+    [Fact]
     public async Task No_media_selected_explains_how_to_select_instead_of_empty_sections()
     {
-        var html = await RenderAsync(new FakeShell(new FakeDashboard(false, 1, 2, 3, 4, 5)), "dashboard-none-selected");
+        var html = await RenderAsync(new FakeShell(new FakeDashboard(false, 0, 1, 2, 3, 4, 5)), "dashboard-none-selected");
 
         Assert.Contains("No media selected", html);
         Assert.Contains("Select all media", html);

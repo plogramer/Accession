@@ -620,6 +620,7 @@ button:disabled { cursor: default; opacity: .45; }
 .table-wrap { overflow-x: auto; }
 .table-scroll { max-height: 372px; overflow-y: auto; }
 .table-fill { flex: 1 1 0; min-height: 0; max-height: none; }
+.by-media-scroll { max-height: 452px; }
 .table { width: 100%; border-collapse: separate; border-spacing: 0; }
 
 .table th {

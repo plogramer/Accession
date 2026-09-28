@@ -17,10 +17,12 @@ internal sealed class FakeDashboard : ObservableObject, IDashboardModel
 {
     /// <param name="scanInProgress">Show a running scan.</param>
     /// <param name="unselected">Media keys (1–5) left out of the media selection.</param>
-    public FakeDashboard(bool scanInProgress = false, params long[] unselected)
+    /// <param name="extraMedia">More completed media after the five samples (e.g. to check the table's fixed height).</param>
+    public FakeDashboard(bool scanInProgress = false, int extraMedia = 0, params long[] unselected)
     {
         ScanInProgress = scanInProgress;
-        string[] ids = ["123-123_001", "123-123_002", "123-123_003", "123-124_001", "123-125_001"];
+        string[] ids = ["123-123_001", "123-123_002", "123-123_003", "123-124_001", "123-125_001",
+            .. Enumerable.Range(6, extraMedia).Select(key => $"123-200_{key:000}")];
         foreach (var (id, i) in ids.Select((id, i) => (id, i)))
         {
             MediaFilter.Add(new MediaFilterItem(i + 1, id, !unselected.Contains(i + 1)));
@@ -31,6 +33,10 @@ internal sealed class FakeDashboard : ObservableObject, IDashboardModel
         ByMedia.Add(Media(3, "123-123_003", scanInProgress ? "Hashing" : "Completed", "1,388", "96,020", "310.2 GB", scanInProgress ? .42 : 1, "0", scanInProgress ? "running" : "2026-09-20 11:18", scanInProgress ? "—" : "88"));
         ByMedia.Add(Media(4, "123-124_001", "Missing", "655", "31,774", "54.9 GB", 1, "2", "2026-09-02 13:30", "12"));
         ByMedia.Add(Media(5, "123-125_001", "New", "—", "—", "—", 0, "—", "never", "—"));
+        for (var key = 6; key <= extraMedia + 5; key++)
+        {
+            ByMedia.Add(Media(key, ids[key - 1], "Completed", "120", "8,400", "12.4 GB", 1, "0", "2026-09-21 08:00", "3"));
+        }
 
         (string Name, long Files, double Tb)[] categories =
         [
