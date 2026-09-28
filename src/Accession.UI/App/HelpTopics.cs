@@ -9,6 +9,7 @@ public static class HelpTopics
     public const string Media = "media";
     public const string Files = "files";
     public const string SavedSearches = "saved-searches";
+    public const string Copy = "copy";
     public const string Categories = "categories";
     public const string ScanQueue = "queue";
     public const string Errors = "errors";

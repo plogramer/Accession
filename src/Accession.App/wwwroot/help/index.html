@@ -24,6 +24,7 @@
         <a href="#media">Media</a>
         <a href="#files">Files</a>
         <a href="#saved-searches">Saved searches</a>
+        <a href="#copy">Copying files</a>
         <a href="#categories">Categories</a>
         <a href="#queue">Scan Queue</a>
         <a href="#errors">Errors</a>
@@ -46,6 +47,7 @@
                 <li><a href="#media"><strong>Media</strong><span>Add, scan and delete media</span></a></li>
                 <li><a href="#files"><strong>Files</strong><span>Browse, filter and find files</span></a></li>
                 <li><a href="#saved-searches"><strong>Saved searches</strong><span>Collect files in named lists</span></a></li>
+                <li><a href="#copy"><strong>Copying files</strong><span>A copy batch, or copy in the app</span></a></li>
                 <li><a href="#categories"><strong>Categories</strong><span>Files grouped by extension</span></a></li>
                 <li><a href="#queue"><strong>Scan Queue</strong><span>The running scan and what waits</span></a></li>
                 <li><a href="#errors"><strong>Errors</strong><span>Files that could not be read</span></a></li>
@@ -178,6 +180,7 @@
                 <li>Select a file for <strong>Copy path</strong>, <strong>Copy SHA-1</strong>, <strong>Show in folder</strong> (Explorer) and
                     <strong>All copies</strong> (every file with the same SHA-1). Files are never opened.</li>
                 <li><strong>Export current view</strong> exports exactly the files shown (all pages) to Excel.</li>
+                <li><strong>Copy</strong> writes a copy batch or copies the ticked files (or all results): see <a href="#copy">Copying files</a>.</li>
             </ul>
         </section>
 
@@ -214,6 +217,71 @@
                 <p>Names must be unique. Files stay in a saved search after a rescan; deleting a media removes its files from saved searches.
                     Every change is recorded in the audit log.</p>
             </div>
+        </section>
+
+        <section id="copy">
+            <h2>Copying files</h2>
+            <p>Copy files out of the evidence to another folder, for example for a production or a review platform. On the Files screen,
+                tick the files (or filter them), then open <strong>Copy</strong> above the table:</p>
+            <ul>
+                <li><strong>Generate copy batch…</strong> writes a <code>.bat</code> file with one copy command per file. Run it yourself,
+                    for example on a computer closer to the data.</li>
+                <li><strong>Copy files…</strong> copies the files in Accession, in the background with progress and <strong>Cancel</strong>.</li>
+            </ul>
+            <p>Both copy the <em>ticked rows</em>, or <em>all results</em> (every page) when you choose so or nothing is ticked. The source
+                files are only read: nothing is ever written under the root, and the destination cannot be inside it.</p>
+            <div class="row">
+                <figure><img src="images/dialog-copy-batch.png" alt="Generate copy batch dialog" /></figure>
+                <div>
+                    <h3>Names</h3>
+                    <ul>
+                        <li><strong>Keep the original folders and names</strong>: each file goes to
+                            <code>destination\Media ID\folders\name</code>, as under the root.</li>
+                        <li><strong>Sequential names</strong>: all files go into the destination folder as <em>prefix + number</em> with
+                            their extension, for example <code>ACME00000001.pdf</code>. Choose the prefix, the number of digits and the
+                            first number. Files are numbered in media, folder, name order; a file without an extension gets no dot.</li>
+                    </ul>
+                    <h3>The copy command (batch)</h3>
+                    <ul>
+                        <li><strong>copy</strong>: <code>copy /Y {source} {destination} &gt;nul</code>.</li>
+                        <li><strong>robocopy</strong> copies by folder and file name, so it cannot rename: it works only with
+                            <em>Keep the original folders and names</em>. It keeps the file times.</li>
+                        <li><strong>Custom</strong>: type your own, such as <code>copy -d -g -f {source} {destination}</code>. Placeholders:
+                            <code>{source}</code> (full path of the file), <code>{destination}</code> (full path of the copy),
+                            <code>{sourcedir}</code>, <code>{sourcename}</code>, <code>{destdir}</code> and <code>{destname}</code>.
+                            Paths are put in quotes for you.</li>
+                    </ul>
+                </div>
+            </div>
+            <h3>Running the batch</h3>
+            <p>Double-click the <code>.bat</code> file or run it in a command prompt. It creates the folders, skips files that already
+                exist at the destination, and ends with the number of files copied, skipped and failed. Names with accents and
+                <code>%</code> or <code>&amp;</code> work. <code>copy</code> does not keep the created time; use robocopy or
+                <em>Copy files…</em> for that.</p>
+            <div class="row">
+                <figure><img src="images/dialog-copy-files.png" alt="Copy files dialog" /></figure>
+                <div>
+                    <h3>Copying in the app</h3>
+                    <ul>
+                        <li><strong>Preserve metadata</strong> (on by default) keeps the created, modified and accessed times and the
+                            attributes (read-only, hidden, system, archive) of the files, and the times of the folders it creates.
+                            Permissions (ACLs) are not copied.</li>
+                        <li><strong>Verify each copy (SHA-1)</strong> reads each copy back and compares it with what was read from the
+                            source; a copy that differs is deleted and reported as failed. It takes about twice as long, so it is off by
+                            default.</li>
+                        <li>Files already at the destination are <strong>skipped</strong> and left as they are. A file that cannot be read
+                            is reported as <strong>failed</strong> and the copy goes on.</li>
+                        <li><strong>Cancel</strong> stops after the current file: what was copied stays, and the manifest says where it
+                            stopped.</li>
+                    </ul>
+                </div>
+            </div>
+            <h3>The manifest</h3>
+            <p>Both write a CSV manifest (it opens in Excel) with one row per file in copy order: number, new path, original path,
+                Media ID, size in bytes, modified time (UTC), the SHA-1 from the inventory, and the outcome (<em>In batch</em>,
+                <em>Copied</em>, <em>Verified</em>, <em>Skipped</em> or <em>Failed</em>, with the reason). When a verified file's SHA-1 no
+                longer matches the inventory, the manifest says the file changed after the scan. Every batch and copy is recorded in the
+                audit log.</p>
         </section>
 
         <section id="categories">

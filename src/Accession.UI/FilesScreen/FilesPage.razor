@@ -239,6 +239,17 @@
                             </ChildContent>
                         </Dropdown>
                     }
+                    @if (Model.CanCopyFiles)
+                    {
+                        <Dropdown TriggerClass="btn btn-sm" Title="Copy the ticked files, or all results, to another folder" Wide="true">
+                            <Trigger><Icon Name="copy" Size="14" /> Copy <Icon Name="chevron-down" Size="13" /></Trigger>
+                            <ChildContent>
+                                <div class="menu-header"><span>@(Model.CheckedFileIds.Count > 0 ? $"{Model.CheckedFileIds.Count:N0} ticked files" : $"All {Model.TotalCount:N0} results")</span></div>
+                                <MenuItem Icon="download" Text="Generate copy batch…" Command="Model.GenerateCopyBatchCommand" />
+                                <MenuItem Icon="copy" Text="Copy files…" Command="Model.CopyFilesCommand" />
+                            </ChildContent>
+                        </Dropdown>
+                    }
                 </div>
 
                 <DataTable TItem="FileRow" Items="Model.Rows" Label="Files" Virtualize="true" MaxHeight="max(260px, calc(100vh - 515px))" Class="files-table"

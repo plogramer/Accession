@@ -52,6 +52,7 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
     private HashSet<long> _mediaKeys = [];
     private readonly ExportWorkflow? _export;
     private readonly SavedSearchWorkflow? _savedSearchWorkflow;
+    private readonly CopyWorkflow? _copyWorkflow;
     private readonly HashSet<long> _checked = [];
     // The "where" of the view is one of: the tree's SelectedFolder (a media root or a folder), SelectedSavedSearch,
     // a set of media handed over by the Dashboard, or a media without folders yet (not in the tree).
@@ -62,9 +63,10 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
 
     public WebFilesViewModel(InventoryHost host, FileBrowserQueries queries, CategoryQueries categories, ISettingsService settings,
         IDesktop desktop, IDialogService dialogs, ToastService toasts, ILogger<WebFilesViewModel> logger, ExportWorkflow? export = null,
-        SavedSearchWorkflow? savedSearches = null)
+        SavedSearchWorkflow? savedSearches = null, CopyWorkflow? copy = null)
     {
         _export = export;
+        _copyWorkflow = copy;
         _savedSearchWorkflow = savedSearches;
         _host = host;
         _queries = queries;
@@ -455,6 +457,12 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
 
     ICommand IFilesModel.ExportViewCommand => ExportViewCommand;
 
+    public bool CanCopyFiles => _copyWorkflow is not null && _host.HasSession;
+
+    ICommand IFilesModel.GenerateCopyBatchCommand => GenerateCopyBatchCommand;
+
+    ICommand IFilesModel.CopyFilesCommand => CopyFilesCommand;
+
     ICommand IRefreshableScreen.RefreshCommand => RefreshCommand;
 
     public void Dispose()
@@ -571,9 +579,19 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
 
     [RelayCommand(CanExecute = nameof(CanExportView))]
     private Task ExportView() =>
-        _export!.ExportAsync(filesView: _activeFilter, filesViewText: ActiveFilters.Count == 0 ? string.Empty : string.Join(" · ", ActiveFilters.Select(c => c.Label)));
+        _export!.ExportAsync(filesView: _activeFilter, filesViewText: ViewText());
 
     private bool CanExportView() => _export is not null && _host.HasSession;
+
+    /// <summary>Writes a .bat that copies the ticked rows or all results (requirements 5.8b).</summary>
+    [RelayCommand(CanExecute = nameof(CanCopyFiles))]
+    private Task GenerateCopyBatch() => _copyWorkflow!.GenerateBatchAsync([.. _checked], _activeFilter, ViewText());
+
+    /// <summary>Copies the ticked rows or all results in the app (requirements 5.8b).</summary>
+    [RelayCommand(CanExecute = nameof(CanCopyFiles))]
+    private Task CopyFiles() => _copyWorkflow!.CopyFilesAsync([.. _checked], _activeFilter, ViewText());
+
+    private string ViewText() => ActiveFilters.Count == 0 ? string.Empty : string.Join(" · ", ActiveFilters.Select(c => c.Label));
 
     [RelayCommand]
     private Task Refresh()

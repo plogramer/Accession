@@ -39,6 +39,7 @@ public sealed class FilesPageTests
         Assert.Contains("Add to saved search", html);
         Assert.Contains("Remove ticked", html);
         Assert.Contains("Remove all results", html);
+        Assert.Contains("title=\"Copy the ticked files, or all results, to another folder\"", html);
     }
 
     [Fact]
@@ -52,7 +53,7 @@ public sealed class FilesPageTests
         Assert.Contains("aria-label=\"Remove In Shares\"", html); // each chip can be removed on its own
         Assert.Contains("<span class=\"tab-badge\">3</span>", html); // saved searches count on the tab
         Assert.DoesNotContain("Remove all results", html);
-        Assert.DoesNotContain(" ticked", html);
+        Assert.DoesNotContain(" ticked <", html); // no ticked chip
     }
 
     [Fact]

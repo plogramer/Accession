@@ -44,6 +44,8 @@ SHOTS = [
     ("dialog-settings.png", "form-settings", (".modal", None), (1280, 900)),
     ("dialog-export.png", "form-export", (".modal", None), (1280, 1000)),
     ("dialog-saved-search.png", "form-saved-search", (".modal", None), (1280, 800)),
+    ("dialog-copy-batch.png", "form-copy-batch", (".modal", None), (1280, 1200)),
+    ("dialog-copy-files.png", "form-copy-files", (".modal", None), (1280, 1000)),
 ]
 
 

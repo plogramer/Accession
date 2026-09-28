@@ -31,6 +31,12 @@ public enum AuditAction
     SavedSearchDeleted,
     SavedSearchFilesAdded,
     SavedSearchFilesRemoved,
+
+    /// <summary>A copy batch (.bat) and its manifest were written (CPY-05).</summary>
+    CopyBatchGenerated,
+
+    /// <summary>Files were copied out of the evidence by the app (CPY-06).</summary>
+    FilesCopied,
 }
 
 /// <summary>One row of <c>AuditLog</c>. Audit rows are never updated or deleted.</summary>

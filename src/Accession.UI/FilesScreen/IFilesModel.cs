@@ -132,4 +132,13 @@ public interface IFilesModel : INotifyPropertyChanged, IRefreshableScreen
 
     /// <summary>Export current view: the Export dialog with the current filter as its scope (BRW-05).</summary>
     ICommand ExportViewCommand { get; }
+
+    // ---- Copy (requirements 5.8b): the ticked rows, or all results when none are ticked ----
+    bool CanCopyFiles { get; }
+
+    /// <summary>Writes a .bat file with a copy command per file, and a CSV manifest.</summary>
+    ICommand GenerateCopyBatchCommand { get; }
+
+    /// <summary>Copies the files in the app, with a CSV manifest.</summary>
+    ICommand CopyFilesCommand { get; }
 }

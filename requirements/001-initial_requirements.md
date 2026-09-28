@@ -262,6 +262,19 @@ flowchart TD
 | SAV-05 | Files are remembered by media, folder path and file name, so they stay in a saved search after a rescan. Deleting a media removes its files from saved searches. |
 | SAV-06 | Changes are audited (created, changed, deleted, files added/removed with counts). A read-only inventory shows saved searches but cannot change them. Saved searches need schema v2; older inventories are upgraded (with a backup) when opened. |
 
+### 5.8b Copying files
+
+| ID | Requirement |
+|---|---|
+| CPY-01 | The Files screen's **Copy** menu offers **Generate copy batch…** and **Copy files…** for the *ticked rows* or *all results* (every file matching the current filters, on all pages). |
+| CPY-02 | Naming: **keep the original folders and names** (`<destination>\<Media ID>\<folders>\<name>`) or **sequential names** `<prefix><number>.<ext>` with a chosen prefix, number of digits (1–15) and first number; files are numbered in Media ID, folder, name order (case-insensitive); the extension keeps its case and a file without one gets no dot. A range that does not fit in the digits is refused. |
+| CPY-03 | Files already at the destination are **skipped** and reported, never overwritten. |
+| CPY-04 | Nothing is written under the root: the destination, the batch file and the manifest cannot be the root or inside it. Source files are only read (SCN-40, SCN-42). |
+| CPY-05 | **Copy batch**: a `.bat` file (UTF-8, `chcp 65001`) with one command per file from a template: presets **copy** (`copy /Y {source} {destination} >nul`) and **robocopy** (keeps names only, so it is refused with sequential names), or a custom command. Placeholders `{source}`, `{destination}`, `{sourcedir}`, `{sourcename}`, `{destdir}`, `{destname}`; unquoted placeholders are quoted and `%` is doubled. The batch creates folders, skips existing files, counts copied, skipped and failed files (robocopy fails at exit code 8) and exits with 1 when any failed. On cancel or error no batch file is kept. |
+| CPY-06 | **Copy files** copies in the background with progress and Cancel. **Preserve metadata** (default on): created, modified and accessed times and attributes of files, and the times of the folders it creates; no ACLs. **Verify** (default off): reads each copy back and compares its SHA-1 with the bytes read from the source; a mismatch deletes the copy and counts as failed. A file that cannot be read fails and the copy goes on. Cancel keeps the files already copied. The result shows copied, verified, skipped, failed and not reached. |
+| CPY-07 | Both write a **CSV manifest** (UTF-8 with BOM): number, new path, original path, Media ID, size in bytes, modified (UTC), SHA-1 from the inventory, outcome (*In batch*, *Copied*, *Verified*, *Skipped*, *Failed*) and message; a cancelled copy ends with a *Stopped* row. A verified file whose SHA-1 differs from the inventory is noted. |
+| CPY-08 | Each batch (`CopyBatchGenerated`) and copy (`FilesCopied`) is audited with the scope, destination, naming, command or options, counts and file paths; on a read-only inventory the audit entry is written when the file allows it. Large selections (millions of files) run in constant memory apart from the list of file IDs. |
+
 ### 5.9 Excel export
 
 | ID | Requirement |

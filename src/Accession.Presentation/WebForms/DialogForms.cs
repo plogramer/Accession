@@ -1,4 +1,5 @@
 using System.Globalization;
+using Accession.Core.Copying;
 using Accession.Core.Inventories;
 using Accession.Core.Settings;
 using Accession.Presentation.Mvvm;
@@ -24,6 +25,7 @@ public static class DialogForms
         ErrorDialogViewModel vm => Error(vm, dismiss),
         ExportViewModel vm => Export(vm, dismiss),
         SavedSearchViewModel vm => SavedSearch(vm, dismiss),
+        CopyViewModel vm => Copy(vm, dismiss),
         _ => null,
     };
 
@@ -310,6 +312,80 @@ public static class DialogForms
     {
         Width = "640px",
         Observed = [vm, vm.Media],
+        Dismiss = dismiss,
+    };
+
+    /// <summary>Generate copy batch / Copy files (requirements 5.8b).</summary>
+    private static FormDialog Copy(CopyViewModel vm, Action dismiss) => new(
+        vm.Title,
+        [
+            new FormSection(null,
+            [
+                new SelectField("Files", [.. vm.ScopeOptions.Select(o => new SelectOption(o.Value, o.Label))], () => vm.ScopeValue, v => vm.ScopeValue = v)
+                {
+                    Wide = true, Visible = () => vm.HasTicked,
+                },
+                new InfoField("Files", () => "All results" + (vm.AllResultsText.Length == 0 ? " (all files)" : $" ({vm.AllResultsText})"))
+                {
+                    Wide = true, Visible = () => !vm.HasTicked, Hint = "Tick rows in the table to copy only those.",
+                },
+                new NoteItem(() => vm.EstimateText) { Tone = "info", Wide = true },
+                new TextField("Destination folder", () => vm.Destination, v => vm.Destination = v)
+                {
+                    Mono = true, Browse = vm.BrowseDestinationCommand, Wide = true, AutoFocus = true, Placeholder = @"D:\Production\Copy1",
+                    Hint = vm.IsBatch ? "Where the batch copies the files to. Nothing is written under the root." : "Nothing is written under the root.",
+                },
+            ]),
+            new FormSection("Names",
+            [
+                new SelectField("Naming", [.. CopyViewModel.NamingOptions.Select(o => new SelectOption(o.Value, o.Label))], () => vm.NamingValue, v => vm.NamingValue = v)
+                {
+                    Wide = true,
+                },
+                new TextField("Prefix", () => vm.Prefix, v => vm.Prefix = v) { Mono = true, Placeholder = "e.g. ABC_", Visible = () => vm.IsSequential },
+                new NumberField("Digits", () => vm.Digits, v => vm.Digits = v, CopyNaming.MinDigits, CopyNaming.MaxDigits) { Visible = () => vm.IsSequential },
+                new NumberField("Start at", () => vm.StartNumber, v => vm.StartNumber = v, 0, int.MaxValue) { Visible = () => vm.IsSequential },
+                new NoteItem(() => vm.NamingExample) { Wide = true },
+            ]),
+            vm.IsBatch
+            ? new FormSection("Copy command",
+            [
+                new SelectField("Command", [.. CopyViewModel.TemplateOptions.Select(o => new SelectOption(o.Value, o.Label))], () => vm.TemplateValue, v => vm.TemplateValue = v)
+                {
+                    Wide = true,
+                },
+                new TextField("Command for each file", () => vm.Command, v => vm.Command = v) { Mono = true, Wide = true, Hint = CopyViewModel.PlaceholderHint },
+                new NoteItem(() => vm.TemplateConflict) { Tone = "warning", Wide = true, Visible = () => vm.TemplateConflict.Length > 0 },
+                new TextField("Batch file", () => vm.BatchPath, v => vm.BatchPath = v) { Mono = true, Browse = vm.BrowseBatchCommand, Wide = true },
+            ])
+            : new FormSection("Options",
+            [
+                new CheckField("Preserve metadata", () => vm.PreserveMetadata, v => vm.PreserveMetadata = v)
+                {
+                    Wide = true, Hint = "Created, modified and accessed times and attributes of files, and folder times. Permissions (ACLs) are not copied.",
+                },
+                new CheckField("Verify each copy (SHA-1)", () => vm.Verify, v => vm.Verify = v)
+                {
+                    Wide = true, Hint = "Reads every copy back and compares it with the source. Safer, but takes about twice as long.",
+                },
+            ]),
+            new FormSection("Manifest",
+            [
+                new TextField("Manifest (CSV)", () => vm.ManifestPath, v => vm.ManifestPath = v)
+                {
+                    Mono = true, Browse = vm.BrowseManifestCommand, Wide = true,
+                    Hint = vm.IsBatch ? "Lists each file's new path, original path, size and SHA-1." : "Lists each file's new path, original path, size, SHA-1 and outcome.",
+                },
+                new NoteItem(() => vm.ValidationError) { Tone = "danger", Wide = true, Visible = () => vm.ValidationError.Length > 0 },
+            ]),
+        ],
+        [
+            new FormButton("Cancel", vm.CancelCommand),
+            new FormButton(vm.GoText, vm.GoCommand, DialogChoiceStyle.Primary) { IsDefault = true },
+        ])
+    {
+        Width = "680px",
+        Observed = [vm],
         Dismiss = dismiss,
     };
 

@@ -125,6 +125,7 @@ public partial class App : Application
         builder.Services.AddSingleton<InventoryOpenService>();
         builder.Services.AddSingleton<RootPathService>();
         builder.Services.AddSingleton<Accession.Data.Export.ExportService>();
+        builder.Services.AddSingleton<Accession.Data.Copying.CopyService>();
         builder.Services.AddSingleton<Accession.Data.SavedSearches.SavedSearchService>();
         builder.Services.AddSingleton<InventoryPropertiesService>();
         builder.Services.AddSingleton<MediaDiscoveryService>();
@@ -153,6 +154,7 @@ public partial class App : Application
         builder.Services.AddSingleton<FileBrowserNavigator>();
         builder.Services.AddSingleton<ExportWorkflow>();
         builder.Services.AddSingleton<SavedSearchWorkflow>();
+        builder.Services.AddSingleton<CopyWorkflow>();
 
         // Web UI
         builder.Services.AddWpfBlazorWebView();
