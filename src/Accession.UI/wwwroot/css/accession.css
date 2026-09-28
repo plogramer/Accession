@@ -462,6 +462,9 @@ button:disabled { cursor: default; opacity: .45; }
 
 .menu-wide { min-width: 260px; }
 
+/* Placed on screen by accession.placeMenu (hidden until then), so a scrolling container cannot clip it. */
+.menu.menu-floating { position: fixed; top: 0; left: 0; right: auto; visibility: hidden; }
+
 .menu-item {
     display: flex;
     align-items: center;

@@ -112,6 +112,26 @@
                 container.scrollTop = bottom - container.clientHeight;
             }
         },
+        // Places a floating menu next to its button, inside the window: below and right-aligned, or above when there is no room.
+        placeMenu: function (trigger, menu, alignLeft) {
+            if (!trigger || !menu) {
+                return;
+            }
+
+            const gap = 6, margin = 8;
+            const button = trigger.getBoundingClientRect();
+            const width = menu.offsetWidth, height = menu.offsetHeight;
+            let left = alignLeft ? button.left : button.right - width;
+            left = Math.max(margin, Math.min(left, window.innerWidth - width - margin));
+            let top = button.bottom + gap;
+            if (top + height > window.innerHeight - margin && button.top - gap - height >= margin) {
+                top = button.top - gap - height;
+            }
+
+            menu.style.left = left + "px";
+            menu.style.top = top + "px";
+            menu.style.visibility = "visible";
+        },
         // Scrolls a list's selected row (e.g. the media chosen with "Browse files") into view.
         scrollSelectedIntoView: function (container) {
             const selected = container && container.querySelector(".is-selected");

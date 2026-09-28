@@ -1,14 +1,16 @@
 @* Button that opens a floating panel (menu, filter list). Clicking outside closes it. *@
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
 <div class="menu-anchor">
     <button class="@TriggerClass" title="@Title" aria-haspopup="@(IsMenu ? "menu" : "true")" aria-expanded="@(_open ? "true" : "false")"
-            disabled="@Disabled" @onclick="Toggle">
+            disabled="@Disabled" @onclick="Toggle" @ref="_trigger">
         @Trigger
     </button>
     @if (_open)
     {
         <div class="backdrop" @onclick="Close"></div>
-        <div class="menu @(Wide ? "menu-wide" : null) @(AlignLeft ? "menu-left" : null)" role="@(IsMenu ? "menu" : null)"
-             @onclick="OnPanelClick">
+        <div class="menu @(Wide ? "menu-wide" : null) @(AlignLeft ? "menu-left" : null) @(Floating ? "menu-floating" : null)"
+             role="@(IsMenu ? "menu" : null)" @onclick="OnPanelClick" @ref="_menu">
             @ChildContent
         </div>
     }
@@ -16,6 +18,9 @@
 
 @code {
     private bool _open;
+    private bool _placed;
+    private ElementReference _trigger;
+    private ElementReference _menu;
 
     [Parameter, EditorRequired] public RenderFragment Trigger { get; set; } = default!;
 
@@ -36,9 +41,28 @@
 
     [Parameter] public bool AlignLeft { get; set; }
 
+    /// <summary>
+    /// Positions the panel on screen next to the button instead of inside its container, for buttons in scrolling or
+    /// clipped areas (e.g. a list's row menu). It opens upwards when there is no room below.
+    /// </summary>
+    [Parameter] public bool Floating { get; set; }
+
     public void Close() => _open = false;
 
-    private void Toggle() => _open = !_open;
+    private void Toggle()
+    {
+        _open = !_open;
+        _placed = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Floating && _open && !_placed)
+        {
+            _placed = true;
+            await JS.InvokeVoidAsync("accession.placeMenu", _trigger, _menu, AlignLeft);
+        }
+    }
 
     private void OnPanelClick()
     {

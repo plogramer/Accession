@@ -35,11 +35,11 @@
                                 @if (Model.CanChangeSavedSearches)
                                 {
                                     <div @onclick:stopPropagation="true">
-                                        <Dropdown TriggerClass="icon-btn" Title="@($"Actions for {saved.Name}")">
+                                        <Dropdown TriggerClass="icon-btn" Title="@($"Actions for {saved.Name}")" Floating="true">
                                             <Trigger><Icon Name="more" Size="15" /></Trigger>
                                             <ChildContent>
-                                                <MenuItem Icon="edit" Text="Edit name and description" Command="Model.EditSavedSearchCommand" CommandParameter="saved" />
-                                                <MenuItem Icon="trash" Text="Delete saved search" Command="Model.DeleteSavedSearchCommand" CommandParameter="saved" />
+                                                <MenuItem Icon="edit" Text="Edit" Command="Model.EditSavedSearchCommand" CommandParameter="saved" />
+                                                <MenuItem Icon="trash" Text="Delete" Command="Model.DeleteSavedSearchCommand" CommandParameter="saved" />
                                             </ChildContent>
                                         </Dropdown>
                                     </div>
