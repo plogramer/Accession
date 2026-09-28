@@ -268,12 +268,16 @@
                                        @onclick:stopPropagation="true" @onchange="e => Model.SetChecked(context, e.Value is true)" />
                             </ChildContent>
                         </Column>
-                        <Column TItem="FileRow" Title="Name" SortKey="name" Order="0" Class="name-cell">
+                        @if (Show("media"))
+                        {
+                            <Column TItem="FileRow" Title="Media" Order="0" Class="mono">@context.MediaId</Column>
+                        }
+                        <Column TItem="FileRow" Title="Name" SortKey="name" Order="1" Class="name-cell">
                             <span title="@context.RelativePath">@context.Name</span>
                         </Column>
                         @if (Show("extension"))
                         {
-                            <Column TItem="FileRow" Title="Ext" SortKey="extension" Order="1">
+                            <Column TItem="FileRow" Title="Ext" SortKey="extension" Order="2">
                                 @if (context.Extension.Length > 0)
                                 {
                                     <span class="ext">@context.Extension</span>
@@ -282,13 +286,9 @@
                         }
                         @if (Show("folder"))
                         {
-                            <Column TItem="FileRow" Title="Folder" SortKey="default" Order="2" Class="path-cell muted">
+                            <Column TItem="FileRow" Title="Folder" SortKey="default" Order="3" Class="path-cell muted">
                                 <span title="@context.FolderPath">@context.FolderPath</span>
                             </Column>
-                        }
-                        @if (Show("media"))
-                        {
-                            <Column TItem="FileRow" Title="Media" Order="3" Class="mono">@context.MediaId</Column>
                         }
                         @if (Show("size"))
                         {
@@ -377,7 +377,7 @@
     /// <summary>Optional columns in display order (Name is always shown).</summary>
     public static readonly IReadOnlyList<(string Key, string Title)> OptionalColumns =
     [
-        ("extension", "Extension"), ("folder", "Folder"), ("media", "Media"), ("size", "Size"), ("modified", "Modified"),
+        ("media", "Media"), ("extension", "Extension"), ("folder", "Folder"), ("size", "Size"), ("modified", "Modified"),
         ("created", "Created"), ("accessed", "Accessed"), ("category", "Category"), ("hash", "Hash status"),
         ("sha1", "SHA-1"), ("copies", "Copies"),
     ];

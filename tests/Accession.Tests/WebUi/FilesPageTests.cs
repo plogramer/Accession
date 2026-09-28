@@ -20,6 +20,10 @@ public sealed class FilesPageTests
         Assert.Contains("2,001", html);          // pager: page 3 of 1,000 rows
         Assert.Contains("of 185", html);
         Assert.Contains("aria-sort=\"descending\"", html);
+
+        var header = html[html.IndexOf("<thead>", StringComparison.Ordinal)..html.IndexOf("</thead>", StringComparison.Ordinal)];
+        Assert.True(header.IndexOf(">Media<", StringComparison.Ordinal) is > 0 and var media && media < header.IndexOf(">Name<", StringComparison.Ordinal),
+            "Media comes before Name");
     }
 
     [Fact]
