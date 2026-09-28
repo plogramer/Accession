@@ -501,22 +501,36 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDashboardModel,
             {
                 // Duplicates and years read every file (tens of seconds on millions of files): use the results saved on this
                 // computer while the inventory's data is unchanged.
-                var version = _cache is null ? null : DashboardCache.DataVersion(database, _queries);
-                var saved = version is null ? null : _cache!.Get(inventory, version, filter);
-                var sections = saved ?? new SlowDashboard(
-                    _queries.Duplicates(database, filter, token),
-                    _queries.DuplicatesByMedia(database, filter, token),
-                    _queries.ByYear(database, filter, token));
-                if (saved is null && version is not null && !token.IsCancellationRequested)
+                try
                 {
-                    _cache!.Put(inventory, version, filter, sections);
-                }
+                    var version = _cache is null ? null : DashboardCache.DataVersion(database, _queries);
+                    var saved = version is null ? null : _cache!.Get(inventory, version, filter);
+                    var sections = saved ?? new SlowDashboard(
+                        _queries.Duplicates(database, filter, token),
+                        _queries.DuplicatesByMedia(database, filter, token),
+                        _queries.ByYear(database, filter, token));
+                    if (saved is null && version is not null && !token.IsCancellationRequested)
+                    {
+                        _cache!.Put(inventory, version, filter, sections);
+                    }
 
-                return (Sections: sections, Largest: _queries.LargestFiles(database, filter, token));
+                    return (Interrupted: false, Sections: (SlowDashboard?)sections, Largest: (IReadOnlyList<LargeFile>?)_queries.LargestFiles(database, filter, token));
+                }
+                catch (Exception ex) when (Accession.Data.LongReads.IsInterrupted(ex))
+                {
+                    // Caught here, not after the await: an exception leaving the task stops the debugger ("user-unhandled").
+                    return (Interrupted: true, Sections: (SlowDashboard?)null, Largest: (IReadOnlyList<LargeFile>?)null);
+                }
             }, token);
-            if (!token.IsCancellationRequested)
+            if (slow.Interrupted && !token.IsCancellationRequested)
             {
-                ShowSlow(slow.Sections.Duplicates, slow.Sections.PerMedia, slow.Sections.Years, slow.Largest, unit, zone);
+                // Something was written meanwhile (media added, scan queued): the long queries gave way. Try again shortly.
+                _ = RetrySlowAsync(token); // its timer starts now, before anyone sees the note below
+                DuplicateNote = "paused while the inventory changes…";
+            }
+            else if (!token.IsCancellationRequested)
+            {
+                ShowSlow(slow.Sections!.Duplicates, slow.Sections.PerMedia, slow.Sections.Years, slow.Largest!, unit, zone);
             }
         }
         catch (Exception ex) when (ex is OperationCanceledException || token.IsCancellationRequested)
