@@ -161,6 +161,11 @@
                     <p>The list always has one location: a media or folder, a <a href="#saved-searches">saved search</a>, or the media you
                         chose on the Dashboard. Choosing another replaces it. <em>Browse files</em> on the Media screen or Dashboard selects
                         the media here.</p>
+                    <p><strong>Right-click</strong> a media or folder for <em>Open in Explorer</em>, <em>Copy folder path</em>,
+                        <em>Copy this folder…</em> (copies everything in it and its subfolders) and <em>Export this folder…</em>.</p>
+                    <p class="note">Browsing the evidence in Explorer is not read-only: Windows can write <code>Thumbs.db</code> or
+                        <code>desktop.ini</code> into network folders and update last-access times when it shows thumbnails or
+                        previews. Accession itself only reads the files.</p>
                 </div>
             </div>
             <h3>Filters</h3>
@@ -179,6 +184,10 @@
                 <li>Pages hold 1,000 files by default (<em>Rows per page</em> up to 50,000); the pager jumps to any page.</li>
                 <li>Select a file for <strong>Copy path</strong>, <strong>Copy SHA-1</strong>, <strong>Show in folder</strong> (Explorer) and
                     <strong>All copies</strong> (every file with the same SHA-1). Files are never opened.</li>
+                <li><strong>Right-click</strong> a file (or press the menu key or <kbd>Shift</kbd>+<kbd>F10</kbd>) for Copy SHA-1, Copy path,
+                    Copy file name, Show in folder, Find all copies, Filter by this extension, Add to saved search and
+                    <a href="#copy">Copy To…</a>. Right-clicking a <em>ticked</em> row acts on all ticked rows; any other row acts alone.
+                    Several SHA-1s, paths or names are copied one per line.</li>
                 <li><strong>Export current view</strong> exports exactly the files shown (all pages) to Excel.</li>
                 <li><strong>Copy</strong> writes a copy batch or copies the ticked files (or all results): see <a href="#copy">Copying files</a>.</li>
             </ul>
@@ -240,6 +249,10 @@
                         <li><strong>Sequential names</strong>: all files go into the destination folder as <em>prefix + number</em> with
                             their extension, for example <code>ACME00000001.pdf</code>. Choose the prefix, the number of digits and the
                             first number. Files are numbered in media, folder, name order; a file without an extension gets no dot.</li>
+                        <li><strong>SHA-1 + name</strong>: all files go into the destination folder as <code>&lt;sha1&gt;_&lt;name&gt;</code>,
+                            for example <code>3f7a…e91c_Board minutes.pdf</code>. A file with the same SHA-1 and name is copied once.
+                            Copying in the app hashes files that are not hashed yet; a batch leaves them out (they are listed in the
+                            manifest).</li>
                     </ul>
                     <h3>The copy command (batch)</h3>
                     <ul>
@@ -276,10 +289,21 @@
                     </ul>
                 </div>
             </div>
+            <div class="row">
+                <figure class="small"><img src="images/dialog-copy-to.png" alt="Copy To dialog" /></figure>
+                <div>
+                    <h3>Copy To…</h3>
+                    <p>Right-click a file (or a ticked file, for all ticked files) and choose <strong>Copy To…</strong> to copy just those
+                        files into one folder, named <code>&lt;sha1&gt;_&lt;name&gt;</code>: handy for sending a few documents for
+                        review. Choose the destination; preserve metadata, verify and the manifest work as in <em>Copy files…</em>.
+                        Files not hashed yet are hashed while they are copied, and a file that changed since the scan is named by its
+                        current content (the manifest says so).</p>
+                </div>
+            </div>
             <h3>The manifest</h3>
             <p>Both write a CSV manifest (it opens in Excel) with one row per file in copy order: number, new path, original path,
                 Media ID, size in bytes, modified time (UTC), the SHA-1 from the inventory, and the outcome (<em>In batch</em>,
-                <em>Copied</em>, <em>Verified</em>, <em>Skipped</em> or <em>Failed</em>, with the reason). When a verified file's SHA-1 no
+                <em>Copied</em>, <em>Verified</em>, <em>Skipped</em>, <em>Failed</em> or <em>Not in batch</em>, with the reason). When a verified file's SHA-1 no
                 longer matches the inventory, the manifest says the file changed after the scan. Every batch and copy is recorded in the
                 audit log.</p>
         </section>

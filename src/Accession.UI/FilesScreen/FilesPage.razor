@@ -66,7 +66,7 @@
                             <Icon Name="dashboard" Size="15" Class="tree-icon" />
                             <span class="tree-name">All media</span>
                         </div>
-                        <FolderTree Nodes="Model.Folders" Model="Model" />
+                        <FolderTree Nodes="Model.Folders" Model="Model" OnContextMenu="OpenFolderMenu" />
                     </div>
                     <label class="tree-footer check-row">
                         <input type="checkbox" checked="@Model.IncludeSubfolders" @onchange="e => SetAndApply(() => Model.IncludeSubfolders = e.Value is true)" />
@@ -254,7 +254,7 @@
 
                 <DataTable TItem="FileRow" Items="Model.Rows" Label="Files" Virtualize="true" Fill="true" Class="files-table"
                            SortKey="@Model.SortKey" SortDescending="Model.SortDescending" OnSort="Model.SortByAsync"
-                           SelectedItem="Model.SelectedRow" SelectedItemChanged="row => Model.SelectedRow = row"
+                           SelectedItem="Model.SelectedRow" SelectedItemChanged="row => Model.SelectedRow = row" OnRowContextMenu="OpenFileMenu"
                            IsLoading="Model.IsLoading" EmptyText="No files match these filters.">
                     <Columns>
                         <Column TItem="FileRow" Title="Tick" Order="-1" Class="check-cell">
@@ -333,6 +333,44 @@
             </section>
         </Main>
     </SplitPanel>
+
+    @* Right-click menus (the table's also open with the menu key or Shift+F10). *@
+    <ContextMenu @ref="_fileMenu" Header="@Model.ContextHeader" Label="File actions">
+        <MenuItem Icon="copy" Text="Copy SHA-1" Command="Model.CopyTargetSha1sCommand" />
+        <MenuItem Icon="copy" Text="Copy path" Command="Model.CopyTargetPathsCommand" />
+        <MenuItem Icon="copy" Text="Copy file name" Command="Model.CopyTargetNamesCommand" />
+        <div class="menu-sep"></div>
+        <MenuItem Icon="folder-open" Text="Show in folder" Command="Model.OpenContainingFolderCommand" />
+        <MenuItem Icon="search" Text="Find all copies" Command="Model.ShowCopiesCommand" />
+        <MenuItem Icon="filter" Text="Filter by this extension" Command="Model.FilterByExtensionCommand" />
+        @if (Model.CanChangeSavedSearches)
+        {
+            <div class="menu-sep"></div>
+            <div class="menu-header"><span>Add to saved search</span></div>
+            <div class="menu-scroll">
+                @foreach (var saved in Model.SavedSearches.Where(s => s.Id != Model.SelectedSavedSearch?.Id))
+                {
+                    <MenuItem Icon="bookmark" Text="@saved.Name" Command="Model.AddTargetsToSavedSearchCommand" CommandParameter="saved" />
+                }
+            </div>
+            <MenuItem Icon="plus" Text="New saved search…" Command="Model.AddTargetsToSavedSearchCommand" />
+        }
+        @if (Model.CanCopyFiles)
+        {
+            <div class="menu-sep"></div>
+            <MenuItem Icon="download" Text="Copy To…" Command="Model.CopyToCommand" />
+        }
+    </ContextMenu>
+    <ContextMenu @ref="_folderMenu" Header="@Model.ContextFolderName" Label="Folder actions">
+        <MenuItem Icon="folder-open" Text="Open in Explorer" Command="Model.OpenFolderInExplorerCommand" />
+        <MenuItem Icon="copy" Text="Copy folder path" Command="Model.CopyFolderPathCommand" />
+        <div class="menu-sep"></div>
+        @if (Model.CanCopyFiles)
+        {
+            <MenuItem Icon="copy" Text="Copy this folder…" Command="Model.CopyFolderCommand" />
+        }
+        <MenuItem Icon="download" Text="Export this folder…" Command="Model.ExportFolderCommand" />
+    </ContextMenu>
 </div>
 
 @code {
@@ -352,6 +390,24 @@
         [FolderTab[0], new("saved", "Saved searches", Model.SavedSearches.Count > 0 ? Model.SavedSearches.Count.ToString("N0") : null)];
 
     private ElementReference _tree;
+    private ContextMenu? _fileMenu;
+    private ContextMenu? _folderMenu;
+
+    private void OpenFileMenu(RowContextMenuArgs<FileRow> e)
+    {
+        _folderMenu?.Close();
+        Model.OpenFileMenu(e.Item);
+        StateHasChanged();
+        _fileMenu?.Open(e.X, e.Y);
+    }
+
+    private void OpenFolderMenu(RowContextMenuArgs<FolderTreeNode> e)
+    {
+        _fileMenu?.Close();
+        Model.OpenFolderMenu(e.Item);
+        StateHasChanged();
+        _folderMenu?.Open(e.X, e.Y);
+    }
     private FolderTreeNode? _scrolledTo;
 
     private void ShowAllMedia() => Model.ShowAllMedia();
@@ -368,7 +424,8 @@
 
     protected override void OnParametersSet() => Observe(Model, Model.Folders, Model.SavedSearches, Model.CopyPathCommand, Model.CopySha1Command,
         Model.OpenContainingFolderCommand, Model.ShowCopiesCommand, Model.AddAllToSavedSearchCommand, Model.AddCheckedToSavedSearchCommand,
-        Model.RemoveCheckedFromSavedSearchCommand, Model.RemoveAllFromSavedSearchCommand, Model.NewSavedSearchCommand);
+        Model.RemoveCheckedFromSavedSearchCommand, Model.RemoveAllFromSavedSearchCommand, Model.NewSavedSearchCommand,
+        Model.AddTargetsToSavedSearchCommand, Model.CopyToCommand, Model.FilterByExtensionCommand);
 
     private bool Show(string key) => Model.VisibleColumns.Contains(key);
 

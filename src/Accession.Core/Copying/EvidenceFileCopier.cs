@@ -19,9 +19,10 @@ public enum CopyOutcome
 
 /// <param name="PreserveMetadata">Copy created, modified and accessed times and the attributes (read-only, hidden, system, archive).</param>
 /// <param name="Verify">Read the copy back and compare its SHA-1 with the bytes read from the source (slower).</param>
-public sealed record CopyFileOptions(bool PreserveMetadata = true, bool Verify = false);
+/// <param name="ComputeHash">Compute the SHA-1 of the bytes read from the source while copying (no read-back).</param>
+public sealed record CopyFileOptions(bool PreserveMetadata = true, bool Verify = false, bool ComputeHash = false);
 
-/// <param name="Sha1">SHA-1 of the bytes read from the source; only computed when verifying.</param>
+/// <param name="Sha1">SHA-1 of the bytes read from the source; computed when verifying or asked for.</param>
 public sealed record CopyFileResult(CopyOutcome Outcome, long Bytes, string? Sha1 = null, string? Message = null);
 
 /// <summary>
@@ -70,7 +71,7 @@ public sealed class EvidenceFileCopier
             using (var output = new FileStream(destination, FileMode.CreateNew, FileAccess.Write, FileShare.None, 1, FileOptions.SequentialScan))
             {
                 created = true;
-                (length, sha1) = CopyBytes(input, output, options.Verify, bytesCopied, cancellationToken);
+                (length, sha1) = CopyBytes(input, output, options.Verify || options.ComputeHash, bytesCopied, cancellationToken);
             }
 
             string? message = null;

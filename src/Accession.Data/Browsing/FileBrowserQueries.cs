@@ -42,6 +42,13 @@ public sealed class FileBrowserQueries
             new { parentFolderId }).AsList();
     }
 
+    /// <summary>Relative path of a folder (<c>\Media\folder\</c>), or null if it is not in the inventory.</summary>
+    public string? FolderPath(InventoryDatabase database, long folderId)
+    {
+        using var scope = database.Open();
+        return scope.Connection.QuerySingleOrDefault<string?>("SELECT RelativePath FROM Folder WHERE FolderId = @folderId", new { folderId });
+    }
+
     /// <summary>Rows after <paramref name="after"/> (or the first rows), in sort order. Keyset: fast at any depth.</summary>
     public FilePage Page(InventoryDatabase database, FileFilter filter, FileSortColumn sort, bool descending,
         FilePageCursor? after, int pageSize = DefaultPageSize, CancellationToken cancellationToken = default)

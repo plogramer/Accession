@@ -8,7 +8,8 @@
 
 <div class="table-wrap @(Fill ? "table-scroll table-fill" : MaxHeight is null ? null : "table-scroll")" style="@(Fill || MaxHeight is null ? null : $"max-height:{MaxHeight}")"
      @ref="_container" tabindex="@(KeyboardNavigation ? "0" : null)" data-keynav="@(KeyboardNavigation ? "true" : null)"
-     role="@(KeyboardNavigation ? "grid" : null)" aria-label="@Label" @onkeydown="OnKeyDown">
+     role="@(KeyboardNavigation ? "grid" : null)" aria-label="@Label" @onkeydown="OnKeyDown"
+     @oncontextmenu="OnKeyboardContextMenu" @oncontextmenu:preventDefault="@OnRowContextMenu.HasDelegate">
     <table class="table @Class" aria-busy="@(IsLoading ? "true" : "false")">
         <thead>
             <tr>
@@ -78,6 +79,9 @@
     [Parameter] public EventCallback<TItem> SelectedItemChanged { get; set; }
 
     [Parameter] public EventCallback<TItem> OnRowClick { get; set; }
+
+    /// <summary>Right-click on a row (or the menu key / Shift+F10 on the selected row): the row and where to open a menu.</summary>
+    [Parameter] public EventCallback<RowContextMenuArgs<TItem>> OnRowContextMenu { get; set; }
 
     [Parameter] public EventCallback<TItem> OnRowDoubleClick { get; set; }
 
@@ -176,12 +180,22 @@
 
     private bool Interactive => OnRowClick.HasDelegate || OnRowDoubleClick.HasDelegate || SelectedItemChanged.HasDelegate;
 
+    private Task RowContextMenu(TItem item, MouseEventArgs e) =>
+        OnRowContextMenu.HasDelegate ? OnRowContextMenu.InvokeAsync(new RowContextMenuArgs<TItem>(item, e.ClientX, e.ClientY)) : Task.CompletedTask;
+
+    /// <summary>The menu key or Shift+F10 on the table: the selected row's menu, placed next to it (0, 0).</summary>
+    private Task OnKeyboardContextMenu(MouseEventArgs e) =>
+        OnRowContextMenu.HasDelegate && SelectedItem is { } selected
+            ? OnRowContextMenu.InvokeAsync(new RowContextMenuArgs<TItem>(selected, 0, 0))
+            : Task.CompletedTask;
+
     private RenderFragment RenderRow(TItem item) => __builder =>
     {
         var selected = SelectedItem is not null && EqualityComparer<TItem>.Default.Equals(item, SelectedItem);
         <tr class="@(Interactive ? "clickable" : null) @(selected ? "is-selected" : null) @RowClass?.Invoke(item)"
             aria-selected="@(SelectedItemChanged.HasDelegate ? (selected ? "true" : "false") : null)"
-            @onclick="() => ClickRow(item)" @ondblclick="() => OnRowDoubleClick.InvokeAsync(item)">
+            @onclick="() => ClickRow(item)" @ondblclick="() => OnRowDoubleClick.InvokeAsync(item)"
+            @oncontextmenu="e => RowContextMenu(item, e)" @oncontextmenu:preventDefault="@OnRowContextMenu.HasDelegate" @oncontextmenu:stopPropagation="@OnRowContextMenu.HasDelegate">
             @foreach (var column in _columns)
             {
                 <td class="@column.Class">@column.ChildContent?.Invoke(item)</td>

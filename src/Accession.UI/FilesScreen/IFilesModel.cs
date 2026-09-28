@@ -141,4 +141,43 @@ public interface IFilesModel : INotifyPropertyChanged, IRefreshableScreen
 
     /// <summary>Copies the files in the app, with a CSV manifest.</summary>
     ICommand CopyFilesCommand { get; }
+
+    // ---- Right-click menus ----
+
+    /// <summary>Right-click on a file: a ticked row acts on all ticked rows; any other row is selected and acts alone.</summary>
+    void OpenFileMenu(FileRow row);
+
+    /// <summary>The file menu's header: the file's name or "3 ticked files".</summary>
+    string ContextHeader { get; }
+
+    /// <summary>One SHA-1 / full path / file name per line for the menu's files.</summary>
+    ICommand CopyTargetSha1sCommand { get; }
+
+    ICommand CopyTargetPathsCommand { get; }
+
+    ICommand CopyTargetNamesCommand { get; }
+
+    /// <summary>Copy To: the menu's files into one folder as &lt;sha1&gt;_&lt;name&gt;.</summary>
+    ICommand CopyToCommand { get; }
+
+    /// <summary>Adds the menu's files. Parameter: the target <see cref="SavedSearchRow"/>, or null for a new one.</summary>
+    ICommand AddTargetsToSavedSearchCommand { get; }
+
+    /// <summary>Filters to the selected file's extension.</summary>
+    ICommand FilterByExtensionCommand { get; }
+
+    /// <summary>Right-click on a media or folder in the tree.</summary>
+    void OpenFolderMenu(FolderTreeNode node);
+
+    string ContextFolderName { get; }
+
+    ICommand OpenFolderInExplorerCommand { get; }
+
+    ICommand CopyFolderPathCommand { get; }
+
+    /// <summary>The Copy files dialog for the folder and its subfolders.</summary>
+    ICommand CopyFolderCommand { get; }
+
+    /// <summary>The Export dialog for the folder and its subfolders.</summary>
+    ICommand ExportFolderCommand { get; }
 }

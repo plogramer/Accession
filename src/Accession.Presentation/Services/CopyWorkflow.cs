@@ -28,6 +28,7 @@ public sealed class CopyWorkflow(
     ILogger<CopyWorkflow> logger)
 {
     private CopyDialogChoices? _last;
+    private CopyDialogChoices? _lastCopyTo;
 
     public bool CanCopy => host.HasSession;
 
@@ -48,9 +49,11 @@ public sealed class CopyWorkflow(
                 Task.FromResult(copy.GenerateBatch(session, request, template, batchPath, new ProgressText(update, "Writing the copy batch…", settings), token)),
                 "Writing the copy batch…", cancellable: true);
             var culture = CultureInfo.CurrentCulture;
+            var left = result.NotInBatch == 0 ? string.Empty
+                : $"\n{result.NotInBatch.ToString("N0", culture)} files have no SHA-1 yet and were left out (listed in the manifest).";
             if (dialogs.Confirm("Copy batch written",
                     $"{result.BatchPath}\ncopies {result.Files.ToString("N0", culture)} files ({SizeFormatter.Format(result.Bytes, settings.Current.SizeUnit, provider: culture)}) " +
-                    $"to {request.Destination}.\n\nManifest: {result.ManifestPath}\n\nRun the batch file from a command prompt. Show it in Explorer?"))
+                    $"to {request.Destination}.{left}\n\nManifest: {result.ManifestPath}\n\nRun the batch file from a command prompt. Show it in Explorer?"))
             {
                 desktop.SelectInExplorer(result.BatchPath);
             }
@@ -90,15 +93,50 @@ public sealed class CopyWorkflow(
         }
     }
 
+    /// <summary>Copy To: the given files straight into one folder as &lt;sha1&gt;_&lt;name&gt; (right-click on files).</summary>
+    public async Task CopyToAsync(IReadOnlyCollection<long> fileIds)
+    {
+        ArgumentNullException.ThrowIfNull(fileIds);
+        if (fileIds.Count == 0 || host.Session is not { } session
+            || Ask(CopyDialogMode.CopyTo, fileIds, FileFilter.None with { FileIds = [.. fileIds] }, string.Empty) is not { } dialog)
+        {
+            return;
+        }
+
+        var request = dialog.Request!;
+        var options = dialog.Options;
+        try
+        {
+            var result = await busy.RunAsync((token, update) =>
+                Task.FromResult(copy.CopyFiles(session, request, options, new ProgressText(update, "Copying…", settings), token)),
+                "Copying…", cancellable: true);
+            Finished(result);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException or ArgumentException)
+        {
+            logger.LogError(ex, "Copy To failed");
+            dialogs.ShowError("Copy failed", $"The files could not be copied: {ex.Message}", ex);
+        }
+    }
+
     private CopyViewModel? Ask(CopyDialogMode mode, IReadOnlyCollection<long> ticked, FileFilter allResults, string allResultsText)
     {
-        var dialog = new CopyViewModel(mode, host.Session!, copy, settings, dialogs, ui, logger, ticked, allResults, allResultsText, time.GetUtcNow(), _last);
+        var last = mode == CopyDialogMode.CopyTo ? _lastCopyTo : _last;
+        var dialog = new CopyViewModel(mode, host.Session!, copy, settings, dialogs, ui, logger, ticked, allResults, allResultsText, time.GetUtcNow(), last);
         if (dialogs.ShowDialog(dialog) != true || dialog.Request is null)
         {
             return null;
         }
 
-        _last = dialog.Choices;
+        if (mode == CopyDialogMode.CopyTo)
+        {
+            _lastCopyTo = dialog.Choices;
+        }
+        else
+        {
+            _last = dialog.Choices;
+        }
+
         return dialog;
     }
 

@@ -591,6 +591,192 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
     [RelayCommand(CanExecute = nameof(CanCopyFiles))]
     private Task CopyFiles() => _copyWorkflow!.CopyFilesAsync([.. _checked], _activeFilter, ViewText());
 
+    // ---- Right-click menus ----
+
+    private IReadOnlyList<long> _contextTargets = [];
+    private FolderTreeNode? _contextFolder;
+
+    /// <summary>What the file menu acts on: the right-clicked file's name, or "3 ticked files".</summary>
+    [ObservableProperty]
+    public partial string ContextHeader { get; private set; } = string.Empty;
+
+    /// <summary>The folder (or media) the tree's menu acts on.</summary>
+    [ObservableProperty]
+    public partial string ContextFolderName { get; private set; } = string.Empty;
+
+    /// <summary>Right-click on a file: a ticked row acts on all ticked rows; any other row is selected and acts alone.</summary>
+    public void OpenFileMenu(FileRow row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+        if (SelectedRow?.FileId != row.FileId)
+        {
+            SelectedRow = row;
+        }
+
+        _contextTargets = _checked.Contains(row.FileId) && _checked.Count > 1 ? [.. _checked] : [row.FileId];
+        ContextHeader = _contextTargets.Count == 1 ? row.Name : $"{_contextTargets.Count.ToString("N0", CultureInfo.CurrentCulture)} ticked files";
+        AddTargetsToSavedSearchCommand.NotifyCanExecuteChanged();
+        CopyToCommand.NotifyCanExecuteChanged();
+    }
+
+    public void OpenFolderMenu(FolderTreeNode node)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        _contextFolder = node;
+        ContextFolderName = node.Info.Name;
+    }
+
+    [RelayCommand]
+    private Task CopyTargetSha1s() => CopyTargetsAsync(f => f.Sha1, "SHA-1", "No SHA-1 yet: the file is not hashed.");
+
+    [RelayCommand]
+    private Task CopyTargetPaths() => CopyTargetsAsync(f => _host.Config is { } c ? ScanPaths.ToFullPath(c.RootPath, f.RelativePath) : null, "Path", null);
+
+    [RelayCommand]
+    private Task CopyTargetNames() => CopyTargetsAsync(f => f.Name, "File name", null);
+
+    /// <summary>Copies one value per target file (one per line), read from the inventory in folder, name order.</summary>
+    private async Task CopyTargetsAsync(Func<FileItem, string?> value, string what, string? noneText)
+    {
+        if (_host.Session is not { } session || _contextTargets.Count == 0)
+        {
+            return;
+        }
+
+        var ids = _contextTargets;
+        try
+        {
+            var lines = await Task.Run(() =>
+            {
+                using var scope = session.Database.Open();
+                return _queries.StreamForExport(scope, new FileFilter { FileIds = ids }).Select(value).OfType<string>().Where(v => v.Length > 0).ToList();
+            });
+            if (lines.Count == 0)
+            {
+                _toasts.Show(noneText ?? "Nothing to copy.", ToastKind.Warning);
+                return;
+            }
+
+            _desktop.SetClipboardText(string.Join(Environment.NewLine, lines));
+            _toasts.Show(lines.Count == 1 ? $"{what} copied" : $"{lines.Count.ToString("N0", CultureInfo.CurrentCulture)} values copied ({what}, one per line)",
+                ToastKind.Success);
+        }
+        catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or IOException)
+        {
+            _logger.LogError(ex, "Copying {What} failed", what);
+            _toasts.Show($"{what} could not be copied: {ex.Message}", ToastKind.Error);
+        }
+    }
+
+    /// <summary>Copy To: the target files into one folder as &lt;sha1&gt;_&lt;name&gt;.</summary>
+    [RelayCommand(CanExecute = nameof(CanCopyTo))]
+    private Task CopyTo() => _copyWorkflow!.CopyToAsync(_contextTargets);
+
+    private bool CanCopyTo() => CanCopyFiles && _contextTargets.Count > 0;
+
+    [RelayCommand(CanExecute = nameof(CanAddTargets))]
+    private async Task AddTargetsToSavedSearch(SavedSearchRow? target)
+    {
+        if (await _savedSearchWorkflow!.AddAsync(target?.Id, target?.Name, new FileFilter { FileIds = [.. _contextTargets] }) is not null)
+        {
+            LoadSavedSearches();
+        }
+    }
+
+    private bool CanAddTargets(SavedSearchRow? target) =>
+        CanChangeSavedSearches && _contextTargets.Count > 0 && (target is null || target.Id != SelectedSavedSearch?.Id);
+
+    /// <summary>Filters the list to the selected file's extension.</summary>
+    [RelayCommand(CanExecute = nameof(HasSelection))]
+    private void FilterByExtension()
+    {
+        if (SelectedRow is { } row)
+        {
+            ExtensionText = row.Extension.Length == 0 ? "(none)" : row.Extension;
+            Apply();
+        }
+    }
+
+    [RelayCommand]
+    private void OpenFolderInExplorer()
+    {
+        if (FolderFullPath() is not { } path)
+        {
+            return;
+        }
+
+        if (Directory.Exists(path))
+        {
+            _desktop.OpenFolder(path);
+        }
+        else
+        {
+            _toasts.Show($"'{path}' cannot be found.", ToastKind.Warning);
+        }
+    }
+
+    [RelayCommand]
+    private void CopyFolderPath()
+    {
+        if (FolderFullPath() is { } path)
+        {
+            _desktop.SetClipboardText(path);
+            _toasts.Show("Folder path copied", ToastKind.Success);
+        }
+    }
+
+    /// <summary>The Copy files dialog for everything in the folder and its subfolders (other filters do not apply).</summary>
+    [RelayCommand(CanExecute = nameof(CanCopyFiles))]
+    private Task CopyFolder() =>
+        _contextFolder is { } node ? _copyWorkflow!.CopyFilesAsync([], FolderFilter(node), FolderText(node)) : Task.CompletedTask;
+
+    [RelayCommand(CanExecute = nameof(CanExportView))]
+    private Task ExportFolder() =>
+        _contextFolder is { } node ? _export!.ExportAsync(filesView: FolderFilter(node), filesViewText: FolderText(node)) : Task.CompletedTask;
+
+    private static FileFilter FolderFilter(FolderTreeNode node) => new() { FolderId = node.Info.FolderId, IncludeSubfolders = true };
+
+    private static string FolderText(FolderTreeNode node) =>
+        node.Depth == 0 ? $"Media {node.Info.Name}" : $"Folder {node.Info.Name} and its subfolders";
+
+    private string? FolderFullPath()
+    {
+        if (_contextFolder is not { } node || _host.Session is not { } session || _host.Config is not { } config)
+        {
+            return null;
+        }
+
+        try
+        {
+            return _queries.FolderPath(session.Database, node.Info.FolderId) is { } relative ? ScanPaths.ToFullPath(config.RootPath, relative) : null;
+        }
+        catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or IOException)
+        {
+            _logger.LogError(ex, "Reading the folder path failed");
+            return null;
+        }
+    }
+
+    ICommand IFilesModel.CopyTargetSha1sCommand => CopyTargetSha1sCommand;
+
+    ICommand IFilesModel.CopyTargetPathsCommand => CopyTargetPathsCommand;
+
+    ICommand IFilesModel.CopyTargetNamesCommand => CopyTargetNamesCommand;
+
+    ICommand IFilesModel.CopyToCommand => CopyToCommand;
+
+    ICommand IFilesModel.AddTargetsToSavedSearchCommand => AddTargetsToSavedSearchCommand;
+
+    ICommand IFilesModel.FilterByExtensionCommand => FilterByExtensionCommand;
+
+    ICommand IFilesModel.OpenFolderInExplorerCommand => OpenFolderInExplorerCommand;
+
+    ICommand IFilesModel.CopyFolderPathCommand => CopyFolderPathCommand;
+
+    ICommand IFilesModel.CopyFolderCommand => CopyFolderCommand;
+
+    ICommand IFilesModel.ExportFolderCommand => ExportFolderCommand;
+
     private string ViewText() => ActiveFilters.Count == 0 ? string.Empty : string.Join(" · ", ActiveFilters.Select(c => c.Label));
 
     [RelayCommand]

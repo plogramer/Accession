@@ -22,6 +22,9 @@ public enum CopyDialogMode
 
     /// <summary>Copy the files in the app (CPY-06).</summary>
     Copy,
+
+    /// <summary>Copy To (right-click on files): the files straight into one folder as &lt;sha1&gt;_&lt;name&gt;.</summary>
+    CopyTo,
 }
 
 /// <summary>The dialog's last choices, offered again next time (for this run of the app).</summary>
@@ -34,6 +37,7 @@ public sealed partial class CopyViewModel : DialogViewModelBase
     public const string ScopeAll = "all";
     public const string NamingPreserve = "preserve";
     public const string NamingSequential = "sequential";
+    public const string NamingSha1 = "sha1";
     public const string CustomTemplate = "custom";
 
     private readonly InventorySession _session;
@@ -68,12 +72,17 @@ public sealed partial class CopyViewModel : DialogViewModelBase
         _allResults = allResults;
         _unit = settings.Current.SizeUnit;
         AllResultsText = allResultsText;
-        Title = mode == CopyDialogMode.Batch ? "Generate copy batch" : "Copy files";
-        ScopeValue = ticked.Count > 0 ? ScopeTicked : ScopeAll;
+        Title = mode switch { CopyDialogMode.Batch => "Generate copy batch", CopyDialogMode.CopyTo => "Copy To", _ => "Copy files" };
+        ScopeValue = ticked.Count > 0 || mode == CopyDialogMode.CopyTo ? ScopeTicked : ScopeAll;
 
         var naming = last?.Naming ?? new CopyNaming { Prefix = string.Empty, Digits = 8, StartNumber = 1 };
         Destination = last?.Destination ?? string.Empty;
-        NamingValue = naming.Mode == CopyNamingMode.Sequential ? NamingSequential : NamingPreserve;
+        NamingValue = mode == CopyDialogMode.CopyTo ? NamingSha1 : naming.Mode switch
+        {
+            CopyNamingMode.Sequential => NamingSequential,
+            CopyNamingMode.Sha1Name => NamingSha1,
+            _ => NamingPreserve,
+        };
         Prefix = naming.Prefix;
         Digits = naming.Digits;
         StartNumber = (int)Math.Min(int.MaxValue, naming.StartNumber);
@@ -83,7 +92,8 @@ public sealed partial class CopyViewModel : DialogViewModelBase
         Verify = last?.Verify ?? false;
 
         var config = session.Config;
-        var stem = SafeFileName($"{config.ClientCode}_{config.MatterCode}_{(mode == CopyDialogMode.Batch ? "CopyBatch" : "Copy")}_{now.ToLocalTime():yyyyMMdd_HHmm}");
+        var kind = mode switch { CopyDialogMode.Batch => "CopyBatch", CopyDialogMode.CopyTo => "CopyTo", _ => "Copy" };
+        var stem = SafeFileName($"{config.ClientCode}_{config.MatterCode}_{kind}_{now.ToLocalTime():yyyyMMdd_HHmm}");
         var folder = settings.Current.ResolveExportFolder();
         BatchPath = Path.Combine(folder, stem + ".bat");
         SetManifest(Path.Combine(folder, stem + "_manifest.csv"));
@@ -94,6 +104,11 @@ public sealed partial class CopyViewModel : DialogViewModelBase
     public CopyDialogMode Mode { get; }
 
     public bool IsBatch => Mode == CopyDialogMode.Batch;
+
+    public bool IsCopyTo => Mode == CopyDialogMode.CopyTo;
+
+    /// <summary>"report.pdf" or "3 files" (Copy To).</summary>
+    public string TargetText => _ticked.Count == 1 ? "1 file" : $"{_ticked.Count.ToString("N0", CultureInfo.CurrentCulture)} files";
 
     public string AllResultsText { get; }
 
@@ -115,12 +130,15 @@ public sealed partial class CopyViewModel : DialogViewModelBase
     [
         (NamingPreserve, "Keep the original folders and names"),
         (NamingSequential, "Sequential names (prefix + number)"),
+        (NamingSha1, "SHA-1 + name, all in one folder"),
     ];
 
     [ObservableProperty]
     public partial string NamingValue { get; set; }
 
     public bool IsSequential => NamingValue == NamingSequential;
+
+    public bool IsSha1Names => NamingValue == NamingSha1;
 
     [ObservableProperty]
     public partial string Prefix { get; set; }
@@ -132,9 +150,14 @@ public sealed partial class CopyViewModel : DialogViewModelBase
     public partial int StartNumber { get; set; }
 
     /// <summary>"Destination\MED001\folder\name.pdf" or "First file: DOC00000001.pdf, then DOC00000002.msg, …".</summary>
-    public string NamingExample => IsSequential
-        ? $"First file: {Naming.SequentialName(Naming.StartNumber, "pdf")}, then {Naming.SequentialName(Naming.StartNumber + 1, "msg")}, … in media, folder, name order, all in the destination folder. Files without an extension get no dot."
-        : @"Each file goes to destination\Media ID\folders\name, as under the root.";
+    public string NamingExample => NamingValue switch
+    {
+        NamingSequential =>
+            $"First file: {Naming.SequentialName(Naming.StartNumber, "pdf")}, then {Naming.SequentialName(Naming.StartNumber + 1, "msg")}, … in media, folder, name order, all in the destination folder. Files without an extension get no dot.",
+        NamingSha1 => "Each file goes straight into the destination folder as <sha1>_<name>, e.g. 3f7a…e91c_Board minutes.pdf. A file with the same SHA-1 and name is copied once. " +
+                      (IsBatch ? "Files not hashed yet are left out of the batch (listed in the manifest)." : "Files not hashed yet are hashed while they are copied."),
+        _ => @"Each file goes to destination\Media ID\folders\name, as under the root.",
+    };
 
     public static IReadOnlyList<(string Value, string Label)> TemplateOptions { get; } =
     [
@@ -171,13 +194,17 @@ public sealed partial class CopyViewModel : DialogViewModelBase
     public string ValidationError => _tried ? Validate() : string.Empty;
 
     /// <summary>The robocopy + sequential names conflict, shown straight away (not only after trying).</summary>
-    public string TemplateConflict => IsBatch && IsSequential && CurrentTemplate.IsRobocopy ? CurrentTemplate.Validate(CopyNamingMode.Sequential) ?? string.Empty : string.Empty;
+    public string TemplateConflict => IsBatch && Naming.Renames && CurrentTemplate.IsRobocopy ? CurrentTemplate.Validate(Naming.Mode) ?? string.Empty : string.Empty;
 
-    public string GoText => IsBatch ? "Write batch file" : "Copy files";
+    public string GoText => Mode switch { CopyDialogMode.Batch => "Write batch file", CopyDialogMode.CopyTo => "Copy", _ => "Copy files" };
 
-    public CopyNaming Naming => IsSequential
-        ? new CopyNaming { Mode = CopyNamingMode.Sequential, Prefix = Prefix.Trim(), Digits = Digits, StartNumber = StartNumber }
-        : new CopyNaming { Mode = CopyNamingMode.PreserveStructure, Prefix = Prefix.Trim(), Digits = Digits, StartNumber = StartNumber };
+    public CopyNaming Naming => new()
+    {
+        Mode = NamingValue switch { NamingSequential => CopyNamingMode.Sequential, NamingSha1 => CopyNamingMode.Sha1Name, _ => CopyNamingMode.PreserveStructure },
+        Prefix = Prefix.Trim(),
+        Digits = Digits,
+        StartNumber = StartNumber,
+    };
 
     public CopyCommandTemplate CurrentTemplate => new(TemplateValue, Command.Trim());
 
@@ -295,7 +322,7 @@ public sealed partial class CopyViewModel : DialogViewModelBase
     private FileFilter Filter() => ScopeValue == ScopeTicked ? FileFilter.None with { FileIds = [.. _ticked] } : _allResults;
 
     private string ScopeText() => ScopeValue == ScopeTicked
-        ? $"{_ticked.Count.ToString("N0", CultureInfo.InvariantCulture)} ticked files"
+        ? $"{_ticked.Count.ToString("N0", CultureInfo.InvariantCulture)} {(IsCopyTo ? "files (Copy To)" : "ticked files")}"
         : "All results" + (AllResultsText.Length == 0 ? string.Empty : ": " + AllResultsText);
 
     private void SetManifest(string path)
@@ -343,13 +370,14 @@ public sealed partial class CopyViewModel : DialogViewModelBase
 
     private void OnInputChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(EstimateText) or nameof(ValidationError) or nameof(Title) or nameof(IsSequential) or nameof(NamingExample)
-            or nameof(TemplateConflict))
+        if (e.PropertyName is nameof(EstimateText) or nameof(ValidationError) or nameof(Title) or nameof(IsSequential) or nameof(IsSha1Names)
+            or nameof(NamingExample) or nameof(TemplateConflict))
         {
             return;
         }
 
         OnPropertyChanged(nameof(IsSequential));
+        OnPropertyChanged(nameof(IsSha1Names));
         OnPropertyChanged(nameof(NamingExample));
         OnPropertyChanged(nameof(TemplateConflict));
         OnPropertyChanged(nameof(ValidationError));

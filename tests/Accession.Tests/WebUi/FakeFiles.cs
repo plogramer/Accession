@@ -117,5 +117,19 @@ internal sealed partial class FakeFiles : ObservableObject, IFilesModel
     public bool CanCopyFiles { get; set; } = true;
     public ICommand GenerateCopyBatchCommand { get; } = new RelayCommand(() => { });
     public ICommand CopyFilesCommand { get; } = new RelayCommand(() => { });
+    public string ContextHeader => "report.pdf";
+    public string ContextFolderName => "Shares";
+    public void OpenFileMenu(FileRow row) { }
+    public void OpenFolderMenu(FolderTreeNode node) { }
+    public ICommand CopyTargetSha1sCommand { get; } = new RelayCommand(() => { });
+    public ICommand CopyTargetPathsCommand { get; } = new RelayCommand(() => { });
+    public ICommand CopyTargetNamesCommand { get; } = new RelayCommand(() => { });
+    public ICommand CopyToCommand { get; } = new RelayCommand(() => { });
+    public ICommand AddTargetsToSavedSearchCommand { get; } = new RelayCommand<object?>(_ => { });
+    public ICommand FilterByExtensionCommand { get; } = new RelayCommand(() => { });
+    public ICommand OpenFolderInExplorerCommand { get; } = new RelayCommand(() => { });
+    public ICommand CopyFolderPathCommand { get; } = new RelayCommand(() => { });
+    public ICommand CopyFolderCommand { get; } = new RelayCommand(() => { });
+    public ICommand ExportFolderCommand { get; } = new RelayCommand(() => { });
     public ICommand RefreshCommand { get; } = new RelayCommand(() => { });
 }

@@ -323,12 +323,13 @@ public static class DialogForms
             [
                 new SelectField("Files", [.. vm.ScopeOptions.Select(o => new SelectOption(o.Value, o.Label))], () => vm.ScopeValue, v => vm.ScopeValue = v)
                 {
-                    Wide = true, Visible = () => vm.HasTicked,
+                    Wide = true, Visible = () => vm.HasTicked && !vm.IsCopyTo,
                 },
                 new InfoField("Files", () => "All results" + (vm.AllResultsText.Length == 0 ? " (all files)" : $" ({vm.AllResultsText})"))
                 {
-                    Wide = true, Visible = () => !vm.HasTicked, Hint = "Tick rows in the table to copy only those.",
+                    Wide = true, Visible = () => !vm.HasTicked && !vm.IsCopyTo, Hint = "Tick rows in the table to copy only those.",
                 },
+                new InfoField("Files", () => vm.TargetText) { Wide = true, Visible = () => vm.IsCopyTo },
                 new NoteItem(() => vm.EstimateText) { Tone = "info", Wide = true },
                 new TextField("Destination folder", () => vm.Destination, v => vm.Destination = v)
                 {
@@ -340,7 +341,7 @@ public static class DialogForms
             [
                 new SelectField("Naming", [.. CopyViewModel.NamingOptions.Select(o => new SelectOption(o.Value, o.Label))], () => vm.NamingValue, v => vm.NamingValue = v)
                 {
-                    Wide = true,
+                    Wide = true, Visible = () => !vm.IsCopyTo,
                 },
                 new TextField("Prefix", () => vm.Prefix, v => vm.Prefix = v) { Mono = true, Placeholder = "e.g. ABC_", Visible = () => vm.IsSequential },
                 new NumberField("Digits", () => vm.Digits, v => vm.Digits = v, CopyNaming.MinDigits, CopyNaming.MaxDigits) { Visible = () => vm.IsSequential },

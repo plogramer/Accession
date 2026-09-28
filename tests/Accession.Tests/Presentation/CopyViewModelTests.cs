@@ -173,6 +173,49 @@ public sealed class CopyViewModelTests : IDisposable
         Assert.DoesNotContain("Command for each file", html);
     }
 
+    [Fact]
+    public async Task Copy_to_uses_sha1_names_for_the_given_files()
+    {
+        var vm = Create(CopyDialogMode.CopyTo, ticked: [_files[3], _files[4]]);
+        await WaitUntil(() => vm.EstimateText.StartsWith("2 files", StringComparison.Ordinal));
+
+        Assert.Equal("Copy To", vm.Title);
+        Assert.True(vm.IsCopyTo && vm.IsSha1Names);
+        Assert.Equal("2 files", vm.TargetText);
+        Assert.Contains("hashed while they are copied", vm.NamingExample, StringComparison.Ordinal);
+        Assert.EndsWith(".csv", vm.ManifestPath, StringComparison.Ordinal);
+        Assert.Contains("_CopyTo_", vm.ManifestPath, StringComparison.Ordinal);
+
+        vm.Destination = _test.Temp.Combine("review");
+        vm.GoCommand.Execute(null);
+
+        var request = Assert.IsType<CopyRequest>(vm.Request);
+        Assert.Equal(CopyNamingMode.Sha1Name, request.Naming.Mode);
+        Assert.Equal([_files[3], _files[4]], request.Filter.FileIds);
+        Assert.Equal("2 files (Copy To)", request.ScopeText);
+
+        var shown = Create(CopyDialogMode.CopyTo, ticked: [_files[3], _files[4]]);
+        await WaitUntil(() => shown.EstimateText.StartsWith("2 files", StringComparison.Ordinal));
+        shown.Destination = @"D:\Review\Hot docs";
+        shown.ManifestPath = @"D:\Review\ACME_2026-001_CopyTo_manifest.csv";
+        var html = await Accession.Tests.WebUi.FormDialogTests.Render(DialogForms.Build(shown, () => { })!, "form-copy-to");
+        Assert.Contains("Copy To", html);
+        Assert.DoesNotContain("Naming", html);
+        Assert.Contains("Preserve metadata", html);
+    }
+
+    [Fact]
+    public void Sha1_names_in_a_batch_cannot_use_robocopy()
+    {
+        var vm = Create(CopyDialogMode.Batch);
+        vm.NamingValue = CopyViewModel.NamingSha1;
+        Assert.Contains("left out of the batch", vm.NamingExample, StringComparison.Ordinal);
+
+        vm.TemplateValue = "robocopy";
+
+        Assert.Contains("robocopy cannot rename", vm.TemplateConflict, StringComparison.Ordinal);
+    }
+
     private static async Task WaitUntil(Func<bool> condition)
     {
         var deadline = DateTime.UtcNow.AddSeconds(20);

@@ -50,16 +50,17 @@ public sealed record CopyCommandTemplate(string Name, string Command)
             return "The command needs {destination} or {destdir}.";
         }
 
-        if (naming == CopyNamingMode.Sequential)
+        if (naming != CopyNamingMode.PreserveStructure)
         {
+            var names = naming == CopyNamingMode.Sequential ? "sequential names" : "SHA-1 names";
             if (IsRobocopy)
             {
-                return "robocopy cannot rename files, so it only works with \"Keep the original folders and names\". Use copy for sequential names.";
+                return $"robocopy cannot rename files, so it only works with \"Keep the original folders and names\". Use copy for {names}.";
             }
 
             if (!Has("{destination}") && !Has("{destname}"))
             {
-                return "Sequential names need {destination} or {destname} in the command; otherwise the files keep their original names.";
+                return $"New names ({names}) need {{destination}} or {{destname}} in the command; otherwise the files keep their original names.";
             }
         }
 

@@ -15,7 +15,11 @@ public sealed record CopyRequest(FileFilter Filter, string Destination, CopyNami
 
 public sealed record CopyProgress(long FilesDone, long TotalFiles, long BytesDone, long TotalBytes, long Copied, long Skipped, long Failed);
 
-public sealed record CopyBatchResult(string BatchPath, string ManifestPath, long Files, long Bytes);
+public sealed record CopyBatchResult(string BatchPath, string ManifestPath, long Files, long Bytes)
+{
+    /// <summary>Files left out because they have no SHA-1 yet (SHA-1 names only); listed in the manifest.</summary>
+    public long NotInBatch { get; init; }
+}
 
 public sealed record CopyFilesResult(string Destination, string ManifestPath, long TotalFiles, long Copied, long Verified, long Skipped, long Failed,
     long BytesCopied, bool Cancelled, long MetadataWarnings)

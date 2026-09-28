@@ -1,0 +1,65 @@
+@* A right-click menu shown at the pointer (or at an element, when opened from the keyboard). Clicking outside,
+   Esc or choosing an item closes it. *@
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+@if (IsOpen)
+{
+    <div class="backdrop" @onclick="Close" @oncontextmenu="Close" @oncontextmenu:preventDefault="true"></div>
+    <div class="menu menu-floating menu-context" role="menu" tabindex="-1" aria-label="@Label" @ref="_menu"
+         @onclick="Close" @onkeydown="OnKeyDown" @oncontextmenu:preventDefault="true">
+        @if (!string.IsNullOrEmpty(Header))
+        {
+            <div class="menu-header"><span>@Header</span></div>
+        }
+        @ChildContent
+    </div>
+}
+
+@code {
+    private ElementReference _menu;
+    private double _x;
+    private double _y;
+    private bool _placed;
+
+    [Parameter, EditorRequired] public RenderFragment ChildContent { get; set; } = default!;
+
+    /// <summary>What the menu acts on, e.g. "report.pdf" or "3 ticked files".</summary>
+    [Parameter] public string? Header { get; set; }
+
+    [Parameter] public string? Label { get; set; }
+
+    public bool IsOpen { get; private set; }
+
+    /// <summary>Opens at a pointer position (client coordinates). (0, 0) = keyboard: next to the focused selected row.</summary>
+    public void Open(double x, double y)
+    {
+        _x = x;
+        _y = y;
+        _placed = false;
+        IsOpen = true;
+        StateHasChanged();
+    }
+
+    public void Close()
+    {
+        IsOpen = false;
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (IsOpen && !_placed)
+        {
+            _placed = true;
+            await JS.InvokeVoidAsync("accession.placeContextMenu", _menu, _x, _y);
+        }
+    }
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key is "Escape" or "Tab")
+        {
+            Close();
+        }
+    }
+}

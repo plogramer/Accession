@@ -197,6 +197,52 @@ public sealed class CopyServiceTests : IDisposable
         Assert.True(File.Exists(CopyPaths.Combine(Out("dest"), @"\MED001\b.txt")));
     }
 
+    private static string Sha1Of(string text) => Convert.ToHexStringLower(System.Security.Cryptography.SHA1.HashData(Encoding.UTF8.GetBytes(text)));
+
+    private void SetSha1(string name, string sha1)
+    {
+        using var scope = _test.Session.Database.Open();
+        Dapper.SqlMapper.Execute(scope.Connection, "UPDATE File SET Sha1 = @sha1, HashStatus = 1 WHERE FileId = @id", new { sha1, id = _ids[name] });
+    }
+
+    private static readonly CopyNaming Sha1Names = new() { Mode = CopyNamingMode.Sha1Name };
+
+    [Fact]
+    public void Sha1_names_are_flat_computed_when_missing_and_flag_changed_files()
+    {
+        SetSha1("b.txt", Sha1Of("content of b.txt"));
+        SetSha1("A.PDF", new string('0', 40)); // not what the file holds any more
+
+        var result = _copy.CopyFiles(_test.Session, Request(Sha1Names), new CopyFileOptions());
+
+        Assert.Equal((5L, 0L, 0L), (result.Copied, result.Skipped, result.Failed));
+        var expected = new[] { "A.PDF", "b.txt", "100% & done.msg", "résumé.docx", "noext" }.Select(n => Sha1Of("content of " + n) + "_" + n);
+        Assert.Equal(expected.Order(StringComparer.Ordinal), Directory.GetFileSystemEntries(Out("dest")).Select(Path.GetFileName).Order(StringComparer.Ordinal));
+        var rows = Manifest(result.ManifestPath);
+        Assert.Contains("changed after the scan", rows[0][8], StringComparison.Ordinal);
+        Assert.Equal(Out("dest", Sha1Of("content of noext") + "_noext"), rows[4][1]);
+        Assert.Equal(Modified, File.GetLastWriteTimeUtc(rows[1][1]));
+
+        // Again: everything is there already (hashed ones are not even read), and no temporary file is left behind.
+        var again = _copy.CopyFiles(_test.Session, Request(Sha1Names) with { ManifestPath = Out("m2.csv") }, new CopyFileOptions());
+        Assert.Equal((0L, 5L), (again.Copied, again.Skipped));
+        Assert.Equal(5, Directory.GetFileSystemEntries(Out("dest")).Length);
+    }
+
+    [Fact]
+    public void A_batch_with_sha1_names_leaves_out_files_without_a_sha1()
+    {
+        SetSha1("b.txt", Sha1Of("content of b.txt"));
+
+        var result = _copy.GenerateBatch(_test.Session, Request(Sha1Names), CopyCommandTemplate.Copy, Out("sha.bat"));
+
+        Assert.Equal((1L, 4L), (result.Files, result.NotInBatch));
+        Assert.Contains(Sha1Of("content of b.txt") + "_b.txt", File.ReadAllText(result.BatchPath), StringComparison.Ordinal);
+        var rows = Manifest(result.ManifestPath);
+        Assert.Equal(["Not in batch", "In batch", "Not in batch", "Not in batch", "Not in batch"], rows.Select(r => r[7]));
+        Assert.Throws<ArgumentException>(() => _copy.GenerateBatch(_test.Session, Request(Sha1Names), CopyCommandTemplate.Robocopy, Out("r.bat")));
+    }
+
     /// <summary>Synchronous progress (Progress&lt;T&gt; would post to the thread pool).</summary>
     private sealed class Collect(List<CopyProgress> reports, Action<CopyProgress>? then = null) : IProgress<CopyProgress>
     {

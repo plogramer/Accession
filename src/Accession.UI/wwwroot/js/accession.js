@@ -132,6 +132,42 @@
             menu.style.top = top + "px";
             menu.style.visibility = "visible";
         },
+        // Places a right-click menu at (x, y), kept on screen. (0, 0) comes from the keyboard (menu key, Shift+F10):
+        // then it opens next to the focused element's selected row. Focuses the first item.
+        placeContextMenu: function (menu, x, y) {
+            if (!menu) {
+                return;
+            }
+
+            const margin = 8;
+            if (!x && !y) {
+                const focused = document.activeElement;
+                const row = (focused && focused.querySelector && focused.querySelector(".is-selected")) || focused;
+                const box = row && row.getBoundingClientRect ? row.getBoundingClientRect() : { left: 100, bottom: 100 };
+                x = box.left + 24;
+                y = box.bottom;
+            }
+
+            const width = menu.offsetWidth, height = menu.offsetHeight;
+            let left = Math.max(margin, Math.min(x, window.innerWidth - width - margin));
+            let top = y + height > window.innerHeight - margin ? Math.max(margin, y - height) : y;
+            menu.style.left = left + "px";
+            menu.style.top = top + "px";
+            menu.style.visibility = "visible";
+            const first = menu.querySelector(".menu-item:not(:disabled)");
+            (first || menu).focus();
+            menu.onkeydown = function (e) {
+                if (e.key !== "ArrowDown" && e.key !== "ArrowUp") {
+                    return;
+                }
+
+                const items = Array.from(menu.querySelectorAll(".menu-item:not(:disabled)"));
+                const i = items.indexOf(document.activeElement);
+                const next = items[(i + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length];
+                next && next.focus();
+                e.preventDefault();
+            };
+        },
         // Scrolls a list's selected row (e.g. the media chosen with "Browse files") into view.
         scrollSelectedIntoView: function (container) {
             const selected = container && container.querySelector(".is-selected");

@@ -5,7 +5,9 @@
     var selected = ReferenceEquals(node, Model.SelectedFolder);
     <div class="tree-row @(selected ? "is-selected" : null)" style="padding-left:@(node.Depth * 16 + 6)px" title="@node.Info.Name"
          role="treeitem" aria-selected="@(selected ? "true" : "false")" aria-expanded="@(node.Info.HasChildren ? (node.IsExpanded ? "true" : "false") : null)"
-         @onclick="() => Model.SelectedFolder = node">
+         @onclick="() => Model.SelectedFolder = node"
+         @oncontextmenu="e => OnContextMenu.InvokeAsync(new RowContextMenuArgs<FolderTreeNode>(node, e.ClientX, e.ClientY))"
+         @oncontextmenu:preventDefault="true">
         @if (node.Info.HasChildren)
         {
             <button class="tree-toggle @(node.IsExpanded ? "is-open" : null)" title="@(node.IsExpanded ? "Collapse" : "Expand")"
@@ -26,7 +28,7 @@
     </div>
     @if (node.IsExpanded && node.Children.Count > 0)
     {
-        <FolderTree Nodes="node.Children" Model="Model" />
+        <FolderTree Nodes="node.Children" Model="Model" OnContextMenu="OnContextMenu" />
     }
 }
 
@@ -34,6 +36,9 @@
     [Parameter, EditorRequired] public IReadOnlyList<FolderTreeNode> Nodes { get; set; } = [];
 
     [Parameter, EditorRequired] public IFilesModel Model { get; set; } = default!;
+
+    /// <summary>Right-click on a media or folder.</summary>
+    [Parameter] public EventCallback<RowContextMenuArgs<FolderTreeNode>> OnContextMenu { get; set; }
 
     protected override void OnParametersSet() => Observe([Nodes, .. Nodes]);
 }
