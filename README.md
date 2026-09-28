@@ -1,4 +1,4 @@
-# Accession
+# <img src="src/Accession.App/Assets/Accession.png" alt="" width="36" align="top" /> Accession
 
 *Inventory, hash, and report every media you receive.*
 
@@ -7,6 +7,19 @@ network share, records every folder and file (with metadata and SHA-1 hash) into
 inventory file, shows dashboards by media, category and extension, and exports the inventory to Excel.
 
 Requirements: [`requirements/001-initial_requirements.md`](requirements/001-initial_requirements.md)
+
+## Screenshots
+
+**Dashboard** – totals, media, categories, extensions, duplicates and files by year, for all media or the ones you tick.
+
+![Dashboard](src/Accession.App/wwwroot/help/images/dashboard.png)
+
+**Files** – every file with its folder, size, dates and SHA-1: browse by media and folder, filter, tick files to copy them
+or collect them in saved searches.
+
+![Files](src/Accession.App/wwwroot/help/images/files.png)
+
+*Sample data. More screens are in the in-app help ([`src/Accession.App/wwwroot/help`](src/Accession.App/wwwroot/help/index.html)).*
 
 ## Solution layout
 
