@@ -11,6 +11,7 @@ public static class Shortcuts
         ("Ctrl N", "New inventory"),
         ("Ctrl O", "Open inventory"),
         ("Ctrl ,", "Settings"),
+        ("F1", "Help for this screen"),
         ("F5", "Refresh the screen"),
         ("Ctrl F", "Find (the screen's search box)"),
         ("Alt 1…7", "Go to a screen in the side navigation"),
@@ -40,6 +41,15 @@ public static class Shortcuts
                 break;
             case "ctrl+,":
                 await Run(model.OpenSettingsCommand);
+                break;
+            case "f1":
+                var topic = shell is null ? HelpTopics.Start : HelpTopics.ForScreen(shell.SelectedItem.Icon);
+                await Task.Yield();
+                if (model.HelpCommand.CanExecute(topic))
+                {
+                    model.HelpCommand.Execute(topic);
+                }
+
                 break;
             case "f5" when shell?.SelectedItem.Content is IRefreshableScreen screen:
                 await Run(screen.RefreshCommand);

@@ -36,6 +36,17 @@ dotnet run --project src/Accession.App
 
 Without the WebView2 runtime Accession shows a message with the download link and exits.
 
+## Help
+
+The help window (the **?** button on every screen, or F1) shows `src/Accession.App/wwwroot/help/index.html`. Its screenshots are made
+from the web UI's components with sample data; regenerate them after UI changes:
+
+```bash
+ACCESSION_UI_PREVIEW_DIR=/tmp/previews dotnet test --solution Accession.sln -c Release
+pip install playwright   # once
+python3 tools/help/make_screenshots.py /tmp/previews
+```
+
 Tests use [Microsoft.Testing.Platform](https://aka.ms/dotnet-test-mtp) (opted in via `global.json`).
 
 ## Publish (self-contained, win-x64)

@@ -20,6 +20,8 @@ public sealed class WindowsDesktop(ILogger<WindowsDesktop> logger) : IDesktop
 
     public void RequestExit() => Application.Current.MainWindow?.Close();
 
+    public void ShowHelp(string topic) => Views.HelpWindow.Show(topic);
+
     public string? WebViewRuntimeVersion()
     {
         try

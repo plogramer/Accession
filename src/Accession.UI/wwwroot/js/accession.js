@@ -23,7 +23,7 @@
     }
 
     // Shortcuts handled by the page (.NET), and the ones only handled when not typing in a field.
-    const pageShortcuts = new Set(["ctrl+n", "ctrl+o", "f5", "ctrl+,", "alt+1", "alt+2", "alt+3", "alt+4", "alt+5", "alt+6", "alt+7"]);
+    const pageShortcuts = new Set(["ctrl+n", "ctrl+o", "f1", "f5", "ctrl+,", "alt+1", "alt+2", "alt+3", "alt+4", "alt+5", "alt+6", "alt+7"]);
     const plainShortcuts = new Set(["?"]);
 
     // Keeps Tab inside the top dialog while one is open.

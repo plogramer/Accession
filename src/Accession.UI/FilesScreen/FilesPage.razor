@@ -11,6 +11,7 @@
         <div class="page-actions">
             <button class="btn" title="Export the files this screen shows to Excel" disabled="@Disabled(Model.ExportViewCommand)" @onclick="() => Run(Model.ExportViewCommand)"><Icon Name="download" Size="16" /> Export current view</button>
             <button class="icon-btn icon-btn-lg" title="Refresh" @onclick="() => Run(Model.RefreshCommand)"><Icon Name="refresh" Class="@(Model.IsLoading ? "spin" : null)" /></button>
+            <HelpButton Topic="@HelpTopics.Files" />
         </div>
     </div>
 

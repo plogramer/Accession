@@ -43,6 +43,7 @@
             <button class="icon-btn icon-btn-lg" title="Refresh" @onclick="() => Run(Model.RefreshCommand)">
                 <Icon Name="refresh" Class="@(Model.IsLoading || Model.IsLoadingDetails ? "spin" : null)" />
             </button>
+            <HelpButton Topic="@HelpTopics.Dashboard" />
         </div>
     </div>
 

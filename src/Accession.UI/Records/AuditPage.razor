@@ -9,6 +9,7 @@
         <div class="page-actions">
             <button class="btn" title="Export the entries matching the filter to Excel" disabled="@Disabled(Model.ExportCommand)" @onclick="() => Run(Model.ExportCommand)"><Icon Name="download" Size="16" /> Export</button>
             <button class="icon-btn icon-btn-lg" title="Refresh" @onclick="() => Run(Model.RefreshCommand)"><Icon Name="refresh" /></button>
+            <HelpButton Topic="@HelpTopics.AuditLog" />
         </div>
     </div>
 

@@ -65,6 +65,29 @@ public sealed class ShortcutsTests
     }
 
     [Fact]
+    public async Task F1_opens_the_help_for_the_screen_shown()
+    {
+        var shell = new FakeShell(new FakeDashboard(), files: new FakeFiles());
+        shell.SelectedItem = shell.NavItems.First(n => n.Key == "Files");
+        var app = new FakeApp(shell);
+        var start = new FakeApp(new FakeStart());
+
+        await Shortcuts.HandleAsync(app, "f1");
+        await Shortcuts.HandleAsync(start, "f1");
+
+        Assert.Equal([HelpTopics.Files], app.HelpShown);
+        Assert.Equal([HelpTopics.Start], start.HelpShown);
+    }
+
+    [Fact]
+    public async Task The_screen_header_has_a_help_button()
+    {
+        var html = await WebUiRenderer.RenderAsync<AppRoot>(new Dictionary<string, object?> { [nameof(AppRoot.Model)] = new FakeApp(new FakeShell(new FakeDashboard())) });
+
+        Assert.Contains("aria-label=\"Help for this screen\"", html);
+    }
+
+    [Fact]
     public async Task Selectable_tables_are_keyboard_navigable()
     {
         var shell = new FakeShell(new FakeDashboard(), media: new FakeMedia());
@@ -95,6 +118,7 @@ public sealed class ShortcutsTests
         public ICommand NewInventoryCommand => newInventory;
         public ICommand OpenInventoryCommand => inner.OpenInventoryCommand;
         public ICommand OpenSettingsCommand => inner.OpenSettingsCommand;
+        public ICommand HelpCommand => inner.HelpCommand;
 
         public void PageRendered() => inner.PageRendered();
     }

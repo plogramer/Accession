@@ -1,0 +1,149 @@
+:root {
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --text: #1a1f2c;
+    --text-2: #3d4556;
+    --muted: #697186;
+    --border: #e3e6ec;
+    --primary: #4f46e5;
+    --primary-soft: #eef2ff;
+    --side: #0f1422;
+    --side-text: #c9cfdc;
+    --side-muted: #7d869a;
+    --note: #f0f6ff;
+    --note-border: #c7dcfb;
+    --kbd: #f1f3f7;
+    color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #0b101b;
+        --surface: #121929;
+        --text: #e6e9f0;
+        --text-2: #c3c9d6;
+        --muted: #8b93a7;
+        --border: #232c3f;
+        --primary: #8b85ff;
+        --primary-soft: #1f2146;
+        --note: #13213a;
+        --note-border: #25406b;
+        --kbd: #1b2336;
+        color-scheme: dark;
+    }
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-padding-top: 16px; }
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.6 "Segoe UI", system-ui, sans-serif;
+}
+
+.layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); min-height: 100vh; }
+
+nav {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 20px 12px;
+    background: var(--side);
+    color: var(--side-text);
+}
+
+.brand { display: flex; align-items: center; gap: 10px; padding: 0 8px 18px; font-weight: 600; font-size: 17px; color: #fff; }
+.brand svg { flex: none; }
+.nav-group { margin: 16px 8px 6px; color: var(--side-muted); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+
+nav a {
+    display: block;
+    padding: 6px 10px;
+    border-radius: 7px;
+    color: var(--side-text);
+    text-decoration: none;
+}
+
+nav a:hover { background: rgba(255, 255, 255, .06); }
+nav a.is-active { background: rgba(139, 133, 255, .18); color: #fff; font-weight: 500; }
+
+main { max-width: 980px; padding: 32px 48px 80px; }
+
+section { padding: 8px 0 28px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+section:last-child { border-bottom: 0; }
+
+h1 { margin: 0 0 6px; font-size: 28px; }
+h2 { margin: 12px 0 8px; font-size: 22px; }
+h3 { margin: 22px 0 6px; font-size: 16px; }
+p, li { color: var(--text-2); }
+.lead { font-size: 16px; color: var(--muted); margin-top: 0; }
+ul, ol { padding-left: 22px; }
+li { margin: 3px 0; }
+strong { color: var(--text); }
+a { color: var(--primary); }
+
+figure { margin: 16px 0 20px; }
+figure img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    box-shadow: 0 1px 3px rgba(15, 20, 34, .08);
+}
+figure.small img { max-width: 480px; }
+figcaption { margin-top: 6px; font-size: 13px; color: var(--muted); }
+
+.row { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; }
+.row figure { flex: 1 1 300px; margin: 8px 0; }
+
+.note {
+    margin: 14px 0;
+    padding: 10px 14px;
+    border: 1px solid var(--note-border);
+    border-radius: 9px;
+    background: var(--note);
+    color: var(--text-2);
+}
+
+kbd {
+    display: inline-block;
+    min-width: 22px;
+    padding: 1px 6px;
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: 5px;
+    background: var(--kbd);
+    font: 12px/1.6 "Cascadia Mono", Consolas, monospace;
+    text-align: center;
+}
+
+table { width: 100%; border-collapse: collapse; margin: 10px 0; background: var(--surface); border: 1px solid var(--border); border-radius: 9px; overflow: hidden; }
+th, td { padding: 8px 12px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+th { color: var(--muted); font-size: 13px; font-weight: 600; }
+tr:last-child td { border-bottom: 0; }
+
+.contents { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; padding: 0; list-style: none; }
+.contents a {
+    display: block;
+    height: 100%;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--text);
+    text-decoration: none;
+}
+.contents a:hover { border-color: var(--primary); }
+.contents span { display: block; margin-top: 2px; color: var(--muted); font-size: 13px; }
+
+@media (max-width: 760px) {
+    .layout { grid-template-columns: 1fr; }
+    nav { position: static; height: auto; }
+    main { padding: 20px; }
+}

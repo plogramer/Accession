@@ -54,9 +54,13 @@ public sealed class RecordingDesktop : IDesktop
 
     public void OpenUrl(string url) => Opened.Add(url);
 
+    public List<string> HelpTopics { get; } = [];
+
     public void RequestExit()
     {
     }
+
+    public void ShowHelp(string topic) => HelpTopics.Add(topic);
 
     public string? WebViewRuntimeVersion() => "130.0.0.0";
 }

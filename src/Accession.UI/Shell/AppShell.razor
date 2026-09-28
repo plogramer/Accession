@@ -103,6 +103,10 @@
                         <MenuItem Icon="external" Text="Open matter link" Command="Model.OpenMatterLinkCommand" />
                         <MenuItem Icon="settings" Text="Settings" Command="Model.OpenSettingsCommand" />
                         <div class="menu-sep"></div>
+                        @if (App is not null)
+                        {
+                            <MenuItem Icon="help" Text="Help" Command="App.HelpCommand" CommandParameter="HelpTopics.Contents" />
+                        }
                         <MenuItem Icon="logout" Text="Close inventory" Command="Model.CloseInventoryCommand" />
                     </ChildContent>
                 </Dropdown>
@@ -143,6 +147,8 @@
 </div>
 
 @code {
+    [CascadingParameter] public IAppModel? App { get; set; }
+
     [Parameter, EditorRequired] public IShellModel Model { get; set; } = default!;
 
     /// <summary>The link's host ("dms.contoso.com"), short enough for the top bar; the full address is in the tooltip.</summary>

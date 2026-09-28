@@ -6,6 +6,8 @@ using Accession.Presentation.Mvvm;
 using Accession.Presentation.Services;
 using Accession.Presentation.ViewModels.Shell;
 using Accession.UI.App;
+using CommunityToolkit.Mvvm.Input;
+using Accession.Presentation.Platform;
 using Accession.UI.Components;
 
 namespace Accession.Presentation.ViewModels;
@@ -32,8 +34,10 @@ public sealed class WebAppViewModel : ViewModelBase, IAppModel
         ToastService toasts,
         DialogCenter dialogs,
         Func<StartViewModel> startFactory,
-        Func<WebShellViewModel> shellFactory)
+        Func<WebShellViewModel> shellFactory,
+        IDesktop desktop)
     {
+        HelpCommand = new RelayCommand<string?>(topic => desktop.ShowHelp(topic ?? HelpTopics.Contents));
         _host = host;
         _settings = settings;
         _busy = busy;
@@ -76,6 +80,8 @@ public sealed class WebAppViewModel : ViewModelBase, IAppModel
     public ICommand OpenInventoryCommand => _main.OpenInventoryCommand;
 
     public ICommand OpenSettingsCommand => _main.OpenSettingsCommand;
+
+    public ICommand HelpCommand { get; }
 
     /// <summary>The page rendered at least once (the web view works).</summary>
     public bool IsPageRendered { get; private set; }

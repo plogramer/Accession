@@ -6,9 +6,9 @@
             <h2>Scan queue</h2>
             <p class="muted">One media is scanned at a time; the others wait in order.</p>
         </div>
+        <div class="page-actions">
         @if (Model.IsRunning)
         {
-            <div class="page-actions">
                 @if (Model.IsPaused)
                 {
                     <button class="btn btn-primary" disabled="@Disabled(Model.ResumeCommand)" @onclick="() => Run(Model.ResumeCommand)"><Icon Name="play" Size="16" /> Resume</button>
@@ -18,8 +18,9 @@
                     <button class="btn" disabled="@Disabled(Model.PauseCommand)" @onclick="() => Run(Model.PauseCommand)"><Icon Name="pause" Size="16" /> Pause</button>
                 }
                 <button class="btn btn-danger-outline" disabled="@Disabled(Model.CancelCommand)" @onclick="() => Run(Model.CancelCommand)"><Icon Name="stop" Size="16" /> Cancel</button>
-            </div>
         }
+            <HelpButton Topic="@HelpTopics.ScanQueue" />
+        </div>
     </div>
 
     @if (!Model.IsRunning)

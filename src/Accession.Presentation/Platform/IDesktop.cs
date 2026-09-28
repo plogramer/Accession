@@ -17,6 +17,9 @@ public interface IDesktop
     /// <summary>Closes the main window, which runs the normal close flow.</summary>
     void RequestExit();
 
+    /// <summary>Opens the help window at a topic (e.g. "files"), or brings it to the front there.</summary>
+    void ShowHelp(string topic);
+
     /// <summary>Installed WebView2 runtime version (needed by the web UI), or null when it is missing.</summary>
     string? WebViewRuntimeVersion();
 }

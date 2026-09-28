@@ -33,4 +33,7 @@ public interface IAppModel : INotifyPropertyChanged
     ICommand NewInventoryCommand { get; }
     ICommand OpenInventoryCommand { get; }
     ICommand OpenSettingsCommand { get; }
+
+    /// <summary>Opens the help window; parameter: the topic (see <see cref="HelpTopics"/>), or null for the contents.</summary>
+    ICommand HelpCommand { get; }
 }

@@ -213,6 +213,11 @@ internal sealed partial class FakeApp(object screen) : ObservableObject, IAppMod
     public ICommand OpenInventoryCommand { get; } = new RelayCommand(() => { });
     public ICommand OpenSettingsCommand { get; } = new RelayCommand(() => { });
 
+    /// <summary>Help topics asked for, in order.</summary>
+    public List<string?> HelpShown { get; } = [];
+
+    public ICommand HelpCommand => new RelayCommand<string?>(HelpShown.Add);
+
     public void PageRendered()
     {
     }

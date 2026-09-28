@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Accession Help</title>
+    <link rel="stylesheet" href="help.css" />
+</head>
+<body>
+<div class="layout">
+    <nav aria-label="Help topics">
+        <div class="brand">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8b85ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5Z" /><path d="M4 7.5 12 12l8-4.5M12 12v9" />
+            </svg>
+            Accession Help
+        </div>
+        <a href="#contents">Contents</a>
+        <div class="nav-group">Getting started</div>
+        <a href="#start">Start screen and inventories</a>
+        <a href="#locking">Locking and read-only</a>
+        <div class="nav-group">Screens</div>
+        <a href="#dashboard">Dashboard</a>
+        <a href="#media">Media</a>
+        <a href="#files">Files</a>
+        <a href="#saved-searches">Saved searches</a>
+        <a href="#categories">Categories</a>
+        <a href="#queue">Scan Queue</a>
+        <a href="#errors">Errors</a>
+        <a href="#audit">Audit Log</a>
+        <div class="nav-group">More</div>
+        <a href="#export">Export to Excel</a>
+        <a href="#settings">Settings and properties</a>
+        <a href="#shortcuts">Keyboard shortcuts</a>
+    </nav>
+
+    <main>
+        <section id="contents">
+            <h1>Accession Help</h1>
+            <p class="lead">Accession records every folder and file of the media you receive for a matter, with its SHA-1 hash, in one
+                inventory file. It shows totals by media, category and extension, and exports the inventory to Excel.</p>
+            <p>Press <kbd>F1</kbd> or the <strong>?</strong> button on any screen to open the help for that screen.</p>
+            <ul class="contents">
+                <li><a href="#start"><strong>Start screen and inventories</strong><span>Create or open an inventory</span></a></li>
+                <li><a href="#dashboard"><strong>Dashboard</strong><span>Totals, categories, years, largest files</span></a></li>
+                <li><a href="#media"><strong>Media</strong><span>Add, scan and delete media</span></a></li>
+                <li><a href="#files"><strong>Files</strong><span>Browse, filter and find files</span></a></li>
+                <li><a href="#saved-searches"><strong>Saved searches</strong><span>Collect files in named lists</span></a></li>
+                <li><a href="#categories"><strong>Categories</strong><span>Files grouped by extension</span></a></li>
+                <li><a href="#queue"><strong>Scan Queue</strong><span>The running scan and what waits</span></a></li>
+                <li><a href="#errors"><strong>Errors</strong><span>Files that could not be read</span></a></li>
+                <li><a href="#audit"><strong>Audit Log</strong><span>Every change, who and when</span></a></li>
+                <li><a href="#export"><strong>Export to Excel</strong><span>Workbooks for the producing party</span></a></li>
+                <li><a href="#settings"><strong>Settings and properties</strong><span>Units, times, scanning, matter details</span></a></li>
+                <li><a href="#locking"><strong>Locking and read-only</strong><span>Working with others on one inventory</span></a></li>
+            </ul>
+            <div class="note">Accession never changes the media it scans: files are only read, never opened in other programs, moved or
+                modified. Their dates and contents stay exactly as received.</div>
+        </section>
+
+        <section id="start">
+            <h2>Start screen and inventories</h2>
+            <p>An <strong>inventory</strong> is a single file (<code>.sqlite</code>) that holds everything about one matter's media. You can
+                keep it on a network share so colleagues can open it too.</p>
+            <figure><img src="images/start.png" alt="The Start screen with New inventory, Open inventory and the recent inventories" />
+                <figcaption>The Start screen: create or open an inventory, or pick a recent one.</figcaption></figure>
+            <ul>
+                <li><strong>New inventory</strong> (<kbd>Ctrl</kbd> <kbd>N</kbd>) asks for the matter details and the <strong>root folder</strong>:
+                    the folder whose subfolders are the media (for example <code>\\evidence01\intake\NW-2026-0142</code> with
+                    <code>123-123_001</code>, <code>123-123_002</code>, … inside).</li>
+                <li><strong>Open inventory</strong> (<kbd>Ctrl</kbd> <kbd>O</kbd>) opens an inventory file. <strong>Recent inventories</strong>
+                    lists the ones you opened before; files that have moved are marked <em>Not found</em>.</li>
+                <li>The settings (gear) and the light/dark theme switch are at the top right.</li>
+            </ul>
+            <figure class="small"><img src="images/dialog-new-inventory.png" alt="New inventory dialog" />
+                <figcaption>New inventory: Client, Matter, an optional description and matter link, the root folder and where to save the file.</figcaption></figure>
+            <h3>When an inventory opens</h3>
+            <ul>
+                <li><strong>Older inventory</strong>: if it was made by an older version of Accession, you are asked to
+                    <em>Back up and upgrade</em>. A backup copy is kept next to the file.</li>
+                <li><strong>Root folder not reachable</strong> (share offline, moved): <em>Retry</em>, <em>Open offline</em> (browse only,
+                    no scanning) or <em>Change root path…</em> if the media were moved.</li>
+                <li><strong>New media found</strong>: folders under the root that are not in the inventory yet are offered for adding.</li>
+                <li>Someone else has it open: see <a href="#locking">Locking and read-only</a>.</li>
+            </ul>
+        </section>
+
+        <section id="dashboard">
+            <h2>Dashboard</h2>
+            <p>Everything received for the matter at a glance: totals, the media, categories, extensions, files by year and the largest
+                files. Most parts can be clicked to open the matching files on the <a href="#files">Files</a> screen.</p>
+            <figure><img src="images/dashboard.png" alt="The Dashboard" />
+                <figcaption>Tiles at the top, then By media, By category, By extension, Files by year modified and Largest files.</figcaption></figure>
+            <h3>Choosing media</h3>
+            <p>Tick media in the <strong>By media</strong> table to update the whole dashboard for just those media. The header tick box
+                selects all or none. Unticked media stay in the list, dimmed, so you can tick them again.</p>
+            <figure><img src="images/dashboard-by-media.png" alt="By media table with three media ticked and two unticked" />
+                <figcaption>Three media ticked: the tiles, categories and charts show only their files.</figcaption></figure>
+            <p>The media filter at the top right does the same, with <em>Select all</em>, <em>Unselect all</em>, a search box and
+                <em>Only</em> (select just that media). With no media ticked the dashboard says so instead of showing empty charts.</p>
+            <figure class="small"><img src="images/dashboard-none-selected.png" alt="No media selected message" /></figure>
+            <h3>Going to the files</h3>
+            <ul>
+                <li>Click a <strong>media row</strong> to browse its files; click a <strong>category</strong> to filter the extension table,
+                    or its arrow to open those files.</li>
+                <li>Click an <strong>extension</strong>, a <strong>year</strong> column, the <strong>Duplicates</strong> tile or a
+                    <strong>largest file</strong> to open the matching files. Your media choice goes with you.</li>
+            </ul>
+            <div class="note">While a scan runs, Duplicates, Files by year and Largest files wait until it finishes, so the scan is not slowed down.</div>
+        </section>
+
+        <section id="media">
+            <h2>Media</h2>
+            <p>The media are the folders directly under the root folder, one per drive, device or delivery (for example
+                <code>123-123_001</code>). This screen lists them with their status and totals.</p>
+            <figure><img src="images/media.png" alt="Media screen with the list and the details panel" />
+                <figcaption>The media list, with the details of the selected media on the right.</figcaption></figure>
+            <ul>
+                <li><strong>Add media</strong> adds media folders; <strong>Discover</strong> looks for new folders under the root.</li>
+                <li>Select a media to see its details: totals, the scan history, <strong>Browse files</strong>, <strong>Scan</strong>, and
+                    under <em>More</em>: <em>Rescan</em>, <em>Resume</em> an interrupted scan, <em>Retry failed</em> files.</li>
+                <li>Tick several media to scan them together. <strong>Scan pending</strong> (top bar) scans every media not scanned yet.</li>
+                <li><strong>Export</strong> exports the ticked media (or all) to Excel.</li>
+                <li><strong>Delete…</strong> removes a media and its file list from the inventory (you type its Media ID to confirm). The
+                    folder on disk is not touched, and the audit log keeps a record.</li>
+            </ul>
+            <div class="row">
+                <figure><img src="images/media-detail.png" alt="Media details panel" />
+                    <figcaption>Details: totals, actions and scan history.</figcaption></figure>
+                <div>
+                    <h3>Status</h3>
+                    <table>
+                        <tr><th>Status</th><th>Meaning</th></tr>
+                        <tr><td>New</td><td>Added, not scanned yet.</td></tr>
+                        <tr><td>Queued, Scanning, Hashing</td><td>Waiting or being scanned (files listed, then hashed).</td></tr>
+                        <tr><td>Completed</td><td>Every file listed and hashed.</td></tr>
+                        <tr><td>Completed with errors</td><td>Done, but some files could not be read: see <a href="#errors">Errors</a>.</td></tr>
+                        <tr><td>Incomplete</td><td>The scan was interrupted; <em>Resume</em> finishes it.</td></tr>
+                        <tr><td>Missing</td><td>The folder is no longer under the root.</td></tr>
+                    </table>
+                </div>
+            </div>
+            <figure><img src="images/media-scanning.png" alt="Media screen while a scan runs" />
+                <figcaption>During a scan the top bar shows its progress with Pause, Resume and Cancel.</figcaption></figure>
+        </section>
+
+        <section id="files">
+            <h2>Files</h2>
+            <p>Every file in the inventory with its folder, size, dates and SHA-1. Choose <em>where</em> to look on the left, narrow the list
+                with filters, and act on a file.</p>
+            <figure><img src="images/files.png" alt="Files screen" />
+                <figcaption>The Media tree on the left, filters at the top, and the file table with its pager.</figcaption></figure>
+            <h3>Where: the Media tab</h3>
+            <div class="row">
+                <figure><img src="images/files-tree.png" alt="Media tree" /></figure>
+                <div>
+                    <p>The <strong>Media</strong> tab lists the media; expand one to see its folders. Click a media or folder to show its
+                        files, with or without <strong>Include subfolders</strong>. <strong>All media</strong> shows everything.</p>
+                    <p>The list always has one location: a media or folder, a <a href="#saved-searches">saved search</a>, or the media you
+                        chose on the Dashboard. Choosing another replaces it. <em>Browse files</em> on the Media screen or Dashboard selects
+                        the media here.</p>
+                </div>
+            </div>
+            <h3>Filters</h3>
+            <figure><img src="images/files-filters.png" alt="Filter bar with chips" /></figure>
+            <ul>
+                <li>Type a <strong>name</strong> or <strong>extension</strong> (<code>(none)</code> for files without one), choose a
+                    <strong>category</strong>, or open <strong>More</strong> for hash status, size, modified dates, duplicates only, files
+                    with errors and an exact SHA-1. Press <em>Apply</em> or <kbd>Enter</kbd>.</li>
+                <li>Applied filters show as chips under the filter bar. The <strong>×</strong> on a chip removes just that filter;
+                    <strong>Clear all</strong> removes all of them.</li>
+                <li>Filters stay while you move around the tree, so you can narrow a category or extension folder by folder.</li>
+            </ul>
+            <h3>The table</h3>
+            <ul>
+                <li>Click a column header to sort; the <strong>columns</strong> button shows or hides columns.</li>
+                <li>Pages hold 1,000 files by default (<em>Rows per page</em> up to 50,000); the pager jumps to any page.</li>
+                <li>Select a file for <strong>Copy path</strong>, <strong>Copy SHA-1</strong>, <strong>Show in folder</strong> (Explorer) and
+                    <strong>All copies</strong> (every file with the same SHA-1). Files are never opened.</li>
+                <li><strong>Export current view</strong> exports exactly the files shown (all pages) to Excel.</li>
+            </ul>
+        </section>
+
+        <section id="saved-searches">
+            <h2>Saved searches</h2>
+            <p>A saved search is a named list of files you collect, for example "Privileged" or "Board minutes 2021". It is kept in the
+                inventory, so everyone who opens it sees the same lists.</p>
+            <figure><img src="images/files-saved-searches.png" alt="Files screen with the Saved searches tab" />
+                <figcaption>A saved search open: its files are listed, and the bar above the table adds or removes files.</figcaption></figure>
+            <div class="row">
+                <figure><img src="images/saved-search-list.png" alt="Saved searches list" />
+                    <figcaption>Each saved search with its file count and size.</figcaption></figure>
+                <div>
+                    <h3>Collecting files</h3>
+                    <ol>
+                        <li>Filter the files (or tick rows in the table).</li>
+                        <li>Choose <strong>Add to saved search</strong>: add <em>all results</em> (every page) or the <em>ticked</em> files, to
+                            an existing saved search or a <em>New saved search…</em>.</li>
+                    </ol>
+                    <p>A file already in the list is not added twice.</p>
+                    <h3>Working with a saved search</h3>
+                    <ul>
+                        <li>Click it on the <strong>Saved searches</strong> tab to show its files; the filters narrow within it.</li>
+                        <li><strong>Remove ticked</strong> and <strong>Remove all results</strong> take files out of it (the files themselves
+                            are not changed).</li>
+                        <li>The <strong>⋯</strong> menu edits its name and description or deletes it.</li>
+                    </ul>
+                </div>
+            </div>
+            <figure><img src="images/saved-search-bar.png" alt="Saved search bar with ticked files and actions" /></figure>
+            <div class="row">
+                <figure class="small"><img src="images/dialog-saved-search.png" alt="New saved search dialog" /></figure>
+                <p>Names must be unique. Files stay in a saved search after a rescan; deleting a media removes its files from saved searches.
+                    Every change is recorded in the audit log.</p>
+            </div>
+        </section>
+
+        <section id="categories">
+            <h2>Categories</h2>
+            <p>Files are grouped by extension into fixed categories (Email, Documents, Spreadsheets, Images, …). Select a category to see its
+                extensions with their file counts and sizes; open files from here on the <a href="#files">Files</a> screen.</p>
+            <figure><img src="images/categories.png" alt="Categories screen" /></figure>
+        </section>
+
+        <section id="queue">
+            <h2>Scan Queue</h2>
+            <p>One media is scanned at a time; the others wait in order. The screen shows the running scan (what it is doing, files and speed)
+                and the media waiting.</p>
+            <figure><img src="images/scan-queue.png" alt="Scan Queue screen" /></figure>
+            <ul>
+                <li><strong>Pause</strong>, <strong>Resume</strong> and <strong>Cancel</strong> control the running scan. A cancelled or
+                    interrupted scan can be finished later with <em>Resume</em> on the Media screen.</li>
+                <li>Use <em>Move up</em>, <em>Move down</em> and <em>Remove from queue</em> on waiting media.</li>
+                <li>Closing Accession during a scan asks first; the scan can be resumed the next time.</li>
+            </ul>
+        </section>
+
+        <section id="errors">
+            <h2>Errors</h2>
+            <p>Files and folders that could not be read or hashed (locked, access denied, changed while being scanned, …). They are listed so you can report
+                them to the sender, and they are included in the Excel export.</p>
+            <figure><img src="images/errors.png" alt="Errors screen" /></figure>
+            <ul>
+                <li>Filter by <strong>media</strong> and <strong>error type</strong>. <strong>Show info entries</strong> adds notes such as
+                    skipped links (these are not errors).</li>
+                <li>Select an entry for <strong>Copy path</strong> or <strong>Show in folder</strong>.</li>
+                <li><strong>Retry failed</strong> hashes the failed files of the chosen media again, for example after a locked file was closed.</li>
+            </ul>
+        </section>
+
+        <section id="audit">
+            <h2>Audit Log</h2>
+            <p>Every change to the inventory, who made it, on which computer and when: created, opened, media added or deleted, scans,
+                exports, saved searches and more. Entries can never be edited or deleted.</p>
+            <figure><img src="images/audit.png" alt="Audit Log screen" /></figure>
+            <ul>
+                <li>Filter by action, user, media and date range; <strong>Clear</strong> resets the filters.</li>
+                <li>Select an entry to see its details.</li>
+                <li><strong>Export</strong> saves the entries matching the filters to an Excel workbook.</li>
+            </ul>
+        </section>
+
+        <section id="export">
+            <h2>Export to Excel</h2>
+            <p>Export the inventory to an Excel workbook to send to the producing party. Start it from <strong>Export to Excel…</strong> in the
+                <strong>⋯</strong> menu, <strong>Export</strong> on the Media screen (ticked media) or <strong>Export current view</strong> on
+                the Files screen.</p>
+            <div class="row">
+                <figure><img src="images/dialog-export.png" alt="Export to Excel dialog" /></figure>
+                <div>
+                    <ul>
+                        <li><strong>Scope</strong>: all media, selected media, or the current Files view (exactly the files it shows).</li>
+                        <li><strong>Sheets</strong>: Summary, Media, Categories, Extensions, Files and Errors; untick the ones you do not need.</li>
+                        <li><strong>One workbook per media</strong> writes a workbook for each media, named with its Media ID.</li>
+                        <li><strong>Estimated rows</strong> shows how big the export will be and how many Files sheets it needs.</li>
+                    </ul>
+                    <h3>In the workbook</h3>
+                    <ul>
+                        <li>Sizes are in two columns: <strong>Size (bytes)</strong> and <strong>Size (MB)</strong> (numbers, so Excel can sort
+                            and add them; MiB with binary units in Settings).</li>
+                        <li>Dates are in UTC. Each sheet has a frozen, filtered header row.</li>
+                        <li>Excel holds about a million rows per sheet: larger file lists continue on <em>Files (1)</em>, <em>Files (2)</em>, …</li>
+                    </ul>
+                </div>
+            </div>
+            <p>The export runs in the background with its progress and a <strong>Cancel</strong> button; a cancelled export leaves no file
+                behind. When it finishes you can open the folder. Every export is recorded in the audit log.</p>
+        </section>
+
+        <section id="settings">
+            <h2>Settings and properties</h2>
+            <div class="row">
+                <figure><img src="images/dialog-settings.png" alt="Settings dialog" /></figure>
+                <div>
+                    <h3>Settings</h3>
+                    <p>Open Settings with the gear on the Start screen, <strong>Settings</strong> in the <strong>⋯</strong> menu or
+                        <kbd>Ctrl</kbd> <kbd>,</kbd>. They apply to you on this computer.</p>
+                    <ul>
+                        <li><strong>Display</strong>: sizes in decimal (KB, MB, GB) or binary (KiB, MiB, GiB) units; times in local or UTC.</li>
+                        <li><strong>Scanning</strong>: threads for listing and hashing, and the database batch size. The defaults suit most shares.</li>
+                        <li><strong>Export</strong>: the default export folder and whether to write one workbook per media.</li>
+                    </ul>
+                    <h3>Inventory properties</h3>
+                    <p><strong>Inventory properties</strong> in the <strong>⋯</strong> menu edits the matter details (client, matter, IDs,
+                        description, matter link) and shows the inventory's facts. <strong>Change root path</strong> points the inventory at
+                        media that were moved, without scanning again.</p>
+                </div>
+            </div>
+            <h3>The top bar</h3>
+            <figure><img src="images/topbar-matter-link.png" alt="Top bar with the matter link" />
+                <figcaption>The matter name, its ID and the matter link (click to open it in your browser).</figcaption></figure>
+            <p>The theme switch at the bottom of the side navigation chooses light, dark or the Windows setting.</p>
+            <figure><img src="images/dashboard-dark.png" alt="Dashboard in the dark theme" /><figcaption>The dark theme.</figcaption></figure>
+        </section>
+
+        <section id="locking">
+            <h2>Locking and read-only</h2>
+            <p>Only one person at a time can change an inventory. When you open it, you hold its lock; others can still open it
+                <strong>read-only</strong> to browse and export.</p>
+            <ul>
+                <li>If someone else has it open, you see who and on which computer, and can <em>Open read-only</em>. When their session is no
+                    longer active (for example their computer went to sleep), you can also <em>Take over lock</em>.</li>
+                <li>If Accession was not closed properly on your computer, it simply opens normally and says the last session was not closed.</li>
+                <li>A read-only inventory shows an amber chip in the top bar with who has it open; hover over it for how to edit.</li>
+            </ul>
+            <figure><img src="images/topbar-read-only.png" alt="Top bar with the read-only chip" />
+                <figcaption>Read-only: the chip names the person and computer holding the inventory.</figcaption></figure>
+        </section>
+
+        <section id="shortcuts">
+            <h2>Keyboard shortcuts</h2>
+            <table>
+                <tr><th>Keys</th><th>Action</th></tr>
+                <tr><td><kbd>F1</kbd></td><td>Help for the screen shown</td></tr>
+                <tr><td><kbd>Ctrl</kbd> <kbd>N</kbd></td><td>New inventory</td></tr>
+                <tr><td><kbd>Ctrl</kbd> <kbd>O</kbd></td><td>Open inventory</td></tr>
+                <tr><td><kbd>Ctrl</kbd> <kbd>,</kbd></td><td>Settings</td></tr>
+                <tr><td><kbd>F5</kbd></td><td>Refresh the screen</td></tr>
+                <tr><td><kbd>Ctrl</kbd> <kbd>F</kbd></td><td>Find (the screen's search box)</td></tr>
+                <tr><td><kbd>Alt</kbd> <kbd>1</kbd> … <kbd>7</kbd></td><td>Go to a screen in the side navigation</td></tr>
+                <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>Move through table rows</td></tr>
+                <tr><td><kbd>Enter</kbd></td><td>Open the selected row, confirm a dialog</td></tr>
+                <tr><td><kbd>Esc</kbd></td><td>Close a dialog or menu (and this help window)</td></tr>
+                <tr><td><kbd>?</kbd></td><td>Show the shortcut list in the app</td></tr>
+            </table>
+        </section>
+    </main>
+</div>
+
+<script>
+    // Highlights the topic in the menu for the section shown (opened at #topic, clicked, or scrolled to).
+    (function () {
+        const links = Array.from(document.querySelectorAll("nav a"));
+        const sections = Array.from(document.querySelectorAll("main section"));
+
+        function mark(id) {
+            links.forEach(a => a.classList.toggle("is-active", a.getAttribute("href") === "#" + id));
+        }
+
+        window.addEventListener("hashchange", () => mark(location.hash.slice(1) || "contents"));
+        mark(location.hash.slice(1) || "contents");
+
+        const observer = new IntersectionObserver(entries => {
+            const visible = entries.filter(e => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+            if (visible.length > 0) {
+                mark(visible[0].target.id);
+            }
+        }, { rootMargin: "0px 0px -70% 0px" });
+        sections.forEach(s => observer.observe(s));
+    })();
+</script>
+</body>
+</html>

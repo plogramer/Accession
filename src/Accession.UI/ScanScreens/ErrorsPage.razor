@@ -10,6 +10,7 @@
             <button class="icon-btn icon-btn-lg" title="Refresh" @onclick="() => Run(Model.RefreshCommand)"><Icon Name="refresh" /></button>
             <button class="btn" disabled="@Disabled(Model.RetryFailedCommand)" title="Hash the failed files of the chosen media again"
                     @onclick="() => Run(Model.RetryFailedCommand)"><Icon Name="refresh" Size="16" /> Retry failed</button>
+            <HelpButton Topic="@HelpTopics.Errors" />
         </div>
     </div>
 

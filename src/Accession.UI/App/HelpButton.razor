@@ -1,0 +1,23 @@
+@* "?" in a page header: opens the help window at this screen's topic. *@
+@if (App is not null)
+{
+    <button class="icon-btn icon-btn-lg help-btn" title="Help for this screen (F1)" aria-label="Help for this screen"
+            @onclick="Open">
+        <Icon Name="help" />
+    </button>
+}
+
+@code {
+    [CascadingParameter] public IAppModel? App { get; set; }
+
+    [Parameter, EditorRequired] public string Topic { get; set; } = HelpTopics.Contents;
+
+    private async Task Open()
+    {
+        await Task.Yield();
+        if (App?.HelpCommand.CanExecute(Topic) == true)
+        {
+            App.HelpCommand.Execute(Topic);
+        }
+    }
+}
