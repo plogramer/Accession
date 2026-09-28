@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using Accession.Core.Inventories;
 using Accession.Core.Settings;
@@ -145,13 +146,18 @@ public sealed class InventoryWorkflows
             using (var busy = _busy.Begin("Opening inventory…"))
             {
                 // On a background thread: the open may ask questions, and web dialogs need the UI thread free to answer.
+                var watch = Stopwatch.StartNew();
                 session = await Task.Run(() => _opener.Open(path, _interaction));
+                var opened = watch.ElapsedMilliseconds;
                 if (session is not null)
                 {
-                    // Building the screens runs on the UI thread; the progress stays up (and animates) meanwhile.
+                    // The screens are built on the UI thread, but read the database in the background.
                     busy.Update("Loading the inventory…");
                     await Task.Delay(30); // let the page show the new message first
+                    watch.Restart();
                     Activate(session);
+                    _logger.LogInformation("Opened {Path}: file checks, lock and recovery {Opened} ms, screens {Screens} ms",
+                        path, opened, watch.ElapsedMilliseconds);
                 }
             }
 

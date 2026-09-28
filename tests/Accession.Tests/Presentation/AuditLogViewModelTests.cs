@@ -37,9 +37,9 @@ public sealed class AuditLogViewModelTests : IDisposable
     }
 
     [Fact]
-    public void First_page_is_the_newest_entries()
+    public async Task First_page_is_the_newest_entries()
     {
-        using var vm = Create();
+        using var vm = await Create();
 
         Assert.Equal(1_200 + _existing, vm.TotalCount);
         Assert.Equal(500, vm.PageRows.Count);
@@ -49,7 +49,7 @@ public sealed class AuditLogViewModelTests : IDisposable
     [Fact]
     public async Task Jump_to_the_last_page_and_back()
     {
-        using var vm = Create();
+        using var vm = await Create();
 
         await vm.GoToPageAsync(99);
         Assert.Equal(2, vm.PageIndex);
@@ -60,9 +60,9 @@ public sealed class AuditLogViewModelTests : IDisposable
     }
 
     [Fact]
-    public void Filters_by_action_and_media()
+    public async Task Filters_by_action_and_media()
     {
-        using var vm = Create();
+        using var vm = await Create();
 
         vm.ActionFilterValue = nameof(AuditAction.MediaDeleted);
         Assert.Equal(300, vm.TotalCount);
@@ -77,9 +77,9 @@ public sealed class AuditLogViewModelTests : IDisposable
     }
 
     [Fact]
-    public void Date_filter_uses_local_dates()
+    public async Task Date_filter_uses_local_dates()
     {
-        using var vm = Create();
+        using var vm = await Create();
 
         vm.FromDateText = "2030-01-01";
 
@@ -87,5 +87,10 @@ public sealed class AuditLogViewModelTests : IDisposable
         Assert.Equal("2030-01-01", vm.FromDateText);
     }
 
-    private AuditLogViewModel Create() => new(_host, new TestSettings(), NullLogger<AuditLogViewModel>.Instance);
+    private async Task<AuditLogViewModel> Create()
+    {
+        var vm = new AuditLogViewModel(_host, new TestSettings(), NullLogger<AuditLogViewModel>.Instance);
+        await vm.LastLoad; // read in the background
+        return vm;
+    }
 }

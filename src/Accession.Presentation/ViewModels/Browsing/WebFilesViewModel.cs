@@ -60,6 +60,7 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
     private long? _mediaWithoutFolders;
     private Dictionary<long, FolderTreeNode> _mediaRoots = [];
     private Dictionary<long, string> _mediaNames = [];
+    private int _lookupsVersion;
 
     public WebFilesViewModel(InventoryHost host, FileBrowserQueries queries, CategoryQueries categories, ISettingsService settings,
         IDesktop desktop, IDialogService dialogs, ToastService toasts, ILogger<WebFilesViewModel> logger, ExportWorkflow? export = null,
@@ -79,9 +80,12 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
         PageSize = settings.Current.FilesPageSize;
         VisibleColumns = settings.Current.FilesColumns.ToHashSet(StringComparer.Ordinal);
         _host.MediaChanged += OnMediaChanged;
-        LoadLookups();
+        LastLookups = LoadLookupsAsync();
         _ = ReloadAsync();
     }
+
+    /// <summary>The latest load of the media tree, categories and saved searches (tests wait for it).</summary>
+    public Task LastLookups { get; private set; } = Task.CompletedTask;
 
     // ---- Saved searches ----
 
@@ -252,14 +256,14 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
     private SavedSearchInfo? Info(SavedSearchRow row) =>
         _savedSearchWorkflow?.List().FirstOrDefault(s => s.SavedSearchId == row.Id);
 
-    private void LoadSavedSearches()
+    private void LoadSavedSearches(IReadOnlyList<SavedSearchInfo>? list = null)
     {
         var unit = _settings.Current.SizeUnit;
         var zone = _settings.Current.DisplayTimeZone;
         var culture = CultureInfo.CurrentCulture;
         var selectedId = SelectedSavedSearch?.Id;
         SavedSearches.Clear();
-        foreach (var s in _savedSearchWorkflow?.List() ?? [])
+        foreach (var s in list ?? _savedSearchWorkflow?.List() ?? [])
         {
             SavedSearches.Add(new SavedSearchRow(s.SavedSearchId, s.Name, s.Description ?? string.Empty, s.FileCount,
                 s.FileCount == 1 ? "1 file" : $"{s.FileCount.ToString("N0", culture)} files", SizeFormatter.Format(s.TotalBytes, unit),
@@ -780,10 +784,10 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
     private string ViewText() => ActiveFilters.Count == 0 ? string.Empty : string.Join(" · ", ActiveFilters.Select(c => c.Label));
 
     [RelayCommand]
-    private Task Refresh()
+    private async Task Refresh()
     {
-        LoadLookups();
-        return ReloadAsync();
+        await (LastLookups = LoadLookupsAsync());
+        await ReloadAsync();
     }
 
     [RelayCommand(CanExecute = nameof(HasSelection))]
@@ -1062,18 +1066,52 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
         return (value / unitBytes).ToString("0.######", CultureInfo.CurrentCulture);
     }
 
-    private void LoadLookups()
+    /// <summary>
+    /// Reads the media tree, categories and saved searches on a background thread: the UI thread never waits for
+    /// the database (e.g. behind a scan's write), which froze the app while an inventory opened.
+    /// </summary>
+    private async Task LoadLookupsAsync()
     {
         if (_host.Session is not { } session)
         {
             return;
         }
 
+        var version = ++_lookupsVersion;
+        var database = session.Database;
+        var savedSearches = _savedSearchWorkflow;
+        IReadOnlyList<FolderNode> roots;
+        Dictionary<long, string> names;
+        IReadOnlyList<CategoryCount> categories;
+        IReadOnlyList<SavedSearchInfo> saved;
+        try
+        {
+            (roots, names, categories, saved) = await Task.Run(() =>
+            {
+                var mediaRoots = _queries.MediaRoots(database);
+                Dictionary<long, string> mediaNames;
+                using (var scope = database.Open())
+                {
+                    mediaNames = new Accession.Data.Repositories.MediaRepository(scope).ListActive().ToDictionary(m => m.MediaKey, m => m.MediaId);
+                }
+
+                return (mediaRoots, mediaNames, _categories.Categories(database), savedSearches?.List() ?? []);
+            });
+        }
+        catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or IOException)
+        {
+            _logger.LogError(ex, "Loading the Files lookups failed");
+            return;
+        }
+
+        if (version != _lookupsVersion || !ReferenceEquals(_host.Session, session))
+        {
+            return; // a newer load is on its way
+        }
+
         _suppressApply = true;
         try
         {
-            var database = session.Database;
-            var roots = _queries.MediaRoots(database);
             _mediaKeys = roots.Select(r => r.MediaKey).ToHashSet();
             Folders.Clear();
             _mediaRoots = [];
@@ -1084,22 +1122,14 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
                 _mediaRoots[root.MediaKey] = node;
             }
 
-            using (var scope = database.Open())
-            {
-                _mediaNames = new Accession.Data.Repositories.MediaRepository(scope).ListActive().ToDictionary(m => m.MediaKey, m => m.MediaId);
-            }
-
+            _mediaNames = names;
             CategoryOptions =
             [
                 new(string.Empty, "All categories"),
-                .. _categories.Categories(database).Select(c => new SelectOption(c.CategoryId.ToString(CultureInfo.InvariantCulture), c.Name)),
+                .. categories.Select(c => new SelectOption(c.CategoryId.ToString(CultureInfo.InvariantCulture), c.Name)),
             ];
             SelectedFolder = null;
-            LoadSavedSearches();
-        }
-        catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or IOException)
-        {
-            _logger.LogError(ex, "Loading the Files lookups failed");
+            LoadSavedSearches(saved);
         }
         finally
         {
@@ -1229,21 +1259,32 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
         _ => FileSortColumn.Default,
     };
 
-    private void OnMediaChanged(object? sender, EventArgs e)
+    private void OnMediaChanged(object? sender, EventArgs e) => _ = OnMediaChangedAsync();
+
+    private async Task OnMediaChangedAsync()
     {
         // Scans report status changes here. Keep the current page; refresh the count, and the tree if media changed.
-        if (_host.Session is { } session)
-        {
-            var keys = _queries.MediaRoots(session.Database).Select(r => r.MediaKey).ToHashSet();
-            if (!keys.SetEquals(_mediaKeys))
-            {
-                LoadLookups();
-            }
-        }
-
         if (_pager is { } pager && _cancel is { } cancel)
         {
             _ = CountAsync(pager, _settings.Current.SizeUnit, cancel.Token);
+        }
+
+        if (_host.Session is not { } session)
+        {
+            return;
+        }
+
+        try
+        {
+            var keys = await Task.Run(() => _queries.MediaRoots(session.Database).Select(r => r.MediaKey).ToHashSet());
+            if (!keys.SetEquals(_mediaKeys) && ReferenceEquals(_host.Session, session))
+            {
+                await (LastLookups = LoadLookupsAsync());
+            }
+        }
+        catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or IOException)
+        {
+            _logger.LogError(ex, "Checking the Files media tree failed");
         }
     }
 }

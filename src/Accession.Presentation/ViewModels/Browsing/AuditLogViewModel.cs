@@ -27,6 +27,7 @@ public sealed partial class AuditLogViewModel : ViewModelBase, IAuditModel, IDis
     private readonly ISettingsService _settings;
     private readonly ILogger<AuditLogViewModel> _logger;
     private bool _loading;
+    private int _pageVersion;
     private readonly Dictionary<int, long?> _pageStarts = new() { [0] = null };
 
     private readonly ExportWorkflow? _export;
@@ -38,11 +39,15 @@ public sealed partial class AuditLogViewModel : ViewModelBase, IAuditModel, IDis
         _settings = settings;
         _logger = logger;
         ActionOptions = [new Option<AuditAction?>(null, "All actions"), .. Enum.GetValues<AuditAction>().Select(a => new Option<AuditAction?>(a, a.ToString()))];
+        _loading = true; // the first page is read in the background below
         SelectedAction = ActionOptions[0];
+        _loading = false;
         _host.MediaChanged += OnChanged;
-        LoadUsers();
-        ResetNumberedPages();
+        LastLoad = LoadAsync(users: true);
     }
+
+    /// <summary>The latest background load (tests wait for it).</summary>
+    public Task LastLoad { get; private set; } = Task.CompletedTask;
 
     public IReadOnlyList<Option<AuditAction?>> ActionOptions { get; }
 
@@ -172,11 +177,7 @@ public sealed partial class AuditLogViewModel : ViewModelBase, IAuditModel, IDis
     private void ApplyMediaFilter() => Reload();
 
     [RelayCommand]
-    private void Refresh()
-    {
-        LoadUsers();
-        ResetNumberedPages();
-    }
+    private void Refresh() => LastLoad = LoadAsync(users: true);
 
     [RelayCommand(CanExecute = nameof(CanExport))]
     private Task Export() => _export!.ExportAuditLogAsync(CurrentQuery() with { PageSize = 500 });
@@ -203,35 +204,77 @@ public sealed partial class AuditLogViewModel : ViewModelBase, IAuditModel, IDis
         }
     }
 
-    private void LoadUsers()
+    /// <summary>
+    /// Reads the users, the total and the first page on a background thread: the UI thread never waits for the
+    /// database (e.g. behind a scan's write), which froze the app while an inventory opened.
+    /// </summary>
+    private async Task LoadAsync(bool users)
     {
         if (_host.Session is not { } session)
         {
             return;
         }
 
-        _loading = true;
+        var version = ++_pageVersion;
+        var query = CurrentQuery();
+        var zone = _settings.Current.DisplayTimeZone;
+        IReadOnlyList<string>? names;
+        long total;
+        IReadOnlyList<AuditEntry> page;
         try
         {
-            var selected = SelectedUser?.Value;
-            UserOptions.Clear();
-            UserOptions.Add(new Option<string?>(null, "All users"));
-            foreach (var user in session.Audit.ListUserNames())
-            {
-                UserOptions.Add(new Option<string?>(user, user));
-            }
-
-            SelectedUser = UserOptions.FirstOrDefault(u => u.Value == selected) ?? UserOptions[0];
-            OnPropertyChanged(nameof(UserFilterOptions));
+            (names, total, page) = await Task.Run(() => (users ? session.Audit.ListUserNames() : null, session.Audit.Count(query), session.Audit.Query(query)));
         }
         catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or System.IO.IOException)
         {
-            _logger.LogError(ex, "Loading audit users failed");
+            _logger.LogError(ex, "Loading the audit log failed");
+            return;
         }
-        finally
+
+        if (names is not null)
         {
-            _loading = false;
+            _loading = true;
+            try
+            {
+                var selected = SelectedUser?.Value;
+                UserOptions.Clear();
+                UserOptions.Add(new Option<string?>(null, "All users"));
+                foreach (var user in names)
+                {
+                    UserOptions.Add(new Option<string?>(user, user));
+                }
+
+                SelectedUser = UserOptions.FirstOrDefault(u => u.Value == selected) ?? UserOptions[0];
+                OnPropertyChanged(nameof(UserFilterOptions));
+            }
+            finally
+            {
+                _loading = false;
+            }
         }
+
+        if (version != _pageVersion)
+        {
+            return; // the filters changed meanwhile, and that page is already shown
+        }
+
+        TotalCount = total;
+        _pageStarts.Clear();
+        _pageStarts[0] = null;
+        ShowPage(page, 0, zone);
+    }
+
+    private void ShowPage(IReadOnlyList<AuditEntry> page, int pageIndex, DisplayTimeZone zone)
+    {
+        if (page.Count == AuditPageSize)
+        {
+            _pageStarts[pageIndex + 1] = page[^1].AuditId;
+        }
+
+        PageRows = [.. page.Select(entry => new AuditRowVm(entry.AuditId, TimeFormatter.Format(entry.OccurredAtUtc, zone), entry.UserName,
+            entry.MachineName, entry.Action.ToString(), entry.MediaId ?? string.Empty, entry.Details ?? string.Empty))];
+        PageIndex = pageIndex;
+        SelectedRow = null;
     }
 
     private AuditQuery CurrentQuery() => new()
@@ -246,6 +289,7 @@ public sealed partial class AuditLogViewModel : ViewModelBase, IAuditModel, IDis
 
     private void ResetNumberedPages()
     {
+        _pageVersion++;
         _pageStarts.Clear();
         _pageStarts[0] = null;
         if (_host.Session is { } session)
@@ -277,16 +321,7 @@ public sealed partial class AuditLogViewModel : ViewModelBase, IAuditModel, IDis
         try
         {
             var zone = _settings.Current.DisplayTimeZone;
-            var page = session.Audit.Query(query);
-            if (page.Count == AuditPageSize)
-            {
-                _pageStarts[pageIndex + 1] = page[^1].AuditId;
-            }
-
-            PageRows = [.. page.Select(entry => new AuditRowVm(entry.AuditId, TimeFormatter.Format(entry.OccurredAtUtc, zone), entry.UserName,
-                entry.MachineName, entry.Action.ToString(), entry.MediaId ?? string.Empty, entry.Details ?? string.Empty))];
-            PageIndex = pageIndex;
-            SelectedRow = null;
+            ShowPage(session.Audit.Query(query), pageIndex, zone);
         }
         catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or System.IO.IOException)
         {
@@ -314,5 +349,5 @@ public sealed partial class AuditLogViewModel : ViewModelBase, IAuditModel, IDis
         }
     }
 
-    private void OnChanged(object? sender, EventArgs e) => ResetNumberedPages();
+    private void OnChanged(object? sender, EventArgs e) => LastLoad = LoadAsync(users: false);
 }

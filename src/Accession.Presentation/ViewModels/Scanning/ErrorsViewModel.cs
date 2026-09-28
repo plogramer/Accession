@@ -34,6 +34,7 @@ public sealed partial class ErrorsViewModel : ViewModelBase, IErrorsModel, IDisp
     private readonly ILogger<ErrorsViewModel> _logger;
     private Dictionary<long, string> _mediaIds = [];
     private bool _loading;
+    private int _pageVersion;
     private readonly ToastService _toasts;
     private readonly Dictionary<int, long?> _pageStarts = new() { [0] = null };
 
@@ -48,7 +49,9 @@ public sealed partial class ErrorsViewModel : ViewModelBase, IErrorsModel, IDisp
         _dialogs = dialogs;
         _logger = logger;
         ErrorTypeOptions = [new Option<ScanErrorType?>(null, "All error types"), .. Enum.GetValues<ScanErrorType>().Select(t => new Option<ScanErrorType?>(t, Humanize(t)))];
+        _loading = true; // the first page is read in the background below
         SelectedErrorType = ErrorTypeOptions[0];
+        _loading = false;
         _host.MediaChanged += OnMediaChanged;
         _scans.PropertyChanged += OnScansChanged;
         Reload();
@@ -226,24 +229,51 @@ public sealed partial class ErrorsViewModel : ViewModelBase, IErrorsModel, IDisp
 
     private void OnScansChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) => RetryFailedCommand.NotifyCanExecuteChanged();
 
-    private void Reload()
+    /// <summary>The latest reload (tests wait for it).</summary>
+    public Task LastLoad { get; private set; } = Task.CompletedTask;
+
+    private void Reload() => LastLoad = ReloadAsync();
+
+    /// <summary>
+    /// Reads the media, the total and the first page on a background thread: the UI thread never waits for the
+    /// database (e.g. behind a scan's write), which froze the app while an inventory opened.
+    /// </summary>
+    private async Task ReloadAsync()
     {
         if (_host.Session is not { } session)
         {
             return;
         }
 
+        var version = ++_pageVersion;
+        var selectedKey = SelectedMedia?.Value;
+        var query = CurrentQuery();
+        var zone = _settings.Current.DisplayTimeZone;
+        IReadOnlyList<Media> media;
+        long total;
+        IReadOnlyList<ScanErrorEntry> page;
+        try
+        {
+            (media, total, page) = await Task.Run(() =>
+            {
+                using var scope = session.Database.Open();
+                var active = new MediaRepository(scope).ListActive();
+                var pageQuery = query with { MediaKey = active.Any(m => m.MediaKey == selectedKey) ? selectedKey : null };
+                return (active, CountMatching(scope, pageQuery), new ScanErrorRepository(scope).List(pageQuery));
+            });
+        }
+        catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or System.IO.IOException)
+        {
+            _logger.LogError(ex, "Loading media for the Errors screen failed");
+            return;
+        }
+
         _loading = true;
         try
         {
-            var selectedKey = SelectedMedia?.Value;
-            using (var scope = session.Database.Open())
-            {
-                var media = new MediaRepository(scope).ListActive();
-                _mediaIds = media.ToDictionary(m => m.MediaKey, m => m.MediaId);
-                ErrorCount = media.Sum(m => m.ErrorCount);
-            }
-
+            _mediaIds = media.ToDictionary(m => m.MediaKey, m => m.MediaId);
+            ErrorCount = media.Sum(m => m.ErrorCount);
+            selectedKey = SelectedMedia?.Value;
             MediaOptions.Clear();
             MediaOptions.Add(new Option<long?>(null, "All media"));
             foreach (var (key, id) in _mediaIds.OrderBy(m => m.Value, StringComparer.OrdinalIgnoreCase))
@@ -254,16 +284,28 @@ public sealed partial class ErrorsViewModel : ViewModelBase, IErrorsModel, IDisp
             SelectedMedia = MediaOptions.FirstOrDefault(o => o.Value == selectedKey) ?? MediaOptions[0];
             OnPropertyChanged(nameof(MediaFilterOptions));
         }
-        catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or System.IO.IOException)
-        {
-            _logger.LogError(ex, "Loading media for the Errors screen failed");
-        }
         finally
         {
             _loading = false;
         }
 
-        LoadFirstPage();
+        if (version != _pageVersion)
+        {
+            LoadFirstPage(); // the filter changed meanwhile: that page instead
+            return;
+        }
+
+        TotalCount = total;
+        _pageStarts.Clear();
+        _pageStarts[0] = null;
+        if (page.Count == ErrorsPageSize)
+        {
+            _pageStarts[1] = page[^1].ErrorId;
+        }
+
+        PageRows = [.. page.Select(e => ToRow(e, zone))];
+        PageIndex = 0;
+        SelectedRow = null;
     }
 
     private void LoadFirstPage()
@@ -281,6 +323,8 @@ public sealed partial class ErrorsViewModel : ViewModelBase, IErrorsModel, IDisp
         {
             return;
         }
+
+        _pageVersion++;
 
         try
         {

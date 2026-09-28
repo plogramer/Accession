@@ -33,6 +33,7 @@ public sealed partial class MediaListViewModel : ViewModelBase, IMediaModel, IDi
     private readonly FileBrowserNavigator _navigator;
     private readonly ExportWorkflow? _export;
     private IReadOnlyList<MediaRowViewModel> _selectedRows = [];
+    private int _loadVersion;
 
     public MediaListViewModel(InventoryHost host, MediaWorkflows workflows, ScanHost scans, ISettingsService settings, ILogger<MediaListViewModel> logger, IUiDispatcher ui,
         FileBrowserNavigator navigator, ExportWorkflow? export = null)
@@ -248,26 +249,44 @@ public sealed partial class MediaListViewModel : ViewModelBase, IMediaModel, IDi
         LoadDetails();
     }
 
-    private void Load()
+    /// <summary>The latest reload (tests wait for it).</summary>
+    public Task LastLoad { get; private set; } = Task.CompletedTask;
+
+    private void Load() => LastLoad = LoadAsync();
+
+    /// <summary>Reads the media on a background thread: the UI thread never waits for the database (e.g. behind a scan's write).</summary>
+    private async Task LoadAsync()
     {
-        var selectedKey = SelectedRow?.Media.MediaKey;
-        _selectedRows = [];
-        Rows.Clear();
+        var version = ++_loadVersion;
+        IReadOnlyList<Media> media = [];
         if (_host.Session is { } session)
         {
             try
             {
-                var settings = _settings.Current;
-                using var scope = session.Database.Open();
-                foreach (var media in new MediaRepository(scope).ListActive())
+                media = await Task.Run(() =>
                 {
-                    Rows.Add(new MediaRowViewModel(media, settings.SizeUnit, settings.DisplayTimeZone));
-                }
+                    using var scope = session.Database.Open();
+                    return new MediaRepository(scope).ListActive();
+                });
             }
             catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or System.IO.IOException)
             {
                 _logger.LogError(ex, "Loading media failed");
             }
+        }
+
+        if (version != _loadVersion)
+        {
+            return; // a newer reload is on its way
+        }
+
+        var settings = _settings.Current;
+        var selectedKey = SelectedRow?.Media.MediaKey;
+        _selectedRows = [];
+        Rows.Clear();
+        foreach (var item in media)
+        {
+            Rows.Add(new MediaRowViewModel(item, settings.SizeUnit, settings.DisplayTimeZone));
         }
 
         SelectedRow = Rows.FirstOrDefault(r => r.Media.MediaKey == selectedKey);
