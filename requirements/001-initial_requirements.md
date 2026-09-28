@@ -309,6 +309,7 @@ flowchart TD
 | Default export folder | Documents | |
 | Split export per media | Off | |
 | Copy threads | 4 | 1–16. Files copied at the same time by *Copy files* and *Copy To* (CPY-06); the manifest stays in copy order. |
+| Check for new versions | On | At start-up (after 5 s, at most once a day) the app reads the latest GitHub release of plogramer/Accession (`/releases/latest`, no sign-in, only the request is sent) and compares its tag (e.g. `v0.2`) with its own version. A newer version shows a bar on the Start and inventory screens (What's new with the release notes, Download opens the release page, Skip this version, hide until next start). *Check for updates…* (⋯ menu, Start screen) asks at once. Failures are silent. |
 | Recent inventories | — | Up to 15 |
 
 ## 6. Non-Functional Requirements

@@ -23,6 +23,16 @@ public sealed class AppSettings
     /// <summary>Files copied at the same time by Copy files and Copy To.</summary>
     public int CopyThreads { get; set; } = SettingsLimits.DefaultCopyThreads;
 
+    // Updates
+    /// <summary>Look for a new version on GitHub at start-up (at most once a day).</summary>
+    public bool CheckForUpdates { get; set; } = true;
+
+    /// <summary>When GitHub was last asked (successfully).</summary>
+    public DateTimeOffset? LastUpdateCheckUtc { get; set; }
+
+    /// <summary>Tag of a version the user chose to skip ("Skip this version").</summary>
+    public string? SkippedUpdateVersion { get; set; }
+
     // Web UI
     /// <summary>"system", "light" or "dark".</summary>
     public string WebTheme { get; set; } = WebThemes.System;
@@ -68,6 +78,7 @@ public sealed class AppSettings
         DefaultExportFolder = defaults.DefaultExportFolder;
         SplitExportPerMedia = defaults.SplitExportPerMedia;
         CopyThreads = defaults.CopyThreads;
+        CheckForUpdates = defaults.CheckForUpdates;
     }
 
     /// <summary>Clamps values to their allowed ranges and repairs missing or invalid entries.</summary>

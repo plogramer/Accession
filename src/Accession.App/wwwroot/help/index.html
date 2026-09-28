@@ -399,10 +399,19 @@
                         <li><strong>Display</strong>: sizes in decimal (KB, MB, GB) or binary (KiB, MiB, GiB) units; times in local or UTC.</li>
                         <li><strong>Scanning</strong>: threads for listing and hashing, and the database batch size. The defaults suit most shares.</li>
                         <li><strong>Export</strong>: the default export folder and whether to write one workbook per media.</li>
+                        <li><strong>Updates</strong>: <em>Check for new versions</em> (on by default) – see below.</li>
                         <li><strong>Copying</strong>: how many files <a href="#copy">Copy files</a> and Copy To copy at the same time (4 by
                             default, up to 16). More threads help with many small files or a network destination; for large files the
                             disks are the limit.</li>
                     </ul>
+                    <h3>New versions</h3>
+                    <p>A few seconds after start-up, at most once a day, Accession asks GitHub for its latest release. When there is a
+                        newer one, a bar says so on the Start screen and on the inventory screens: <em>What's new</em> shows the release
+                        notes, <em>Download</em> opens the release page, <em>Skip this version</em> stops announcing it (a later version
+                        is announced), and <strong>×</strong> hides it until the next start. <em>Check for updates…</em> in the
+                        <strong>⋯</strong> menu (or under the version on the Start screen) asks at once. Only the request is sent,
+                        nothing about you or your inventories; turn the check off in Settings on computers without internet.</p>
+                    <figure><img src="images/update-banner.png" alt="New version bar" /></figure>
                     <h3>Inventory properties</h3>
                     <p><strong>Inventory properties</strong> in the <strong>⋯</strong> menu edits the matter details (client, matter, IDs,
                         description, matter link) and shows the inventory's facts. <strong>Change root path</strong> points the inventory at

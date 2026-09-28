@@ -1,4 +1,5 @@
 using System.IO;
+using System.Net.Http;
 using System.Windows;
 using System.Windows.Threading;
 using Accession.App.Platform;
@@ -157,6 +158,11 @@ public partial class App : Application
         builder.Services.AddSingleton<ExportWorkflow>();
         builder.Services.AddSingleton<SavedSearchWorkflow>();
         builder.Services.AddSingleton<CopyWorkflow>();
+        builder.Services.AddSingleton(new HttpClient { Timeout = TimeSpan.FromSeconds(15) }); // uses the Windows proxy settings
+        builder.Services.AddSingleton<Accession.Core.Updates.IReleaseSource>(sp => new Accession.Core.Updates.GitHubReleaseSource(
+            sp.GetRequiredService<HttpClient>(), Accession.Core.Updates.GitHubReleaseSource.Repository, sp.GetRequiredService<IAppInfo>()));
+        builder.Services.AddSingleton<Accession.Core.Updates.UpdateChecker>();
+        builder.Services.AddSingleton<UpdateService>();
 
         // Web UI
         builder.Services.AddWpfBlazorWebView();

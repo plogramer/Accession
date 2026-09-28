@@ -1,0 +1,28 @@
+@inherits ObservingComponentBase
+
+@* "Accession 0.2 is available" while a newer version is published on GitHub (Start screen and inventory screens). *@
+@if (App is not null && !string.IsNullOrEmpty(App.UpdateText))
+{
+    <div class="banner is-info update-banner" role="status">
+        <Icon Name="download" />
+        <span>@App.UpdateText</span>
+        <span class="banner-actions">
+            <button class="link-btn" @onclick="() => Run(App.ShowUpdateCommand)">What's new</button>
+            <button class="link-btn" @onclick="() => Run(App.DownloadUpdateCommand)">Download</button>
+            <button class="link-btn" @onclick="() => Run(App.SkipUpdateCommand)">Skip this version</button>
+        </span>
+        <button class="icon-btn" title="Hide until the next start" @onclick="() => Run(App.DismissUpdateCommand)"><Icon Name="x" Size="15" /></button>
+    </div>
+}
+
+@code {
+    [CascadingParameter] public IAppModel? App { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (App is not null)
+        {
+            Observe(App);
+        }
+    }
+}

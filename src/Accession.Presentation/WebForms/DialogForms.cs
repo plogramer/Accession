@@ -26,6 +26,7 @@ public static class DialogForms
         ExportViewModel vm => Export(vm, dismiss),
         SavedSearchViewModel vm => SavedSearch(vm, dismiss),
         CopyViewModel vm => Copy(vm, dismiss),
+        UpdateViewModel vm => Update(vm, dismiss),
         _ => null,
     };
 
@@ -228,6 +229,14 @@ public static class DialogForms
                     },
                     new CheckField("Split exports into one workbook per media", () => vm.SplitExportPerMedia, v => vm.SplitExportPerMedia = v),
                 ]),
+                new FormSection("Updates",
+                [
+                    new CheckField("Check for new versions", () => vm.CheckForUpdates, v => vm.CheckForUpdates = v)
+                    {
+                        Wide = true,
+                        Hint = "Asks GitHub for the latest release at start-up, at most once a day. Nothing about you or your inventories is sent. Turn off on computers without internet.",
+                    },
+                ]),
                 new FormSection("Copying",
                 [
                     new NumberField("Copy threads", () => vm.CopyThreads, v => vm.CopyThreads = v,
@@ -395,6 +404,36 @@ public static class DialogForms
         ])
     {
         Width = "680px",
+        Observed = [vm],
+        Dismiss = dismiss,
+    };
+
+    /// <summary>New version available / Check for updates.</summary>
+    private static FormDialog Update(UpdateViewModel vm, Action dismiss) => new(
+        vm.Title,
+        [
+            new FormSection(null,
+            [
+                new NoteItem(() => vm.Message) { Tone = vm.MessageTone, Wide = true },
+                new InfoField("This version", () => vm.CurrentVersion),
+                new InfoField("Latest version", () => vm.LatestVersion),
+                new InfoField("Published", () => vm.Published) { Visible = () => vm.Published.Length > 0 },
+            ]),
+            new FormSection("What's new",
+            [
+                new NoteItem(() => vm.Notes) { Wide = true, Visible = () => vm.Notes.Length > 0 },
+            ]),
+        ],
+        vm.IsAvailable
+            ?
+            [
+                new FormButton("Skip this version", vm.SkipCommand) { IsSecondary = true },
+                new FormButton("Close", vm.CancelCommand),
+                new FormButton("Download", vm.DownloadCommand, DialogChoiceStyle.Primary) { IsDefault = true },
+            ]
+            : [new FormButton("Close", vm.CancelCommand, DialogChoiceStyle.Primary) { IsDefault = true }])
+    {
+        Width = "600px",
         Observed = [vm],
         Dismiss = dismiss,
     };
