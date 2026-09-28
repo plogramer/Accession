@@ -506,6 +506,12 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDashboardModel,
         catch (Exception ex) when (ex is OperationCanceledException || token.IsCancellationRequested)
         {
         }
+        catch (Exception ex) when (Accession.Data.LongReads.IsInterrupted(ex))
+        {
+            // Something was written meanwhile (media added, scan queued): the long queries gave way. Try again shortly.
+            DuplicateNote = "paused while the inventory changes…";
+            _ = RetrySlowAsync(token);
+        }
         catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or System.IO.IOException or InvalidOperationException)
         {
             _logger.LogError(ex, "Loading dashboard details failed");
@@ -517,6 +523,26 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDashboardModel,
             {
                 IsLoadingDetails = false;
             }
+        }
+    }
+
+    /// <summary>After the long queries gave way to a write, reload once things are quiet (unless something reloaded already).</summary>
+    public static readonly TimeSpan RetryAfterInterrupt = TimeSpan.FromSeconds(3);
+
+    private async Task RetrySlowAsync(CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(RetryAfterInterrupt, _time, token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        if (!token.IsCancellationRequested)
+        {
+            await ReloadAsync();
         }
     }
 

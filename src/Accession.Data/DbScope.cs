@@ -26,6 +26,7 @@ public sealed class DbScope : IDisposable
             throw new InvalidOperationException("A transaction is already open on this scope.");
         }
 
+        LongReads.WriteStarting(Connection); // long report queries would hold the write up (rollback journal)
         Transaction = Connection.BeginTransaction(deferred: false);
         return new DbTransactionScope(this);
     }

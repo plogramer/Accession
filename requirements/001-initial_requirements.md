@@ -30,7 +30,7 @@ The application is **read-only toward the evidence**: it must never modify sourc
 
 | Term | Definition |
 |---|---|
-| **Inventory** | One SQLite database file (`*.sqlite`) holding everything about one matter's media. |
+| **Inventory** | One SQLite database file (`*.accession`) holding everything about one matter's media. The extension is not `.sqlite` so it is not mistaken for an ordinary SQLite file; inventories created before version 0.2 (`*.sqlite`) open as before. |
 | **Root folder** | The single parent folder that directly contains all media folders of an inventory. Stored in `InventoryConfig.RootPath`. |
 | **Media** | An immediate subfolder of the root folder. |
 | **Media ID** | The media folder's name, whatever it is (`123-123_001`, `My Media`, …). No format is enforced. |
@@ -84,7 +84,7 @@ The application is **read-only toward the evidence**: it must never modify sourc
 | ID | Requirement |
 |---|---|
 | INV-01 | **New Inventory**: the user enters **Client Name**, **Client ID**, **Matter Name**, **Matter ID** (all required), **Description** (optional), **Matter Link URL** (optional, must be `http`/`https` if entered), selects the **Root folder**, and chooses where to save the inventory file. |
-| INV-02 | Default file name: `{ClientID}_{MatterID}_Inventory.sqlite` (invalid filename characters replaced with `_`). Default location: the root folder. |
+| INV-02 | Default file name: `{ClientID}_{MatterID}_Inventory.accession` (a path typed without an extension gets `.accession`) (invalid filename characters replaced with `_`). Default location: the root folder. |
 | INV-03 | The inventory file **must not** be placed inside a media folder (it would be inventoried as evidence). If it is placed in the root folder, discovery ignores it (discovery only looks at folders). |
 | INV-04 | Creating an inventory creates the SQLite file with **all tables**, writes the `InventoryConfig` row (root path, schema version, matter fields, creator, machine, timestamps, app version), seeds the category tables, acquires the lock, and writes an audit entry. |
 | INV-05 | **Open Inventory**: via file dialog or a *Recent Inventories* list (stored in user settings; missing files are shown greyed out with an option to remove). |
@@ -319,7 +319,7 @@ flowchart TD
 | NFR-01 | **Scale**: 10M+ files and 100+ media per inventory. |
 | NFR-02 | **Responsiveness**: the UI thread never runs I/O or DB queries; any operation over 300 ms shows a busy indicator; long operations can be cancelled. |
 | NFR-03 | **Durability**: the database stays consistent after a crash or power loss (transactions; resume per 5.5.4). |
-| NFR-04 | **SQLite on network shares**: use `journal_mode=DELETE` (WAL is not safe over SMB), `synchronous=FULL`, `foreign_keys=ON`, `page_size=8192` (set at creation). Keep write transactions batched. An inventory left with an interrupted write (hot journal, e.g. the app or computer stopped during a scan) is recovered when it is next opened, even read-only: the file is opened read-write once so SQLite rolls the journal back (only the last committed state is kept). If the file cannot be written, opening explains that someone with write access must open it once. |
+| NFR-04 | **SQLite on network shares**: use `journal_mode=DELETE` (WAL is not safe over SMB), `synchronous=FULL`, `foreign_keys=ON`, `page_size=8192` (set at creation). Keep write transactions batched. An inventory left with an interrupted write (hot journal, e.g. the app or computer stopped during a scan) is recovered when it is next opened, even read-only: the file is opened read-write once so SQLite rolls the journal back (only the last committed state is kept). If the file cannot be written, opening explains that someone with write access must open it once. Because a write must wait for every reader in this mode (and new reads wait behind the write), long background reads (the Dashboard's duplicates and years) are interrupted when a write starts and run again a few seconds later, so adding media or queueing scans never waits for them. |
 | NFR-05 | **Evidence integrity**: no writes under the root folder (SCN-40). Verified by an automated test that compares timestamps and hashes before and after a scan. |
 | NFR-06 | **Hash correctness**: SHA-1 verified against known test vectors and a reference tool on a test data set. |
 | NFR-07 | **Logging**: application log (Serilog, rolling daily, 30 days) for diagnostics, separate from the audit trail. No evidence content is logged. |

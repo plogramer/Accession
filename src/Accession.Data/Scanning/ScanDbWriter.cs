@@ -145,6 +145,7 @@ public sealed class ScanDbWriter : IAsyncDisposable
 
                     if (transaction is null)
                     {
+                        LongReads.WriteStarting(connection);
                         transaction = connection.BeginTransaction(deferred: false);
                         statements.Transaction = transaction;
                         batchStarted = _timeProvider.GetTimestamp();

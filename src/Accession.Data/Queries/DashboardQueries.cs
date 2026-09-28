@@ -117,23 +117,31 @@ public sealed class DashboardQueries
     public IReadOnlyList<ExtensionTotal> ByExtension(InventoryDatabase database, DashboardFilter filter, CancellationToken cancellationToken = default) =>
         Run<ExtensionTotal>(database, "ByExtension", filter, cancellationToken);
 
+    // Duplicates, DuplicatesByMedia and ByYear read every file: long reads that give way to writes (LongReads) and stop at
+    // once when cancelled. They throw a SqliteException with LongReads.InterruptedErrorCode when interrupted.
+
     public DuplicateSummary Duplicates(InventoryDatabase database, DashboardFilter filter, CancellationToken cancellationToken = default) =>
-        Run<DuplicateSummary>(database, "Duplicates", filter, cancellationToken).Single();
+        Run<DuplicateSummary>(database, "Duplicates", filter, cancellationToken, longRead: true).Single();
 
     public IReadOnlyList<MediaDuplicates> DuplicatesByMedia(InventoryDatabase database, DashboardFilter filter, CancellationToken cancellationToken = default) =>
-        Run<MediaDuplicates>(database, "DuplicatesByMedia", filter, cancellationToken);
+        Run<MediaDuplicates>(database, "DuplicatesByMedia", filter, cancellationToken, longRead: true);
 
     public IReadOnlyList<YearTotal> ByYear(InventoryDatabase database, DashboardFilter filter, CancellationToken cancellationToken = default) =>
-        Run<YearTotal>(database, "ByYear", filter, cancellationToken);
+        Run<YearTotal>(database, "ByYear", filter, cancellationToken, longRead: true);
 
     public IReadOnlyList<LargeFile> LargestFiles(InventoryDatabase database, DashboardFilter filter, CancellationToken cancellationToken = default) =>
         Run<LargeFile>(database, "LargestFiles", filter, cancellationToken, LargestFilesLimit);
 
-    private IReadOnlyList<T> Run<T>(InventoryDatabase database, string name, DashboardFilter filter, CancellationToken cancellationToken, int limit = 0)
+    private IReadOnlyList<T> Run<T>(InventoryDatabase database, string name, DashboardFilter filter, CancellationToken cancellationToken,
+        int limit = 0, bool longRead = false)
     {
         ArgumentNullException.ThrowIfNull(database);
         ArgumentNullException.ThrowIfNull(filter);
+        cancellationToken.ThrowIfCancellationRequested();
         using var scope = database.Open();
+        using var lease = longRead ? LongReads.Enter(database.Path, scope.Connection) : null;
+        // Cancelling (a new media selection) stops the query itself, not only the wait for it.
+        using var cancel = longRead ? cancellationToken.Register(() => LongReads.Interrupt(database.Path)) : default;
         return Runner.Query<T>(scope, name, new { filter.MediaKeysJson, Limit = limit }, cancellationToken);
     }
 }
