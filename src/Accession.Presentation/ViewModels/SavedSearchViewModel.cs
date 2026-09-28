@@ -1,3 +1,5 @@
+using Accession.Core.Formatting;
+using Accession.Core.Settings;
 using Accession.Data.SavedSearches;
 using Accession.Data.Sessions;
 using Accession.Presentation.Mvvm;
@@ -15,8 +17,15 @@ public sealed partial class SavedSearchViewModel : DialogViewModelBase
     private bool _tried;
 
     /// <param name="existing">The saved search to edit, or null for a new one.</param>
-    public SavedSearchViewModel(InventorySession session, SavedSearchService service, SavedSearchInfo? existing = null)
+    public SavedSearchViewModel(InventorySession session, SavedSearchService service, SavedSearchInfo? existing = null,
+        DisplayTimeZone zone = DisplayTimeZone.Local)
     {
+        if (existing is not null)
+        {
+            CreatedText = Describe("Created", existing.CreatedBy, existing.CreatedOnMachine, existing.CreatedAtUtc, zone);
+            ChangedText = Describe("Last changed", existing.ModifiedBy, existing.ModifiedOnMachine, existing.ModifiedAtUtc, zone);
+        }
+
         _session = session;
         _service = service;
         _savedSearchId = existing?.SavedSearchId;
@@ -26,6 +35,15 @@ public sealed partial class SavedSearchViewModel : DialogViewModelBase
     }
 
     public bool IsNew => _savedSearchId is null;
+
+    /// <summary>"Created by CORP\jdoe on WS-114, 2026-09-27 14:10" (empty for a new saved search).</summary>
+    public string CreatedText { get; } = string.Empty;
+
+    public string ChangedText { get; } = string.Empty;
+
+    /// <summary>"Created by CORP\jdoe on WS-114, 2026-09-27 14:10"; the computer is left out when it is not known.</summary>
+    public static string Describe(string what, string user, string? machine, DateTimeOffset atUtc, DisplayTimeZone zone) =>
+        $"{what} by {user}{(string.IsNullOrEmpty(machine) ? string.Empty : $" on {machine}")}, {TimeFormatter.Format(atUtc, zone)}";
 
     public string SaveText => IsNew ? "Create" : "Save";
 

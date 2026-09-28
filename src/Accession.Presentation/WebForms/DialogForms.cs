@@ -249,6 +249,8 @@ public static class DialogForms
                 {
                     Multiline = true, Wide = true, Placeholder = "Optional: why these files are collected",
                 },
+                new InfoField("Created", () => vm.CreatedText) { Wide = true, Visible = () => !vm.IsNew },
+                new InfoField("Last changed", () => vm.ChangedText) { Wide = true, Visible = () => !vm.IsNew },
             ]),
         ],
         [

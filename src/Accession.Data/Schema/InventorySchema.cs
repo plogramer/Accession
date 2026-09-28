@@ -5,7 +5,7 @@ namespace Accession.Data.Schema;
 public static class InventorySchema
 {
     /// <summary>Schema version written by this build of the application.</summary>
-    public const int CurrentVersion = 2;
+    public const int CurrentVersion = 3;
 
     internal static string LoadScript(string fileName)
     {

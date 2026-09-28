@@ -15,6 +15,7 @@ namespace Accession.Presentation.Services;
 public sealed class SavedSearchWorkflow(
     InventoryHost host,
     SavedSearchService service,
+    Accession.Core.Settings.ISettingsService settings,
     IDialogService dialogs,
     BusyTracker busy,
     ToastService toasts,
@@ -57,7 +58,7 @@ public sealed class SavedSearchWorkflow(
     {
         ArgumentNullException.ThrowIfNull(savedSearch);
         return host.Session is { IsReadOnly: false } session
-            && dialogs.ShowDialog(new SavedSearchViewModel(session, service, savedSearch)) == true;
+            && dialogs.ShowDialog(new SavedSearchViewModel(session, service, savedSearch, settings.Current.DisplayTimeZone)) == true;
     }
 
     /// <summary>Deletes after asking. Returns true if deleted.</summary>

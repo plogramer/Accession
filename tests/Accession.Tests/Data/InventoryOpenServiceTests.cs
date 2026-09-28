@@ -171,7 +171,7 @@ public sealed class InventoryOpenServiceTests : IDisposable
 
         var session = Open(new Interaction { UpgradeAnswer = true })!;
 
-        Assert.Equal(2, session.Config.SchemaVersion);
+        Assert.Equal(3, session.Config.SchemaVersion);
         Assert.Single(Directory.GetFiles(_inventory.Temp.Path, "*.v1.*.bak"));
         Assert.Contains(AuditAction.SchemaUpgraded, AuditActions());
     }

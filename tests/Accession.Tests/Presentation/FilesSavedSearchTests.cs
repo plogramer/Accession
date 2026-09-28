@@ -65,6 +65,8 @@ public sealed class FilesSavedSearchTests : IDisposable
 
         var row = Assert.Single(vm.SavedSearches);
         Assert.Equal(("PDFs", "30 files"), (row.Name, row.Files));
+        Assert.StartsWith(@"Created by CORP\jdoe on WS-114, ", row.Created, StringComparison.Ordinal);
+        Assert.Equal("from M2\n" + row.Created, row.Tooltip);
 
         vm.SelectedSavedSearch = row;
         await Idle(vm);
@@ -159,13 +161,28 @@ public sealed class FilesSavedSearchTests : IDisposable
 
         Assert.Contains("New saved search", html);
         Assert.Contains("Another saved search already has this name.", html);
+        Assert.DoesNotContain("Last changed", html); // only when editing
         Assert.Contains("Description", html);
         Assert.Contains(">Create<", html);
     }
 
+    [Fact]
+    public async Task Edit_form_shows_who_created_and_changed_it_where()
+    {
+        var id = _service.Create(_test.Session, "Hot docs", null);
+        var info = _service.List(_test.Session.Database).Single(s => s.SavedSearchId == id);
+        var vm = new SavedSearchViewModel(_test.Session, _service, info, Accession.Core.Settings.DisplayTimeZone.Utc);
+
+        var html = await Accession.Tests.WebUi.FormDialogTests.Render(Accession.Presentation.WebForms.DialogForms.Build(vm, () => { })!, "form-saved-search-edit");
+
+        Assert.Contains("Edit saved search", html);
+        Assert.Contains(@"Created by CORP\jdoe on WS-114, 2026-09-27 09:00", html);
+        Assert.Contains("Last changed by CORP", html);
+    }
+
     private async Task<WebFilesViewModel> Create()
     {
-        var workflow = new SavedSearchWorkflow(_host, _service, _dialogs, new BusyTracker(TimeProvider.System), _toasts,
+        var workflow = new SavedSearchWorkflow(_host, _service, _settings, _dialogs, new BusyTracker(TimeProvider.System), _toasts,
             NullLogger<SavedSearchWorkflow>.Instance);
         var vm = new WebFilesViewModel(_host, new FileBrowserQueries(), new CategoryQueries(), _settings, new RecordingDesktop(), _dialogs,
             _toasts, NullLogger<WebFilesViewModel>.Instance, savedSearches: workflow);

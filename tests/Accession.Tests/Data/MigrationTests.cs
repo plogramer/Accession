@@ -61,7 +61,7 @@ public sealed class MigrationTests : IDisposable
     }
 
     [Fact]
-    public void Version_1_inventory_gets_the_saved_search_tables_and_keeps_its_data()
+    public void Version_1_inventory_is_upgraded_to_the_current_schema_and_keeps_its_data()
     {
         using (var scope = _inventory.Database.Open())
         {
@@ -70,7 +70,7 @@ public sealed class MigrationTests : IDisposable
 
         var result = new MigrationRunner(_time).Upgrade(_inventory.DbPath, @"CORP\jdoe", "0.2.0");
 
-        Assert.Equal((1, 2), (result.FromVersion, result.ToVersion));
+        Assert.Equal((1, InventorySchema.CurrentVersion), (result.FromVersion, result.ToVersion)); // every migration in one go
         Assert.Equal(SchemaState.Current, SchemaInspector.Inspect(_inventory.DbPath).State);
         using var check = _inventory.Database.Open();
         Assert.Equal(2, check.Connection.ExecuteScalar<long>("SELECT COUNT(*) FROM sqlite_master WHERE name IN ('SavedSearch', 'SavedSearchFile')"));

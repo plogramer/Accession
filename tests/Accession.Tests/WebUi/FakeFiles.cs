@@ -12,8 +12,10 @@ internal sealed partial class FakeFiles : ObservableObject, IFilesModel
     public FakeFiles(int rows = 40, bool counting = false, bool savedSearchShown = false, int ticked = 0)
     {
         IsCounting = counting;
-        SavedSearches.Add(new SavedSearchRow(1, "Privileged", "Emails with outside counsel", 1_204, "1,204 files", "2.31 GB"));
-        SavedSearches.Add(new SavedSearchRow(2, "Board minutes 2021", string.Empty, 86, "86 files", "412.7 MB"));
+        SavedSearches.Add(new SavedSearchRow(1, "Privileged", "Emails with outside counsel", 1_204, "1,204 files", "2.31 GB",
+            @"Created by LITSUPPORT\jane.doe on LIT-PC07, 2026-09-21 10:42"));
+        SavedSearches.Add(new SavedSearchRow(2, "Board minutes 2021", string.Empty, 86, "86 files", "412.7 MB",
+            @"Created by LITSUPPORT\john.roe on LIT-PC12, 2026-09-22 16:05"));
         SavedSearches.Add(new SavedSearchRow(3, "Hot documents", "For the first review round", 0, "0 files", "0 B"));
         if (savedSearchShown)
         {

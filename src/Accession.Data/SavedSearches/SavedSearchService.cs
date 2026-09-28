@@ -18,8 +18,13 @@ public sealed class SavedSearchInfo
     public long TotalBytes { get; init; }
     public DateTimeOffset CreatedAtUtc { get; init; }
     public string CreatedBy { get; init; } = string.Empty;
+
+    /// <summary>Null for saved searches from before schema v3 whose creation is not in the audit log.</summary>
+    public string? CreatedOnMachine { get; init; }
+
     public DateTimeOffset ModifiedAtUtc { get; init; }
     public string ModifiedBy { get; init; } = string.Empty;
+    public string? ModifiedOnMachine { get; init; }
 }
 
 /// <summary>Another saved search already has this name.</summary>
@@ -41,7 +46,8 @@ public sealed class SavedSearchService(InventorySessionFactory factory)
         using var scope = database.Open();
         return scope.Connection.Query<SavedSearchInfo>(new CommandDefinition(
             """
-            SELECT s.SavedSearchId, s.Name, s.Description, s.CreatedAtUtc, s.CreatedBy, s.ModifiedAtUtc, s.ModifiedBy,
+            SELECT s.SavedSearchId, s.Name, s.Description, s.CreatedAtUtc, s.CreatedBy, s.CreatedOnMachine,
+                   s.ModifiedAtUtc, s.ModifiedBy, s.ModifiedOnMachine,
                    COUNT(f.FileId) AS FileCount, COALESCE(SUM(f.SizeBytes), 0) AS TotalBytes
             FROM SavedSearch s
             LEFT JOIN SavedSearchFile sf ON sf.SavedSearchId = s.SavedSearchId
@@ -80,11 +86,11 @@ public sealed class SavedSearchService(InventorySessionFactory factory)
             var now = UtcTimestamp.ToText(factory.TimeProvider.GetUtcNow());
             var id = SaveName(cleanName, () => scope.Connection.ExecuteScalar<long>(
                 """
-                INSERT INTO SavedSearch (Name, Description, CreatedAtUtc, CreatedBy, ModifiedAtUtc, ModifiedBy)
-                VALUES (@cleanName, @cleanDescription, @now, @user, @now, @user);
+                INSERT INTO SavedSearch (Name, Description, CreatedAtUtc, CreatedBy, CreatedOnMachine, ModifiedAtUtc, ModifiedBy, ModifiedOnMachine)
+                VALUES (@cleanName, @cleanDescription, @now, @user, @machine, @now, @user, @machine);
                 SELECT last_insert_rowid();
                 """,
-                new { cleanName, cleanDescription, now, user = session.UserName }, scope.Transaction));
+                new { cleanName, cleanDescription, now, user = session.UserName, machine = factory.User.MachineName }, scope.Transaction));
             session.Audit.Write(scope, AuditAction.SavedSearchCreated, details: new { SavedSearchId = id, Name = cleanName, Description = cleanDescription });
             return id;
         });
@@ -99,10 +105,15 @@ public sealed class SavedSearchService(InventorySessionFactory factory)
             var before = Get(scope, savedSearchId);
             SaveName(cleanName, () => scope.Connection.Execute(
                 """
-                UPDATE SavedSearch SET Name = @cleanName, Description = @cleanDescription, ModifiedAtUtc = @now, ModifiedBy = @user
+                UPDATE SavedSearch SET Name = @cleanName, Description = @cleanDescription, ModifiedAtUtc = @now, ModifiedBy = @user,
+                    ModifiedOnMachine = @machine
                 WHERE SavedSearchId = @savedSearchId
                 """,
-                new { cleanName, cleanDescription, now = UtcTimestamp.ToText(factory.TimeProvider.GetUtcNow()), user = session.UserName, savedSearchId },
+                new
+                {
+                    cleanName, cleanDescription, now = UtcTimestamp.ToText(factory.TimeProvider.GetUtcNow()), user = session.UserName,
+                    machine = factory.User.MachineName, savedSearchId,
+                },
                 scope.Transaction));
             session.Audit.Write(scope, AuditAction.SavedSearchChanged, details: new
             {
@@ -237,8 +248,8 @@ public sealed class SavedSearchService(InventorySessionFactory factory)
 
     private void Touch(DbScope scope, long savedSearchId, string user) =>
         scope.Connection.Execute(
-            "UPDATE SavedSearch SET ModifiedAtUtc = @now, ModifiedBy = @user WHERE SavedSearchId = @savedSearchId",
-            new { now = UtcTimestamp.ToText(factory.TimeProvider.GetUtcNow()), user, savedSearchId }, scope.Transaction);
+            "UPDATE SavedSearch SET ModifiedAtUtc = @now, ModifiedBy = @user, ModifiedOnMachine = @machine WHERE SavedSearchId = @savedSearchId",
+            new { now = UtcTimestamp.ToText(factory.TimeProvider.GetUtcNow()), user, machine = factory.User.MachineName, savedSearchId }, scope.Transaction);
 
     private sealed class NameRow
     {

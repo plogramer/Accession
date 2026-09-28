@@ -26,7 +26,7 @@
                         {
                             var selected = saved.Id == Model.SelectedSavedSearch?.Id;
                             <div class="saved-row @(selected ? "is-selected" : null)" role="option" aria-selected="@(selected ? "true" : "false")"
-                                 title="@saved.Description" @onclick="() => Model.SelectedSavedSearch = saved">
+                                 title="@saved.Tooltip" @onclick="() => Model.SelectedSavedSearch = saved">
                                 <Icon Name="bookmark" Size="15" Class="tree-icon" />
                                 <div class="saved-text">
                                     <span class="saved-name truncate">@saved.Name</span>
@@ -189,7 +189,11 @@
                 <div class="bulk-bar">
                     @if (Model.SelectedSavedSearch is { } shown)
                     {
-                        <span class="bulk-context"><Icon Name="bookmark" Size="14" /> Saved search <strong>@shown.Name</strong></span>
+                        <span class="bulk-context" title="@shown.Description"><Icon Name="bookmark" Size="14" /> Saved search <strong>@shown.Name</strong></span>
+                        @if (!string.IsNullOrEmpty(shown.Created))
+                        {
+                            <span class="muted small">@shown.Created</span>
+                        }
                     }
                     @if (Model.CheckedFileIds.Count > 0)
                     {

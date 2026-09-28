@@ -54,6 +54,8 @@ public sealed class SavedSearchServiceTests : IDisposable
         var info = Assert.Single(_service.List(_test.Session.Database));
         Assert.Equal(("Privileged", "Attorney emails", 0L, 0L), (info.Name, info.Description, info.FileCount, info.TotalBytes));
         Assert.Equal(@"CORP\jdoe", info.CreatedBy);
+        Assert.Equal("WS-114", info.CreatedOnMachine);
+        Assert.Equal("WS-114", info.ModifiedOnMachine);
 
         _service.Update(_test.Session, id, "Privileged (reviewed)", " ");
         info = Assert.Single(_service.List(_test.Session.Database));
@@ -66,6 +68,19 @@ public sealed class SavedSearchServiceTests : IDisposable
         Assert.Equal([AuditAction.SavedSearchCreated, AuditAction.SavedSearchChanged, AuditAction.SavedSearchDeleted],
             _test.Session.Audit.Query(new AuditQuery { Actions = [AuditAction.SavedSearchCreated, AuditAction.SavedSearchChanged, AuditAction.SavedSearchDeleted] })
                 .Select(a => a.Action).Reverse());
+    }
+
+    [Fact]
+    public void Upgrading_a_version_2_inventory_takes_the_computer_from_the_audit_log()
+    {
+        var id = _service.Create(_test.Session, "Before v3", null);
+        _test.Session.Close();
+        Accession.Tests.TestSupport.SchemaDowngrade.ToV2(_test.Session.DbPath);
+
+        new Accession.Data.Migrations.MigrationRunner(_test.Time).Upgrade(_test.Session.DbPath, @"CORP\jdoe", "0.3.0");
+
+        var info = Assert.Single(_service.List(new Accession.Data.InventoryDatabase(_test.Session.DbPath)));
+        Assert.Equal((id, "WS-114", "WS-114"), (info.SavedSearchId, info.CreatedOnMachine, info.ModifiedOnMachine));
     }
 
     [Fact]

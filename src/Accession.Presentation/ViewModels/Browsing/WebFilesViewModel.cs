@@ -12,6 +12,7 @@ using Accession.Data.SavedSearches;
 using Accession.Presentation.Mvvm;
 using Accession.Presentation.Platform;
 using Accession.Presentation.Services;
+using Accession.Presentation.ViewModels;
 using Accession.UI.Components;
 using Accession.UI.FilesScreen;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -252,13 +253,15 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
     private void LoadSavedSearches()
     {
         var unit = _settings.Current.SizeUnit;
+        var zone = _settings.Current.DisplayTimeZone;
         var culture = CultureInfo.CurrentCulture;
         var selectedId = SelectedSavedSearch?.Id;
         SavedSearches.Clear();
         foreach (var s in _savedSearchWorkflow?.List() ?? [])
         {
             SavedSearches.Add(new SavedSearchRow(s.SavedSearchId, s.Name, s.Description ?? string.Empty, s.FileCount,
-                s.FileCount == 1 ? "1 file" : $"{s.FileCount.ToString("N0", culture)} files", SizeFormatter.Format(s.TotalBytes, unit)));
+                s.FileCount == 1 ? "1 file" : $"{s.FileCount.ToString("N0", culture)} files", SizeFormatter.Format(s.TotalBytes, unit),
+                SavedSearchViewModel.Describe("Created", s.CreatedBy, s.CreatedOnMachine, s.CreatedAtUtc, zone)));
         }
 
         // Keep the shown saved search selected (the row objects are new) without reloading the files.

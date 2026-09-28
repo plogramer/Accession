@@ -255,7 +255,7 @@ flowchart TD
 
 | ID | Requirement |
 |---|---|
-| SAV-01 | A **saved search** is a named, fixed list of files kept in the inventory (shared by everyone who opens it): **Name** (required, unique ignoring case, at most 100 characters) and optional **Description**. |
+| SAV-01 | A **saved search** is a named, fixed list of files kept in the inventory (shared by everyone who opens it): **Name** (required, unique ignoring case, at most 100 characters) and optional **Description**. It records who created it, on which computer and when, and the same for the last change (schema v3); the open saved search shows "Created by … on …, date", and the edit dialog shows both. |
 | SAV-02 | The Files screen's left panel has two tabs: **Folders** (the folder tree) and **Saved searches** (each with its file count and total size; description as tooltip). Saved searches can be created, renamed/edited and deleted (deleting asks first and never touches the files). |
 | SAV-03 | Files are added with **Add to saved search**: *all results* (every file matching the current filters, on all pages) or the *ticked rows*, into an existing saved search or a new one. Files already in the list are skipped. |
 | SAV-04 | Clicking a saved search shows its files; the filters narrow within it. While one is shown, *Remove ticked* and *Remove all results* take files out of it. *Export current view* exports exactly its (filtered) files. |

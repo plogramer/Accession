@@ -37,6 +37,7 @@ public static class DatabaseCreator
             using var transaction = connection.BeginTransaction(deferred: false);
             connection.Execute(InventorySchema.LoadScript("V001_Initial.sql"), transaction: transaction);
             connection.Execute(InventorySchema.LoadScript(Migrations.V002SavedSearches.Script), transaction: transaction);
+            connection.Execute(InventorySchema.LoadScript(Migrations.V003SavedSearchMachine.Script), transaction: transaction);
             connection.Execute(
                 """
                 INSERT INTO InventoryConfig (ConfigId, InventoryGuid, SchemaVersion, RootPath, ClientName, ClientCode,
