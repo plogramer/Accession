@@ -10,6 +10,8 @@
     <AssemblyName>Accession</AssemblyName>
     <RootNamespace>Accession.App</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Made by tools/icon/make_icon.py from the brand mark (Assets/Accession.svg). -->
+    <ApplicationIcon>Assets\Accession.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -30,6 +32,7 @@
 
   <ItemGroup>
     <Content Update="wwwroot\**" CopyToOutputDirectory="PreserveNewest" />
+    <Resource Include="Assets\Accession.ico" />
   </ItemGroup>
 
 </Project>

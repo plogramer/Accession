@@ -19,6 +19,7 @@ public sealed class HelpWindow : Window
     private HelpWindow()
     {
         Title = "Accession Help";
+        Icon = new System.Windows.Media.Imaging.BitmapImage(new Uri("pack://application:,,,/Assets/Accession.ico"));
         Width = 1040;
         Height = 780;
         MinWidth = 640;
