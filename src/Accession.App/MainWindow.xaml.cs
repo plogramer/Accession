@@ -19,6 +19,7 @@ public partial class MainWindow : Window
 
         placement.Restore(this, PlacementKey);
         var closeApproved = false;
+        var preparing = false;
         Closing += async (_, e) =>
         {
             if (closeApproved)
@@ -28,11 +29,26 @@ public partial class MainWindow : Window
 
             // Closing the inventory may ask the user (running scan) and waits for the scan to stop.
             e.Cancel = true;
-            placement.Save(this, PlacementKey);
-            if (await viewModel.PrepareCloseAsync())
+            if (preparing)
             {
-                closeApproved = true;
-                Close();
+                return; // the close button again while the first close is still asking or waiting
+            }
+
+            preparing = true;
+            placement.Save(this, PlacementKey);
+            try
+            {
+                if (await viewModel.PrepareCloseAsync())
+                {
+                    closeApproved = true;
+                    // Queued: when nothing had to be asked, PrepareCloseAsync finished at once and this still runs inside
+                    // the Closing event, where WPF does not allow Close().
+                    _ = Dispatcher.BeginInvoke(Close);
+                }
+            }
+            finally
+            {
+                preparing = false;
             }
         };
     }
