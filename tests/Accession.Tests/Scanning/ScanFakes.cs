@@ -31,7 +31,7 @@ public sealed class FakeHasher : IFileHasher
 
     public Func<string, FileHashResult, FileHashResult> Alter { get; set; } = (_, r) => r;
 
-    public FileHashResult Hash(string fullPath, CancellationToken cancellationToken)
+    public FileHashResult Hash(string fullPath, CancellationToken cancellationToken, Action<long>? bytesRead = null)
     {
         Calls.Add(fullPath);
         Before(fullPath, cancellationToken);
@@ -40,7 +40,7 @@ public sealed class FakeHasher : IFileHasher
             throw ex;
         }
 
-        return Alter(fullPath, _real.Hash(fullPath, cancellationToken));
+        return Alter(fullPath, _real.Hash(fullPath, cancellationToken, bytesRead));
     }
 }
 

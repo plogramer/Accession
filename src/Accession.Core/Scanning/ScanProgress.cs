@@ -25,8 +25,13 @@ public sealed record ScanProgressSnapshot(
     TimeSpan Elapsed,
     TimeSpan? Eta,
     string? CurrentPath,
-    bool EnumerationDone)
+    bool EnumerationDone,
+    long CurrentFileSize = 0,
+    long CurrentFileBytesRead = 0)
 {
+    /// <summary>How far the file in <see cref="CurrentPath"/> is hashed, 0–100; null when not hashing a file.</summary>
+    public double? CurrentFilePercent => CurrentFileSize > 0 ? Math.Min(100d, 100d * CurrentFileBytesRead / CurrentFileSize) : null;
+
     /// <summary>Hashing progress by bytes, 0–100.</summary>
     public double PercentByBytes =>
         BytesFound > 0 ? Math.Min(100d, 100d * BytesHashed / BytesFound)
@@ -83,10 +88,11 @@ public sealed class ScanProgressTracker
             }
         }
 
+        var current = counters.LongestHashing();
         return new ScanProgressSnapshot(
             mediaKey, mediaId, phase, isPaused,
             counters.FoldersFound, counters.FilesFound, counters.BytesFound, files, bytes, counters.Errors,
             filesPerSecond, bytesPerSecond, _timeProvider.GetElapsedTime(_started, now), eta,
-            counters.CurrentPath, counters.EnumerationDone);
+            current?.Path ?? counters.CurrentPath, counters.EnumerationDone, current?.Size ?? 0, current?.BytesRead ?? 0);
     }
 }

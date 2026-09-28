@@ -13,7 +13,7 @@ public sealed class Sha1FileHasher : IFileHasher
 {
     public const int BufferSize = 1 << 20;
 
-    public FileHashResult Hash(string fullPath, CancellationToken cancellationToken)
+    public FileHashResult Hash(string fullPath, CancellationToken cancellationToken, Action<long>? bytesRead = null)
     {
         using var handle = EvidenceFile.OpenRead(fullPath);
         var buffer = ArrayPool<byte>.Shared.Rent(BufferSize);
@@ -27,6 +27,7 @@ public sealed class Sha1FileHasher : IFileHasher
                 cancellationToken.ThrowIfCancellationRequested();
                 sha1.AppendData(buffer, 0, read);
                 offset += read;
+                bytesRead?.Invoke(read);
             }
 
             return new FileHashResult(

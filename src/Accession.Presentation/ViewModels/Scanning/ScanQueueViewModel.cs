@@ -63,6 +63,12 @@ public sealed partial class ScanQueueViewModel : ViewModelBase, IScanQueueModel,
 
     public string CurrentPath { get; private set; } = string.Empty;
 
+    /// <summary>"12 % of 512.96 GiB" for a large file being hashed (so a long file shows it is moving); empty otherwise.</summary>
+    public string CurrentFileProgress { get; private set; } = string.Empty;
+
+    /// <summary>Files from this size on show their own progress next to "Now".</summary>
+    public const long LargeFileBytes = 50L * 1024 * 1024;
+
     public ObservableCollection<QueueRow> Queue { get; } = [];
 
     public bool HasQueue => Queue.Count > 0;
@@ -155,6 +161,9 @@ public sealed partial class ScanQueueViewModel : ViewModelBase, IScanQueueModel,
         Errors = p?.Errors.ToString("N0", culture) ?? string.Empty;
         Threads = _scans.CurrentOptions is { } o ? $"listing {o.EnumerationThreads} / hashing {o.HashingThreads}" : string.Empty;
         CurrentPath = p?.CurrentPath ?? string.Empty;
+        CurrentFileProgress = p is { CurrentFilePercent: { } filePercent, CurrentFileSize: >= LargeFileBytes }
+            ? $"{filePercent:0} % of {SizeFormatter.Format(p.CurrentFileSize, unit)}"
+            : string.Empty;
 
         Queue.Clear();
         var position = 1;

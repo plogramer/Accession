@@ -26,6 +26,9 @@ public interface IScanQueueModel : INotifyPropertyChanged
     string Errors { get; }
     string Threads { get; }
     string CurrentPath { get; }
+
+    /// <summary>"12 % of 512.96 GiB" for a large file being hashed; empty otherwise.</summary>
+    string CurrentFileProgress { get; }
     ObservableCollection<QueueRow> Queue { get; }
 
     ICommand PauseCommand { get; }

@@ -69,7 +69,12 @@
             </div>
             @if (!string.IsNullOrEmpty(Model.CurrentPath))
             {
-                <div class="scan-path"><span class="muted small">Now</span> <code title="@Model.CurrentPath">@Model.CurrentPath</code></div>
+                <div class="scan-path"><span class="muted small">Now</span> <code title="@Model.CurrentPath">@Model.CurrentPath</code>
+                    @if (!string.IsNullOrEmpty(Model.CurrentFileProgress))
+                    {
+                        <span class="chip scan-file-progress">@Model.CurrentFileProgress</span>
+                    }
+                </div>
             }
         </section>
     }

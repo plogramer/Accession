@@ -37,10 +37,15 @@ public sealed class HashingPhase
 
     private async Task HashOneAsync(ScanContext context, HashWork item, CancellationToken cancellationToken)
     {
-        context.Counters.CurrentPath = item.RelativePath;
+        var counters = context.Counters;
+        var file = counters.BeginHashing(item.FileId, item.RelativePath, item.Size);
         try
         {
-            var result = await context.Retry.RunAsync(() => _hasher.Hash(context.FullPath(item.RelativePath), cancellationToken), cancellationToken)
+            var result = await context.Retry.RunAsync(() =>
+                {
+                    counters.RestartHashing(file); // a retry reads the file again from the start
+                    return _hasher.Hash(context.FullPath(item.RelativePath), cancellationToken, read => counters.AddHashedBytes(file, read));
+                }, cancellationToken)
                 .ConfigureAwait(false);
             await context.Writer.WriteAsync(
                 new HashResultCommand(item.FileId, result.Sha1, HashStatus.Hashed, context.TimeProvider.GetUtcNow()), cancellationToken).ConfigureAwait(false);
@@ -54,6 +59,11 @@ public sealed class HashingPhase
                     cancellationToken).ConfigureAwait(false);
             }
         }
+        catch (OperationCanceledException)
+        {
+            counters.AbandonHashing(item.FileId, file);
+            throw;
+        }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             await context.Writer.WriteAsync(
@@ -62,6 +72,6 @@ public sealed class HashingPhase
             context.Counters.AddError();
         }
 
-        context.Counters.AddHashed(item.Size);
+        counters.EndHashing(item.FileId, file, item.Size);
     }
 }

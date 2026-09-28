@@ -19,6 +19,7 @@ public sealed class ScanScreensTests
         Assert.Contains("Hashing (listing done)", html);
         Assert.Contains("42 %", html);
         Assert.Contains("212 MB/s", html);
+        Assert.Contains("38 % of 12.4 GB", html); // a large file being hashed shows its own progress
         Assert.Contains("123-124_001", html);
         Assert.Contains("title=\"Move up\" disabled", html); // first waiting item
         Assert.Contains("Pause", html);
@@ -97,6 +98,7 @@ public sealed class ScanScreensTests
         public string Errors => "0";
         public string Threads => "listing 4 / hashing 4";
         public string CurrentPath => @"\123-123_003\Engineering\CAD\plant_layout_v14.zip";
+        public string CurrentFileProgress => IsRunning ? "38 % of 12.4 GB" : string.Empty;
         public ObservableCollection<QueueRow> Queue { get; } = [];
         public ICommand PauseCommand { get; } = new RelayCommand(() => { });
         public ICommand ResumeCommand { get; } = new RelayCommand(() => { });
