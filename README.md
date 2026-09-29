@@ -116,8 +116,9 @@ Output: `artifacts/installer/Accession-0.1.0-x64.msi` (installs to *Program File
 a newer MSI replaces an older installation).
 
 To release a version: set `<Version>` in `Directory.Build.props`, add its section to the version history below, then push
-a tag such as `v0.2` (`git tag v0.2 && git push origin v0.2`). The *Release* workflow builds the MSI and publishes a GitHub
-release with it, using that version's section as the notes; installed copies of the app then offer the update.
+a tag such as `v0.2` (`git tag v0.2 && git push origin v0.2`), or push a commit to `dev` whose message contains `[release]`
+(the tag is then created from `<Version>`). The *Release* workflow builds the MSI and publishes a GitHub release with it,
+using that version's section as the notes; installed copies of the app then offer the update.
 
 ## Runtime locations
 

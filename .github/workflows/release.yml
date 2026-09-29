@@ -3,12 +3,14 @@ name: Release
 # Builds the Windows installer (Accession-<version>-x64.msi).
 # - A pushed tag like v0.2 builds it and publishes a GitHub release with the MSI to download
 #   (the release notes are that version's section of the README's version history).
-# - A push to dev that changes the installer only builds it (download it from the run's artifacts).
+# - A push to dev whose commit message contains [release] does the same: the release creates the tag v<version>
+#   (the version in Directory.Build.props) on that commit.
+# - Any other push to dev that changes the installer only builds it (download it from the run's artifacts).
 on:
   push:
     tags: ['v*']
     branches: [dev]
-    paths: ['installer/**', '.github/workflows/release.yml']
+    paths: ['installer/**', '.github/workflows/release.yml', 'Directory.Build.props', 'README.md']
   workflow_dispatch:
 
 permissions:
@@ -37,6 +39,8 @@ jobs:
       - name: Version
         id: version
         shell: pwsh
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           # v0.2 -> 0.2.0 (an MSI needs three numbers); without a tag, the version in Directory.Build.props.
           if ($env:GITHUB_REF_TYPE -eq 'tag') { $v = $env:GITHUB_REF_NAME.TrimStart('v', 'V') }
@@ -47,7 +51,12 @@ jobs:
           $version = ($parts[0..2] -join '.')
           "version=$version" >> $env:GITHUB_OUTPUT
           "display=$display" >> $env:GITHUB_OUTPUT
-          Write-Host "Version $version (shown as $display)"
+          # Publish for a tag, or for a dev commit that asks for it (the tag is then created with the release).
+          $release = $env:GITHUB_REF_TYPE -eq 'tag' -or "$env:COMMIT_MESSAGE".Contains('[release]')
+          $tag = if ($env:GITHUB_REF_TYPE -eq 'tag') { $env:GITHUB_REF_NAME } else { "v$display" }
+          "release=$($release.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+          Write-Host "Version $version (shown as $display); release: $release ($tag)"
 
       - name: Publish the app (self-contained, win-x64)
         run: dotnet publish src/Accession.App/Accession.App.csproj -p:PublishProfile=win-x64 -p:Version=${{ steps.version.outputs.version }}
@@ -63,7 +72,7 @@ jobs:
           if-no-files-found: error
 
       - name: Publish the GitHub release
-        if: github.ref_type == 'tag'
+        if: steps.version.outputs.release == 'true'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -88,4 +97,8 @@ jobs:
           ) + $notes
           $body -join "`n" | Out-File notes.md -Encoding utf8
 
-          gh release create $env:GITHUB_REF_NAME $msi --title "Accession $display" --notes-file notes.md --verify-tag
+          $tag = '${{ steps.version.outputs.tag }}'
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -eq 0) { throw "Release $tag already exists: raise <Version> in Directory.Build.props first." }
+          # For a pushed tag the tag exists; otherwise the release creates it on this commit.
+          gh release create $tag $msi --title "Accession $display" --notes-file notes.md --target $env:GITHUB_SHA
