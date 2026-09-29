@@ -52,8 +52,8 @@ public sealed class ParallelCopyTests : IDisposable
     private CopyRequest Request(CopyNaming naming, int threads, string name = "dest") =>
         new(FileFilter.None, _test.Temp.Combine(name), naming, _test.Temp.Combine(name + ".csv")) { Threads = threads };
 
-    private static List<string[]> Manifest(string path) =>
-        [.. File.ReadAllLines(path, Encoding.UTF8).Skip(1).Select(line => line[1..^1].Split("\",\""))];
+    private static List<string[]> Manifest(string? path) =>
+        [.. File.ReadAllLines(path ?? throw new ArgumentNullException(nameof(path)), Encoding.UTF8).Skip(1).Select(line => line[1..^1].Split("\",\""))];
 
     [Fact]
     public void Several_threads_copy_everything_with_the_manifest_in_copy_order()

@@ -18,7 +18,4 @@ public static class AppPaths
 
     /// <summary><c>%LOCALAPPDATA%\Accession\cache\dashboard</c>: slow Dashboard sections saved per inventory.</summary>
     public static string DashboardCacheFolder => Path.Combine(LocalDataFolder, "cache", "dashboard");
-
-    /// <summary><c>%LOCALAPPDATA%\Accession\quick copy</c>: Quick Copy manifests (kept out of the flat destination folder).</summary>
-    public static string QuickCopyFolder => Path.Combine(LocalDataFolder, "quick copy");
 }

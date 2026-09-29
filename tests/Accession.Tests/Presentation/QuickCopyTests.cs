@@ -42,21 +42,36 @@ public sealed class QuickCopyTests : IDisposable
     }
 
     [Fact]
-    public async Task Asks_only_for_a_folder_and_copies_flat_with_numbered_names_and_the_manifest_elsewhere()
+    public async Task Asks_only_for_a_folder_and_copies_flat_with_numbered_names_and_no_manifest()
     {
         var destination = _test.Temp.Combine("picked");
-        var manifests = _test.Temp.Combine("manifests");
         var workflow = new CopyWorkflow(_host, new CopyService(_test.Factory, NullLogger<CopyService>.Instance), new TestSettings(),
             new NoDialogs(pickedFolder: destination), new BusyTracker(TimeProvider.System), _toasts, new RecordingDesktop(), new InlineUiDispatcher(),
-            _test.Time, NullLogger<CopyWorkflow>.Instance, quickCopyFolder: manifests);
+            _test.Time, NullLogger<CopyWorkflow>.Instance);
 
         await workflow.QuickCopyAsync(_files); // NoDialogs: any dialog but the folder picker fails the test
 
         Assert.Equal(["abc.txt", "abc_2_.txt"], Directory.GetFiles(destination).Select(Path.GetFileName).Order(StringComparer.Ordinal));
         Assert.Equal(@"\MED001\a\", File.ReadAllText(Path.Combine(destination, "abc.txt")));
         Assert.Equal(@"\MED001\b\", File.ReadAllText(Path.Combine(destination, "abc_2_.txt")));
-        Assert.Single(Directory.GetFiles(manifests, "Quick copy *.csv"));
+        Assert.Empty(Directory.GetFiles(_test.Temp.Path, "*.csv", SearchOption.AllDirectories)); // no manifest anywhere
         Assert.Contains(_toasts.Items, t => t.Message == $"Copied 2 files to {destination}");
+    }
+
+    [Fact]
+    public void Without_a_manifest_the_summary_lists_the_failed_files()
+    {
+        var result = new CopyFilesResult(@"D:\Review", null, 14, 2, 0, 0, 12, 100, false, 0)
+        {
+            Failures = [.. Enumerable.Range(1, CopyFilesResult.MaxFailuresListed).Select(i => new CopyFailure(Path.Combine(_test.Root, "MED001", $"doc{i}.pdf"), "Access is denied."))],
+        };
+
+        var text = CopyWorkflow.Summary(result, Accession.Core.Settings.SizeUnitSystem.Binary, System.Globalization.CultureInfo.InvariantCulture);
+
+        Assert.Contains("Failed: 12", text);
+        Assert.Contains("  doc1.pdf: Access is denied.", text);
+        Assert.Contains("… and 2 more (see the log)", text);
+        Assert.DoesNotContain("anifest", text);
     }
 
     [Fact]
@@ -64,11 +79,10 @@ public sealed class QuickCopyTests : IDisposable
     {
         var workflow = new CopyWorkflow(_host, new CopyService(_test.Factory, NullLogger<CopyService>.Instance), new TestSettings(),
             new NoDialogs(pickedFolder: null), new BusyTracker(TimeProvider.System), _toasts, new RecordingDesktop(), new InlineUiDispatcher(),
-            _test.Time, NullLogger<CopyWorkflow>.Instance, quickCopyFolder: _test.Temp.Combine("manifests"));
+            _test.Time, NullLogger<CopyWorkflow>.Instance);
 
         await workflow.QuickCopyAsync(_files);
 
         Assert.Empty(_toasts.Items);
-        Assert.False(Directory.Exists(_test.Temp.Combine("manifests")));
     }
 }

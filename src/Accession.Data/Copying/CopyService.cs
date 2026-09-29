@@ -51,7 +51,7 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
             return namingError;
         }
 
-        return ValidateOutput(request.ManifestPath, root, "manifest");
+        return request.ManifestPath is null ? null : ValidateOutput(request.ManifestPath, root, "manifest");
     }
 
     /// <summary>Why a file cannot be written at <paramref name="path"/>; null when it can.</summary>
@@ -78,7 +78,8 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
         ArgumentNullException.ThrowIfNull(template);
         var root = session.Config.RootPath;
         var order = OrderedFiles(session, request.Filter, cancellationToken);
-        Check(Validate(session, request, order.Count) ?? template.Validate(request.Naming.Mode) ?? ValidateOutput(batchPath, root, "batch file"));
+        Check(Validate(session, request, order.Count) ?? ValidateOutput(request.ManifestPath, root, "manifest") ?? template.Validate(request.Naming.Mode)
+            ?? ValidateOutput(batchPath, root, "batch file"));
         var totalBytes = order.Sum(o => o.SizeBytes);
 
         var partial = batchPath + ".partial";
@@ -93,7 +94,7 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
                 Directory.CreateDirectory(batchFolder);
             }
 
-            using (var manifest = new CsvWriter(request.ManifestPath, ManifestHeaders))
+            using (var manifest = new CsvWriter(request.ManifestPath!, ManifestHeaders))
             using (var bat = new StreamWriter(partial, append: false, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false), 1 << 16) { NewLine = "\r\n" })
             {
                 WriteBatchHeader(bat, session, request, template, order.Count, totalBytes);
@@ -145,7 +146,7 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
             TryDelete(partial);
             if (manifestWritten)
             {
-                TryDelete(request.ManifestPath);
+                TryDelete(request.ManifestPath!);
             }
 
             throw;
@@ -165,7 +166,7 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
             request.ManifestPath,
         });
         logger.LogInformation("Copy batch {Path}: {Files} files to {Destination}", batchPath, done, request.Destination);
-        return new CopyBatchResult(batchPath, request.ManifestPath, done, bytes) { NotInBatch = notInBatch };
+        return new CopyBatchResult(batchPath, request.ManifestPath!, done, bytes) { NotInBatch = notInBatch };
     }
 
     /// <summary>
@@ -194,7 +195,9 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
         CopyProgress Snapshot() => new(Interlocked.Read(ref done), order.Count, Interlocked.Read(ref bytes), totalBytes,
             Interlocked.Read(ref copied), Interlocked.Read(ref skipped), Interlocked.Read(ref failed));
 
-        using (var manifest = new CsvWriter(request.ManifestPath, ManifestHeaders))
+        var failures = new System.Collections.Concurrent.ConcurrentBag<(long Index, CopyFailure Failure)>();
+        var manifest = request.ManifestPath is null ? null : new CsvWriter(request.ManifestPath, ManifestHeaders); // none for Quick Copy
+        using (manifest)
         {
             // Files finish out of order with several threads; the manifest still lists them in copy order.
             var manifestGate = new Lock();
@@ -208,7 +211,7 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
                     pending[index] = row;
                     while (pending.Remove(nextRow, out var next))
                     {
-                        manifest.WriteRow(next);
+                        manifest?.WriteRow(next);
                         nextRow++;
                     }
                 }
@@ -321,6 +324,11 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
                                 break;
                             default:
                                 Interlocked.Increment(ref failed);
+                                failures.Add((item.Index, new CopyFailure(item.Source, message ?? result.Outcome.ToString())));
+                                if (manifest is null)
+                                {
+                                    logger.LogWarning("Could not copy {Source}: {Message}", item.Source, message); // no manifest to say why
+                                }
                                 Interlocked.Add(ref bytes, -fileBytes); // the partial copy was deleted
                                 break;
                         }
@@ -352,13 +360,13 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
                 // Rows after a file that was being copied when the copy was cancelled.
                 foreach (var row in pending.OrderBy(p => p.Key).Select(p => p.Value))
                 {
-                    manifest.WriteRow(row);
+                    manifest?.WriteRow(row);
                 }
             }
 
             if (cancelled)
             {
-                manifest.WriteRow([null, null, null, null, null, null, null, "Stopped",
+                manifest?.WriteRow([null, null, null, null, null, null, null, "Stopped",
                     $"Cancelled by the user after {done.ToString("N0", CultureInfo.InvariantCulture)} of {order.Count.ToString("N0", CultureInfo.InvariantCulture)} files. The files not listed above were not copied."]);
             }
 
@@ -374,10 +382,13 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
                 }
             }
 
-            manifest.Complete();
+            manifest?.Complete();
         }
 
-        var result2 = new CopyFilesResult(request.Destination, request.ManifestPath, order.Count, copied, verified, skipped, failed, bytes, cancelled, warnings);
+        var result2 = new CopyFilesResult(request.Destination, request.ManifestPath, order.Count, copied, verified, skipped, failed, bytes, cancelled, warnings)
+        {
+            Failures = [.. failures.OrderBy(f => f.Index).Take(CopyFilesResult.MaxFailuresListed).Select(f => f.Failure)],
+        };
         WriteAudit(session, AuditAction.FilesCopied, new
         {
             request.ScopeText,
