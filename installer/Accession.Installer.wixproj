@@ -11,7 +11,7 @@
     <InstallerPlatform>x64</InstallerPlatform>
     <OutputPath>$(MSBuildThisFileDirectory)..\artifacts\installer\</OutputPath>
     <DefineConstants>ProductVersion=$(ProductVersion);PublishDir=$(PublishDir)</DefineConstants>
-    <!-- Every published file is harvested with <Files>: many per-file ICE warnings are expected and harmless. -->
-    <SuppressIces>ICE61</SuppressIces>
+    <!-- ICE60 flags versioned files without a language (the .NET runtime's resource files): harmless. -->
+    <SuppressIces>ICE60</SuppressIces>
   </PropertyGroup>
 </Project>

@@ -36,7 +36,7 @@
       <Component Id="StartMenuShortcut">
         <Shortcut Id="AccessionShortcut" Name="Accession" Description="Inventory, hash, and report every media you receive."
                   Target="[INSTALLFOLDER]Accession.exe" WorkingDirectory="INSTALLFOLDER" Icon="AccessionIcon" />
-        <RegistryValue Root="HKMU" Key="Software\Accession" Name="StartMenuShortcut" Type="integer" Value="1" KeyPath="yes" />
+        <RegistryValue Root="HKLM" Key="Software\Accession" Name="StartMenuShortcut" Type="integer" Value="1" KeyPath="yes" />
       </Component>
     </StandardDirectory>
   </Package>
