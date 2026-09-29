@@ -1,4 +1,4 @@
-<button class="menu-item" role="menuitem" disabled="@(!Command.CanExecute(CommandParameter))" @onclick="Execute">
+<button class="menu-item" role="menuitem" title="@Title" disabled="@(!Enabled || !Command.CanExecute(CommandParameter))" @onclick="Execute">
     <Icon Name="@Icon" Size="16" />
     <span>@Text</span>
 </button>
@@ -12,10 +12,15 @@
 
     [Parameter] public object? CommandParameter { get; set; }
 
+    /// <summary>False disables the item whatever the command says (e.g. a one-file action in a menu for several files).</summary>
+    [Parameter] public bool Enabled { get; set; } = true;
+
+    [Parameter] public string? Title { get; set; }
+
     private async Task Execute()
     {
         await Task.Yield(); // see ObservingComponentBase.Run
-        if (Command.CanExecute(CommandParameter))
+        if (Enabled && Command.CanExecute(CommandParameter))
         {
             Command.Execute(CommandParameter);
         }

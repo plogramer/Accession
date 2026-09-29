@@ -65,6 +65,7 @@ internal sealed partial class FakeFiles : ObservableObject, IFilesModel
     public ICommand AddToSavedSearchCommand { get; } = new RelayCommand<object?>(_ => { });
     public ICommand AddCheckedToSavedSearchCommand { get; } = new RelayCommand<object?>(_ => { });
     public ICommand RemoveCheckedFromSavedSearchCommand { get; } = new RelayCommand(() => { });
+    public ICommand RemoveFromSavedSearchCommand { get; } = new RelayCommand(() => { });
     public ICommand RemoveAllFromSavedSearchCommand { get; } = new RelayCommand(() => { });
     public IReadOnlySet<long> CheckedFileIds => _checked;
     public void SetChecked(FileRow row, bool isChecked) { }
@@ -119,6 +120,7 @@ internal sealed partial class FakeFiles : ObservableObject, IFilesModel
     public ICommand GenerateCopyBatchCommand { get; } = new RelayCommand(() => { });
     public ICommand CopyFilesCommand { get; } = new RelayCommand(() => { });
     public string ContextHeader => "report.pdf";
+    public int ContextTargetCount { get; set; } = 1;
     public string ContextFolderName => "Shares";
     public void OpenFileMenu(FileRow row) { }
     public void OpenFolderMenu(FolderTreeNode node) { }

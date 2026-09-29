@@ -41,8 +41,8 @@ public sealed class FilesPageTests
         Assert.Contains("aria-label=\"Tick every file on this page\"", html);
         Assert.Contains("3 ticked", html);
         Assert.Contains("Add to saved search", html);
-        Assert.Contains("Remove ticked", html);
-        Assert.Contains("Remove all results", html);
+        Assert.Contains("Remove 3 ticked", html); // ticked files only: one button, its label says which
+        Assert.DoesNotContain("Remove all", html);
         Assert.Contains("title=\"Copy the ticked files, or all results, to another folder\"", html);
     }
 
@@ -56,7 +56,8 @@ public sealed class FilesPageTests
         Assert.DoesNotContain("title=\"Media\" value=", html); // no Media drop-down in the filter bar
         Assert.Contains("aria-label=\"Remove In Shares\"", html); // each chip can be removed on its own
         Assert.Contains("<span class=\"tab-badge\">3</span>", html); // saved searches count on the tab
-        Assert.DoesNotContain("Remove all results", html);
+        Assert.DoesNotContain("Remove all", html); // no saved search shown
+
         Assert.DoesNotContain(" ticked <", html); // no ticked chip
     }
 

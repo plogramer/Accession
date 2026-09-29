@@ -95,7 +95,7 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
     public ObservableCollection<SavedSearchRow> SavedSearches { get; } = [];
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(RemoveCheckedFromSavedSearchCommand), nameof(RemoveAllFromSavedSearchCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RemoveCheckedFromSavedSearchCommand), nameof(RemoveAllFromSavedSearchCommand), nameof(RemoveFromSavedSearchCommand))]
     public partial SavedSearchRow? SelectedSavedSearch { get; set; }
 
     public bool CanChangeSavedSearches => _savedSearchWorkflow?.CanChange ?? false;
@@ -115,6 +115,8 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
     ICommand IFilesModel.RemoveCheckedFromSavedSearchCommand => RemoveCheckedFromSavedSearchCommand;
 
     ICommand IFilesModel.RemoveAllFromSavedSearchCommand => RemoveAllFromSavedSearchCommand;
+
+    ICommand IFilesModel.RemoveFromSavedSearchCommand => RemoveFromSavedSearchCommand;
 
     // ---- Ticked rows ----
 
@@ -161,6 +163,7 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
         AddCheckedToSavedSearchCommand.NotifyCanExecuteChanged();
         AddToSavedSearchCommand.NotifyCanExecuteChanged();
         RemoveCheckedFromSavedSearchCommand.NotifyCanExecuteChanged();
+        RemoveFromSavedSearchCommand.NotifyCanExecuteChanged();
     }
 
     [RelayCommand(CanExecute = nameof(CanChangeSavedSearches))]
@@ -229,6 +232,12 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
 
     private bool CanAddChecked(SavedSearchRow? target) => CanChangeSavedSearches && _checked.Count > 0 && (target is null || target.Id != SelectedSavedSearch?.Id);
 
+    /// <summary>The ticked files, or all results when nothing is ticked, out of the saved search shown (asks first).</summary>
+    [RelayCommand(CanExecute = nameof(CanRemoveFromSavedSearch))]
+    private Task RemoveFromSavedSearch() => _checked.Count > 0 ? RemoveCheckedFromSavedSearch() : RemoveAllFromSavedSearch();
+
+    private bool CanRemoveFromSavedSearch() => _checked.Count > 0 ? CanRemoveChecked() : CanRemoveAll();
+
     [RelayCommand(CanExecute = nameof(CanRemoveChecked))]
     private async Task RemoveCheckedFromSavedSearch()
     {
@@ -261,6 +270,7 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
         AddAllToSavedSearchCommand.NotifyCanExecuteChanged();
         AddToSavedSearchCommand.NotifyCanExecuteChanged();
         RemoveAllFromSavedSearchCommand.NotifyCanExecuteChanged();
+        RemoveFromSavedSearchCommand.NotifyCanExecuteChanged();
     }
 
     private SavedSearchInfo? Info(SavedSearchRow row) =>
@@ -614,6 +624,9 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
     [ObservableProperty]
     public partial string ContextHeader { get; private set; } = string.Empty;
 
+    [ObservableProperty]
+    public partial int ContextTargetCount { get; private set; }
+
     /// <summary>The folder (or media) the tree's menu acts on.</summary>
     [ObservableProperty]
     public partial string ContextFolderName { get; private set; } = string.Empty;
@@ -629,6 +642,7 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
 
         _contextTargets = _checked.Contains(row.FileId) && _checked.Count > 1 ? [.. _checked] : [row.FileId];
         ContextHeader = _contextTargets.Count == 1 ? row.Name : $"{_contextTargets.Count.ToString("N0", CultureInfo.CurrentCulture)} ticked files";
+        ContextTargetCount = _contextTargets.Count;
         AddTargetsToSavedSearchCommand.NotifyCanExecuteChanged();
         CopyToCommand.NotifyCanExecuteChanged();
     }

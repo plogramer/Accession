@@ -208,12 +208,11 @@
                     <span class="card-header-spacer"></span>
                     @if (Model.SelectedSavedSearch is not null && Model.CanChangeSavedSearches)
                     {
-                        @if (Model.CheckedFileIds.Count > 0)
-                        {
-                            <button class="btn btn-sm" disabled="@Disabled(Model.RemoveCheckedFromSavedSearchCommand)" @onclick="() => Run(Model.RemoveCheckedFromSavedSearchCommand)">Remove ticked</button>
-                        }
-                        <button class="btn btn-sm" disabled="@Disabled(Model.RemoveAllFromSavedSearchCommand)" @onclick="() => Run(Model.RemoveAllFromSavedSearchCommand)"
-                                title="Remove every file shown (all pages) from this saved search">Remove all results</button>
+                        @* Like Add: the ticked files, or all results when nothing is ticked; the label says which. *@
+                        <button class="btn btn-sm" disabled="@Disabled(Model.RemoveFromSavedSearchCommand)" @onclick="() => Run(Model.RemoveFromSavedSearchCommand)"
+                                title="Take files out of this saved search (the files themselves stay in the inventory)">
+                            @(Model.CheckedFileIds.Count > 0 ? $"Remove {Model.CheckedFileIds.Count:N0} ticked" : $"Remove all {Model.TotalCount:N0} results")
+                        </button>
                     }
                     @if (Model.CanChangeSavedSearches)
                     {
@@ -327,13 +326,14 @@
 
     @* Right-click menus (the table's also open with the menu key or Shift+F10). *@
     <ContextMenu @ref="_fileMenu" Header="@Model.ContextHeader" Label="File actions">
-        <MenuItem Icon="copy" Text="Copy SHA-1" Command="Model.CopyTargetSha1sCommand" />
-        <MenuItem Icon="copy" Text="Copy path" Command="Model.CopyTargetPathsCommand" />
-        <MenuItem Icon="copy" Text="Copy file name" Command="Model.CopyTargetNamesCommand" />
+        @* Several ticked files: the copy items copy one value per file (and say so); one-file actions are disabled. *@
+        <MenuItem Icon="copy" Text="@(Several ? $"Copy {Count} SHA-1 values" : "Copy SHA-1")" Command="Model.CopyTargetSha1sCommand" />
+        <MenuItem Icon="copy" Text="@(Several ? $"Copy {Count} paths" : "Copy path")" Command="Model.CopyTargetPathsCommand" />
+        <MenuItem Icon="copy" Text="@(Several ? $"Copy {Count} file names" : "Copy file name")" Command="Model.CopyTargetNamesCommand" />
         <div class="menu-sep"></div>
-        <MenuItem Icon="folder-open" Text="Show in folder" Command="Model.OpenContainingFolderCommand" />
-        <MenuItem Icon="search" Text="Find all copies" Command="Model.ShowCopiesCommand" />
-        <MenuItem Icon="filter" Text="Filter by this extension" Command="Model.FilterByExtensionCommand" />
+        <MenuItem Icon="folder-open" Text="Show in folder" Command="Model.OpenContainingFolderCommand" Enabled="!Several" Title="@OneFileOnly" />
+        <MenuItem Icon="search" Text="Find all copies" Command="Model.ShowCopiesCommand" Enabled="!Several" Title="@OneFileOnly" />
+        <MenuItem Icon="filter" Text="Filter by this extension" Command="Model.FilterByExtensionCommand" Enabled="!Several" Title="@OneFileOnly" />
         @if (Model.CanChangeSavedSearches)
         {
             <div class="menu-sep"></div>
@@ -382,6 +382,12 @@
 
     private ElementReference _tree;
     private ContextMenu? _fileMenu;
+
+    private bool Several => Model.ContextTargetCount > 1;
+
+    private string Count => Model.ContextTargetCount.ToString("N0");
+
+    private string? OneFileOnly => Several ? "For one file: right-click a row that is not ticked" : null;
     private ContextMenu? _folderMenu;
 
     private void OpenFileMenu(RowContextMenuArgs<FileRow> e)
@@ -415,7 +421,7 @@
 
     protected override void OnParametersSet() => Observe(Model, Model.Folders, Model.SavedSearches, Model.CopyPathCommand, Model.CopySha1Command,
         Model.OpenContainingFolderCommand, Model.ShowCopiesCommand, Model.AddToSavedSearchCommand,
-        Model.RemoveCheckedFromSavedSearchCommand, Model.RemoveAllFromSavedSearchCommand, Model.NewSavedSearchCommand,
+        Model.RemoveFromSavedSearchCommand, Model.NewSavedSearchCommand,
         Model.AddTargetsToSavedSearchCommand, Model.CopyToCommand, Model.FilterByExtensionCommand);
 
     private bool Show(string key) => Model.VisibleColumns.Contains(key);

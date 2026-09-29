@@ -116,7 +116,7 @@ public sealed class FilesSavedSearchTests : IDisposable
         vm.SetPageChecked(true);
         Assert.Equal(2, vm.CheckedFileIds.Count);
         _dialogs.Answer = true;
-        await vm.RemoveCheckedFromSavedSearchCommand.ExecuteAsync(null);
+        await vm.RemoveFromSavedSearchCommand.ExecuteAsync(null); // ticked files only
         await Idle(vm);
         Assert.Equal(0, vm.TotalCount);
         Assert.Equal(0, _service.List(_test.Session.Database).Single(s => s.SavedSearchId == id).FileCount);
