@@ -8,6 +8,13 @@ inventory file, shows dashboards by media, category and extension, and exports t
 
 Requirements: [`requirements/001-initial_requirements.md`](requirements/001-initial_requirements.md)
 
+## Download
+
+Get the installer, **Accession-&lt;version&gt;-x64.msi**, from the
+[latest release](https://github.com/plogramer/Accession/releases/latest) and run it. It needs Windows 10 (1809) or 11,
+64-bit, and nothing else (.NET is included; WebView2 comes with Windows). The installer is not code-signed yet, so Windows
+may warn about an unknown publisher: choose *More info* → *Run anyway*. The app checks for new versions itself.
+
 ## Screenshots
 
 **Dashboard** – totals, media, categories, extensions, duplicates and files by year, for all media or the ones you tick.
@@ -40,8 +47,8 @@ First version. Inventory schema version 3.
   ones you tick; the slow sections are saved on the computer, so reopening a large inventory is quick.
 - **Files** – browse by media and folder with filters (name, extension, category, size, dates, hash status, duplicates,
   errors, SHA-1); saved searches; right-click menus; copy files out as a copy batch (`.bat`), in the app (keeping or
-  renaming, with metadata, optional SHA-1 verify, several threads) or with *Copy To* (`<sha1>_<name>`), each with a CSV
-  manifest.
+  renaming, with metadata, optional SHA-1 verify, several threads), each with a CSV manifest; *Quick Copy* (right-click)
+  copies files flat into a folder with their original names.
 - **Categories, Errors, Audit Log** – files by category and extension; files that could not be read, with retry; every
   change with who, when and on which computer.
 - **Export** – the inventory, a Files view or the audit log to Excel.
@@ -95,6 +102,22 @@ dotnet publish src/Accession.App -p:PublishProfile=win-x64
 ```
 
 Output: `artifacts/publish/win-x64/`.
+
+## Installer and releases
+
+The MSI is built with the [WiX Toolset](https://wixtoolset.org) (`installer/`, Windows only):
+
+```powershell
+dotnet publish src/Accession.App -p:PublishProfile=win-x64 -p:Version=0.1.0
+dotnet build installer/Accession.Installer.wixproj -c Release -p:ProductVersion=0.1.0
+```
+
+Output: `artifacts/installer/Accession-0.1.0-x64.msi` (installs to *Program Files\Accession* with a Start menu shortcut;
+a newer MSI replaces an older installation).
+
+To release a version: set `<Version>` in `Directory.Build.props`, add its section to the version history below, then push
+a tag such as `v0.2` (`git tag v0.2 && git push origin v0.2`). The *Release* workflow builds the MSI and publishes a GitHub
+release with it, using that version's section as the notes; installed copies of the app then offer the update.
 
 ## Runtime locations
 

@@ -1,0 +1,6 @@
+<Project>
+  <!-- WiX packages are versioned in the project itself (the app's central package versions do not apply here). -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+</Project>

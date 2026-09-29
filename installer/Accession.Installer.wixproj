@@ -1,0 +1,17 @@
+<Project Sdk="WixToolset.Sdk/5.0.2">
+  <!--
+    Builds Accession-<version>-x64.msi from the published app (Windows only; see .github/workflows/release.yml):
+      dotnet publish src\Accession.App -p:PublishProfile=win-x64 -p:Version=0.1.0
+      dotnet build installer\Accession.Installer.wixproj -c Release -p:ProductVersion=0.1.0
+  -->
+  <PropertyGroup>
+    <ProductVersion Condition="'$(ProductVersion)' == ''">0.1.0</ProductVersion>
+    <PublishDir Condition="'$(PublishDir)' == ''">$(MSBuildThisFileDirectory)..\artifacts\publish\win-x64\</PublishDir>
+    <OutputName>Accession-$(ProductVersion)-x64</OutputName>
+    <InstallerPlatform>x64</InstallerPlatform>
+    <OutputPath>$(MSBuildThisFileDirectory)..\artifacts\installer\</OutputPath>
+    <DefineConstants>ProductVersion=$(ProductVersion);PublishDir=$(PublishDir)</DefineConstants>
+    <!-- Every published file is harvested with <Files>: many per-file ICE warnings are expected and harmless. -->
+    <SuppressIces>ICE61</SuppressIces>
+  </PropertyGroup>
+</Project>

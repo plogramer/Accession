@@ -1,0 +1,43 @@
+<!--
+  Accession installer. Installs the self-contained app (no .NET needed) to Program Files\Accession, with a Start menu
+  shortcut. The UpgradeCode never changes: a newer MSI replaces an older installation, and an older one refuses to
+  install over a newer. The WebView2 runtime comes with Windows 10/11 (the app says so if it is missing).
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="Accession"
+           Manufacturer="plogramer"
+           Version="$(var.ProductVersion)"
+           UpgradeCode="{37713C26-1FFA-4B48-ACAF-CB5C84DF37BF}"
+           Scope="perMachine">
+    <SummaryInformation Description="Accession – inventory, hash, and report every media you receive." />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Accession is already installed." />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <Icon Id="AccessionIcon" SourceFile="..\src\Accession.App\Assets\Accession.ico" />
+    <Property Id="ARPPRODUCTICON" Value="AccessionIcon" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/plogramer/Accession" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Accession" />
+    </StandardDirectory>
+
+    <Feature Id="Main" Title="Accession">
+      <ComponentGroupRef Id="AppFiles" />
+      <ComponentRef Id="StartMenuShortcut" />
+    </Feature>
+
+    <!-- Everything dotnet publish produced (self-contained, win-x64). -->
+    <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">
+      <Files Include="$(var.PublishDir)**" />
+    </ComponentGroup>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Component Id="StartMenuShortcut">
+        <Shortcut Id="AccessionShortcut" Name="Accession" Description="Inventory, hash, and report every media you receive."
+                  Target="[INSTALLFOLDER]Accession.exe" WorkingDirectory="INSTALLFOLDER" Icon="AccessionIcon" />
+        <RegistryValue Root="HKMU" Key="Software\Accession" Name="StartMenuShortcut" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+  </Package>
+</Wix>

@@ -1,0 +1,91 @@
+name: Release
+
+# Builds the Windows installer (Accession-<version>-x64.msi).
+# - A pushed tag like v0.2 builds it and publishes a GitHub release with the MSI to download
+#   (the release notes are that version's section of the README's version history).
+# - A push to dev that changes the installer only builds it (download it from the run's artifacts).
+on:
+  push:
+    tags: ['v*']
+    branches: [dev]
+    paths: ['installer/**', '.github/workflows/release.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  msi:
+    name: Build installer (windows x64)
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Version
+        id: version
+        shell: pwsh
+        run: |
+          # v0.2 -> 0.2.0 (an MSI needs three numbers); without a tag, the version in Directory.Build.props.
+          if ($env:GITHUB_REF_TYPE -eq 'tag') { $v = $env:GITHUB_REF_NAME.TrimStart('v', 'V') }
+          else { $v = ([xml](Get-Content Directory.Build.props)).Project.PropertyGroup.Version }
+          $display = $v.Split('-')[0].Split('+')[0]
+          $parts = @($display.Split('.'))
+          while ($parts.Count -lt 3) { $parts += '0' }
+          $version = ($parts[0..2] -join '.')
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "display=$display" >> $env:GITHUB_OUTPUT
+          Write-Host "Version $version (shown as $display)"
+
+      - name: Publish the app (self-contained, win-x64)
+        run: dotnet publish src/Accession.App/Accession.App.csproj -p:PublishProfile=win-x64 -p:Version=${{ steps.version.outputs.version }}
+
+      - name: Build the MSI
+        run: dotnet build installer/Accession.Installer.wixproj -c Release -p:ProductVersion=${{ steps.version.outputs.version }}
+
+      - name: Upload the MSI
+        uses: actions/upload-artifact@v4
+        with:
+          name: Accession-${{ steps.version.outputs.version }}-x64
+          path: artifacts/installer/*.msi
+          if-no-files-found: error
+
+      - name: Publish the GitHub release
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $display = '${{ steps.version.outputs.display }}'
+          $msi = 'artifacts/installer/Accession-${{ steps.version.outputs.version }}-x64.msi'
+
+          # This version's section of the README's version history ("### 0.2 – 2026-10-15" up to the next heading).
+          $lines = Get-Content README.md -Encoding utf8
+          $start = [Array]::FindIndex($lines, [Predicate[string]] { param($l) $l -match "^### $([regex]::Escape($display))( |$)" })
+          $notes = @()
+          if ($start -ge 0) {
+            for ($i = $start + 1; $i -lt $lines.Count -and $lines[$i] -notmatch '^#{2,3} '; $i++) { $notes += $lines[$i] }
+          }
+          $body = @(
+            "## Download"
+            ""
+            "Download **Accession-${{ steps.version.outputs.version }}-x64.msi** below and run it. Windows 10 (1809) or 11, 64-bit; nothing else to install."
+            "Windows may warn that the installer is from an unknown publisher (it is not code-signed): choose *More info* → *Run anyway*."
+            ""
+            "## What's new"
+          ) + $notes
+          $body -join "`n" | Out-File notes.md -Encoding utf8
+
+          gh release create $env:GITHUB_REF_NAME $msi --title "Accession $display" --notes-file notes.md --verify-tag

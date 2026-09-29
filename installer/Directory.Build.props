@@ -1,0 +1,3 @@
+<Project>
+  <!-- The installer is built on its own: none of the app's build settings (C# options, central package versions) apply. -->
+</Project>
