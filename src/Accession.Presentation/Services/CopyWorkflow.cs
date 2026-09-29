@@ -96,7 +96,8 @@ public sealed class CopyWorkflow(
 
     /// <summary>
     /// Quick Copy (right-click): only a folder is asked. The files go straight into it with their original names (abc.txt,
-    /// then abc_2_.txt… when a name is taken); no metadata, verification, folders or manifest (failures are listed at the end).
+    /// then abc_2_.txt… when a name is taken); no metadata, verification or folders. A manifest is left in the folder only
+    /// when some files could not be copied.
     /// </summary>
     public async Task QuickCopyAsync(IReadOnlyCollection<long> fileIds)
     {
@@ -110,10 +111,15 @@ public sealed class CopyWorkflow(
         _lastQuickCopyFolder = folder;
         var culture = CultureInfo.CurrentCulture;
         var files = fileIds.Count == 1 ? "1 file" : $"{fileIds.Count.ToString("N0", culture)} files";
-        var request = new CopyRequest(FileFilter.None with { FileIds = [.. fileIds] }, folder, new CopyNaming { Mode = CopyNamingMode.OriginalName }, ManifestPath: null)
+        // A manifest in the folder only when some files could not be copied (it lists every file and why).
+        var manifestName = CopyNaming.FreeName($"Quick Copy manifest {time.GetLocalNow().ToString("yyyy-MM-dd HHmmss", CultureInfo.InvariantCulture)}.csv",
+            name => Path.Exists(Path.Combine(folder, name)));
+        var request = new CopyRequest(FileFilter.None with { FileIds = [.. fileIds] }, folder, new CopyNaming { Mode = CopyNamingMode.OriginalName },
+            Path.Combine(folder, manifestName))
         {
             ScopeText = $"Quick Copy: {files}",
             Threads = settings.Current.CopyThreads,
+            ManifestOnlyOnFailure = true,
         };
         try
         {
@@ -124,8 +130,8 @@ public sealed class CopyWorkflow(
             }
 
             var result = await busy.RunAsync((token, update) =>
-                Task.FromResult(copy.CopyFiles(session, request, new CopyFileOptions(PreserveMetadata: false), new ProgressText(update, "Copying…", settings), token)),
-                "Copying…", cancellable: true);
+                Task.FromResult(copy.CopyFiles(session, request, new CopyFileOptions(PreserveMetadata: false), new ProgressText(update, "Quick Copy:", settings), token)),
+                $"Quick Copy: 0 of {fileIds.Count.ToString("N0", culture)} files", cancellable: true);
             if (result.Failed == 0 && !result.Cancelled)
             {
                 toasts.Show($"Copied {(result.Copied == 1 ? "1 file" : $"{result.Copied.ToString("N0", culture)} files")} to {folder}", ToastKind.Success);
@@ -165,7 +171,7 @@ public sealed class CopyWorkflow(
         }
     }
 
-    /// <summary>The result as text: counts, then where the manifest is (or the failed files, without one).</summary>
+    /// <summary>The result as text: counts, then where the manifest is (when one was kept).</summary>
     internal static string Summary(CopyFilesResult result, SizeUnitSystem unit, CultureInfo culture)
     {
         string N(long value) => value.ToString("N0", culture);
@@ -179,19 +185,9 @@ public sealed class CopyWorkflow(
             lines.Add($"Skipped: {N(result.Skipped)} (already at the destination)");
         }
 
-        if (result.Failed > 0 && result.ManifestPath is not null)
+        if (result.Failed > 0)
         {
             lines.Add($"Failed: {N(result.Failed)}. The manifest says why for each file.");
-        }
-        else if (result.Failed > 0)
-        {
-            // No manifest (Quick Copy): the failed files themselves.
-            lines.Add($"Failed: {N(result.Failed)}");
-            lines.AddRange(result.Failures.Select(f => $"  {Path.GetFileName(f.Source)}: {f.Message}"));
-            if (result.Failed > result.Failures.Count)
-            {
-                lines.Add($"  … and {N(result.Failed - result.Failures.Count)} more (see the log)");
-            }
         }
 
         if (result.Cancelled)

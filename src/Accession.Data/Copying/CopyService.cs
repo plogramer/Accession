@@ -195,8 +195,8 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
         CopyProgress Snapshot() => new(Interlocked.Read(ref done), order.Count, Interlocked.Read(ref bytes), totalBytes,
             Interlocked.Read(ref copied), Interlocked.Read(ref skipped), Interlocked.Read(ref failed));
 
-        var failures = new System.Collections.Concurrent.ConcurrentBag<(long Index, CopyFailure Failure)>();
-        var manifest = request.ManifestPath is null ? null : new CsvWriter(request.ManifestPath, ManifestHeaders); // none for Quick Copy
+        var keepManifest = false;
+        var manifest = request.ManifestPath is null ? null : new CsvWriter(request.ManifestPath, ManifestHeaders);
         using (manifest)
         {
             // Files finish out of order with several threads; the manifest still lists them in copy order.
@@ -324,11 +324,6 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
                                 break;
                             default:
                                 Interlocked.Increment(ref failed);
-                                failures.Add((item.Index, new CopyFailure(item.Source, message ?? result.Outcome.ToString())));
-                                if (manifest is null)
-                                {
-                                    logger.LogWarning("Could not copy {Source}: {Message}", item.Source, message); // no manifest to say why
-                                }
                                 Interlocked.Add(ref bytes, -fileBytes); // the partial copy was deleted
                                 break;
                         }
@@ -344,6 +339,7 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
                 }
             }
 
+            progress?.Report(Snapshot()); // "0 of N files" at once, before the first file is done
             var workers = Enumerable.Range(0, threads).Select(_ => Task.Run(Worker, CancellationToken.None)).ToList();
             try
             {
@@ -370,6 +366,9 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
                     $"Cancelled by the user after {done.ToString("N0", CultureInfo.InvariantCulture)} of {order.Count.ToString("N0", CultureInfo.InvariantCulture)} files. The files not listed above were not copied."]);
             }
 
+            // Quick Copy: the manifest only when something failed; otherwise the partial file is deleted.
+            keepManifest = manifest is not null && (!request.ManifestOnlyOnFailure || failed > 0);
+
             if (preserveFolders)
             {
                 // Last, because adding files changes a folder's modified time.
@@ -382,13 +381,13 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
                 }
             }
 
-            manifest?.Complete();
+            if (keepManifest)
+            {
+                manifest!.Complete();
+            }
         }
 
-        var result2 = new CopyFilesResult(request.Destination, request.ManifestPath, order.Count, copied, verified, skipped, failed, bytes, cancelled, warnings)
-        {
-            Failures = [.. failures.OrderBy(f => f.Index).Take(CopyFilesResult.MaxFailuresListed).Select(f => f.Failure)],
-        };
+        var result2 = new CopyFilesResult(request.Destination, keepManifest ? request.ManifestPath : null, order.Count, copied, verified, skipped, failed, bytes, cancelled, warnings);
         WriteAudit(session, AuditAction.FilesCopied, new
         {
             request.ScopeText,

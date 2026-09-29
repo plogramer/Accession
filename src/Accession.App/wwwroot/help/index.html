@@ -300,7 +300,9 @@
                 the files are copied straight into it with their original names, e.g. to send a few documents for review. No folders,
                 metadata or verification: use <em>Copy files…</em> for those. A name already taken, in the folder or by another file
                 of the same copy, gets a number: <code>abc.txt</code>, <code>abc_2_.txt</code>, <code>abc_3_.txt</code>. Nothing is ever
-                overwritten. No manifest is written; if a file cannot be copied, the message at the end lists it with the reason.</p>
+                overwritten. While it copies you see how many files are done (<em>Quick Copy: 12 of 51 files</em>). If every file was
+                copied, a short notice says so. If some could not be copied, the message at the end says how many, and a manifest
+                (<code>Quick Copy manifest &lt;date time&gt;.csv</code>, every file with its outcome and the reason) is left in the folder.</p>
             <h3>The manifest</h3>
             <p>Both write a CSV manifest (it opens in Excel) with one row per file in copy order: number, new path, original path,
                 Media ID, size in bytes, modified time (UTC), the SHA-1 from the inventory, and the outcome (<em>In batch</em>,

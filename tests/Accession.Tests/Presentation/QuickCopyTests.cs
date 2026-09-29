@@ -1,6 +1,7 @@
 using Accession.Core.Threading;
 using Accession.Data.Copying;
 using Accession.Data.Repositories;
+using Accession.Presentation.Mvvm;
 using Accession.Presentation.Services;
 using Accession.Tests.TestSupport;
 using Accession.UI.Components;
@@ -54,24 +55,30 @@ public sealed class QuickCopyTests : IDisposable
         Assert.Equal(["abc.txt", "abc_2_.txt"], Directory.GetFiles(destination).Select(Path.GetFileName).Order(StringComparer.Ordinal));
         Assert.Equal(@"\MED001\a\", File.ReadAllText(Path.Combine(destination, "abc.txt")));
         Assert.Equal(@"\MED001\b\", File.ReadAllText(Path.Combine(destination, "abc_2_.txt")));
-        Assert.Empty(Directory.GetFiles(_test.Temp.Path, "*.csv", SearchOption.AllDirectories)); // no manifest anywhere
+        Assert.Empty(Directory.GetFiles(_test.Temp.Path, "*.csv*", SearchOption.AllDirectories)); // all copied: no manifest
         Assert.Contains(_toasts.Items, t => t.Message == $"Copied 2 files to {destination}");
     }
 
     [Fact]
-    public void Without_a_manifest_the_summary_lists_the_failed_files()
+    public async Task When_files_fail_it_says_how_many_and_leaves_a_manifest_in_the_folder()
     {
-        var result = new CopyFilesResult(@"D:\Review", null, 14, 2, 0, 0, 12, 100, false, 0)
-        {
-            Failures = [.. Enumerable.Range(1, CopyFilesResult.MaxFailuresListed).Select(i => new CopyFailure(Path.Combine(_test.Root, "MED001", $"doc{i}.pdf"), "Access is denied."))],
-        };
+        var destination = _test.Temp.Combine("picked");
+        File.Delete(Path.Combine(_test.Root, "MED001", "b", "abc.txt")); // gone since the scan: cannot be copied
+        var dialogs = new SummaryDialogs(destination);
+        var workflow = new CopyWorkflow(_host, new CopyService(_test.Factory, NullLogger<CopyService>.Instance), new TestSettings(),
+            dialogs, new BusyTracker(TimeProvider.System), _toasts, new RecordingDesktop(), new InlineUiDispatcher(),
+            _test.Time, NullLogger<CopyWorkflow>.Instance);
 
-        var text = CopyWorkflow.Summary(result, Accession.Core.Settings.SizeUnitSystem.Binary, System.Globalization.CultureInfo.InvariantCulture);
+        await workflow.QuickCopyAsync(_files);
 
-        Assert.Contains("Failed: 12", text);
-        Assert.Contains("  doc1.pdf: Access is denied.", text);
-        Assert.Contains("… and 2 more (see the log)", text);
-        Assert.DoesNotContain("anifest", text);
+        var manifest = Assert.Single(Directory.GetFiles(destination, "Quick Copy manifest *.csv"));
+        Assert.Equal(2, File.ReadAllLines(manifest).Length - 1); // every file, with its outcome
+        Assert.Contains("\"Failed\"", File.ReadAllText(manifest));
+        Assert.Empty(Directory.GetFiles(destination, "*.partial"));
+        Assert.Equal("Copy finished with failures", dialogs.Title);
+        Assert.Contains("Copied: 1 of 2 files", dialogs.Message);
+        Assert.Contains("Failed: 1.", dialogs.Message);
+        Assert.Contains($"Manifest: {manifest}", dialogs.Message);
     }
 
     [Fact]
@@ -84,5 +91,33 @@ public sealed class QuickCopyTests : IDisposable
         await workflow.QuickCopyAsync(_files);
 
         Assert.Empty(_toasts.Items);
+    }
+
+    /// <summary>Picks the folder and records the summary shown at the end.</summary>
+    private sealed class SummaryDialogs(string folder) : IDialogService
+    {
+        public string Title { get; private set; } = string.Empty;
+
+        public string Message { get; private set; } = string.Empty;
+
+        public string? PickFolder(string title, string? initialDirectory = null) => folder;
+
+        public bool Confirm(string title, string message)
+        {
+            (Title, Message) = (title, message);
+            return false;
+        }
+
+        public bool? ShowDialog(DialogViewModelBase viewModel) => throw new InvalidOperationException(viewModel.Title);
+
+        public void ShowInfo(string title, string message) => throw new InvalidOperationException(title);
+
+        public void ShowWarning(string title, string message) => throw new InvalidOperationException(title);
+
+        public void ShowError(string title, string message, Exception? exception = null) => throw new InvalidOperationException(title + ": " + message);
+
+        public string? PickOpenFile(string title, string filter, string? initialDirectory = null) => null;
+
+        public string? PickSaveFile(string title, string filter, string? defaultFileName = null, string? initialDirectory = null) => null;
     }
 }
