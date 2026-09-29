@@ -3,8 +3,8 @@ name: Release
 # Builds the Windows installer (Accession-<version>-x64.msi).
 # - A pushed tag like v0.2 builds it and publishes a GitHub release with the MSI to download
 #   (the release notes are that version's section of the README's version history).
-# - A push to dev whose commit message contains [release] does the same: the release creates the tag v<version>
-#   (the version in Directory.Build.props) on that commit.
+# - A push to dev whose commit message contains [release] does the same: the release creates the tag v<x.y.z>
+#   (the version in Directory.Build.props) on that commit; if that release exists, its notes and MSI are updated.
 # - Any other push to dev that changes the installer only builds it (download it from the run's artifacts).
 on:
   push:
@@ -45,15 +45,16 @@ jobs:
           # v0.2 -> 0.2.0 (an MSI needs three numbers); without a tag, the version in Directory.Build.props.
           if ($env:GITHUB_REF_TYPE -eq 'tag') { $v = $env:GITHUB_REF_NAME.TrimStart('v', 'V') }
           else { $v = ([xml](Get-Content Directory.Build.props)).Project.PropertyGroup.Version }
-          $display = $v.Split('-')[0].Split('+')[0]
-          $parts = @($display.Split('.'))
+          $parts = @($v.Split('-')[0].Split('+')[0].Split('.'))
           while ($parts.Count -lt 3) { $parts += '0' }
           $version = ($parts[0..2] -join '.')
+          # Shown as the app shows it: 0.1.0 -> 0.1, 0.2.3 -> 0.2.3 (and the README's version history uses that).
+          $display = if ($parts[2] -eq '0') { ($parts[0..1] -join '.') } else { $version }
           "version=$version" >> $env:GITHUB_OUTPUT
           "display=$display" >> $env:GITHUB_OUTPUT
           # Publish for a tag, or for a dev commit that asks for it (the tag is then created with the release).
           $release = $env:GITHUB_REF_TYPE -eq 'tag' -or "$env:COMMIT_MESSAGE".Contains('[release]')
-          $tag = if ($env:GITHUB_REF_TYPE -eq 'tag') { $env:GITHUB_REF_NAME } else { "v$display" }
+          $tag = if ($env:GITHUB_REF_TYPE -eq 'tag') { $env:GITHUB_REF_NAME } else { "v$version" }
           "release=$($release.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
           "tag=$tag" >> $env:GITHUB_OUTPUT
           Write-Host "Version $version (shown as $display); release: $release ($tag)"
@@ -99,6 +100,12 @@ jobs:
 
           $tag = '${{ steps.version.outputs.tag }}'
           gh release view $tag *> $null
-          if ($LASTEXITCODE -eq 0) { throw "Release $tag already exists: raise <Version> in Directory.Build.props first." }
-          # For a pushed tag the tag exists; otherwise the release creates it on this commit.
-          gh release create $tag $msi --title "Accession $display" --notes-file notes.md --target $env:GITHUB_SHA
+          if ($LASTEXITCODE -eq 0) {
+            # Released already (e.g. fixing its notes): update the title, notes and installer.
+            gh release edit $tag --title "Accession $display" --notes-file notes.md
+            gh release upload $tag $msi --clobber
+          }
+          else {
+            # For a pushed tag the tag exists; otherwise the release creates it on this commit.
+            gh release create $tag $msi --title "Accession $display" --notes-file notes.md --target $env:GITHUB_SHA
+          }
