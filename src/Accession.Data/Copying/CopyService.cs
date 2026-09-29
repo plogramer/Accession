@@ -106,7 +106,7 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
                         // A batch cannot compute a SHA-1: the file is listed, not copied.
                         notInBatch++;
                         WriteManifestRow(manifest, done + notInBatch, null, source, file, "Not in batch",
-                            "No SHA-1 yet, so it cannot be named. Hash the media first, or use Copy To in the app.");
+                            "No SHA-1 yet, so it cannot be named. Hash the media first, or copy in the app.");
                         continue;
                     }
 
@@ -224,9 +224,18 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
                 try
                 {
                     long index = 0;
+                    var taken = new HashSet<string>(StringComparer.OrdinalIgnoreCase); // flat original names given out so far
                     foreach (var file in Rows(session, order, stop.Token))
                     {
                         var (source, destination) = Paths(root, request, file, index);
+                        if (request.Naming.Mode == CopyNamingMode.OriginalName)
+                        {
+                            // abc.txt, abc_2_.txt…: never over a file already there, nor over an earlier file of this copy.
+                            var name = CopyNaming.FreeName(file.Name, candidate =>
+                                taken.Contains(candidate) || Path.Exists(Path.Combine(request.Destination, candidate)));
+                            taken.Add(name);
+                            destination = Path.Combine(request.Destination, name);
+                        }
                         if (preserveFolders)
                         {
                             NoteFolders(root, request.Destination, file.FolderPath, seenFolders, createdFolders);
@@ -546,6 +555,7 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
         {
             CopyNamingMode.Sequential => $"sequential names ({request.Naming.Example()} …)",
             CopyNamingMode.Sha1Name => "SHA-1 names (<sha1>_<name>, files without a SHA-1 are left out)",
+            CopyNamingMode.OriginalName => "original names in one folder",
             _ => "original folders and names",
         };
         bat.WriteLine("@echo off");

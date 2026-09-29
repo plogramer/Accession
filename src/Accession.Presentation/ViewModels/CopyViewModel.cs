@@ -22,9 +22,6 @@ public enum CopyDialogMode
 
     /// <summary>Copy the files in the app (CPY-06).</summary>
     Copy,
-
-    /// <summary>Copy To (right-click on files): the files straight into one folder as &lt;sha1&gt;_&lt;name&gt;.</summary>
-    CopyTo,
 }
 
 /// <summary>The dialog's last choices, offered again next time (for this run of the app).</summary>
@@ -72,12 +69,12 @@ public sealed partial class CopyViewModel : DialogViewModelBase
         _allResults = allResults;
         _unit = settings.Current.SizeUnit;
         AllResultsText = allResultsText;
-        Title = mode switch { CopyDialogMode.Batch => "Generate copy batch", CopyDialogMode.CopyTo => "Copy To", _ => "Copy files" };
-        ScopeValue = ticked.Count > 0 || mode == CopyDialogMode.CopyTo ? ScopeTicked : ScopeAll;
+        Title = mode == CopyDialogMode.Batch ? "Generate copy batch" : "Copy files";
+        ScopeValue = ticked.Count > 0 ? ScopeTicked : ScopeAll;
 
         var naming = last?.Naming ?? new CopyNaming { Prefix = string.Empty, Digits = 8, StartNumber = 1 };
         Destination = last?.Destination ?? string.Empty;
-        NamingValue = mode == CopyDialogMode.CopyTo ? NamingSha1 : naming.Mode switch
+        NamingValue = naming.Mode switch
         {
             CopyNamingMode.Sequential => NamingSequential,
             CopyNamingMode.Sha1Name => NamingSha1,
@@ -92,7 +89,7 @@ public sealed partial class CopyViewModel : DialogViewModelBase
         Verify = last?.Verify ?? false;
 
         var config = session.Config;
-        var kind = mode switch { CopyDialogMode.Batch => "CopyBatch", CopyDialogMode.CopyTo => "CopyTo", _ => "Copy" };
+        var kind = mode == CopyDialogMode.Batch ? "CopyBatch" : "Copy";
         var stem = SafeFileName($"{config.ClientCode}_{config.MatterCode}_{kind}_{now.ToLocalTime():yyyyMMdd_HHmm}");
         var folder = settings.Current.ResolveExportFolder();
         BatchPath = Path.Combine(folder, stem + ".bat");
@@ -104,11 +101,6 @@ public sealed partial class CopyViewModel : DialogViewModelBase
     public CopyDialogMode Mode { get; }
 
     public bool IsBatch => Mode == CopyDialogMode.Batch;
-
-    public bool IsCopyTo => Mode == CopyDialogMode.CopyTo;
-
-    /// <summary>"report.pdf" or "3 files" (Copy To).</summary>
-    public string TargetText => _ticked.Count == 1 ? "1 file" : $"{_ticked.Count.ToString("N0", CultureInfo.CurrentCulture)} files";
 
     public string AllResultsText { get; }
 
@@ -196,7 +188,7 @@ public sealed partial class CopyViewModel : DialogViewModelBase
     /// <summary>The robocopy + sequential names conflict, shown straight away (not only after trying).</summary>
     public string TemplateConflict => IsBatch && Naming.Renames && CurrentTemplate.IsRobocopy ? CurrentTemplate.Validate(Naming.Mode) ?? string.Empty : string.Empty;
 
-    public string GoText => Mode switch { CopyDialogMode.Batch => "Write batch file", CopyDialogMode.CopyTo => "Copy", _ => "Copy files" };
+    public string GoText => Mode == CopyDialogMode.Batch ? "Write batch file" : "Copy files";
 
     public CopyNaming Naming => new()
     {
@@ -322,7 +314,7 @@ public sealed partial class CopyViewModel : DialogViewModelBase
     private FileFilter Filter() => ScopeValue == ScopeTicked ? FileFilter.None with { FileIds = [.. _ticked] } : _allResults;
 
     private string ScopeText() => ScopeValue == ScopeTicked
-        ? $"{_ticked.Count.ToString("N0", CultureInfo.InvariantCulture)} {(IsCopyTo ? "files (Copy To)" : "ticked files")}"
+        ? $"{_ticked.Count.ToString("N0", CultureInfo.InvariantCulture)} ticked files"
         : "All results" + (AllResultsText.Length == 0 ? string.Empty : ": " + AllResultsText);
 
     private void SetManifest(string path)

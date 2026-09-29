@@ -349,7 +349,7 @@
         @if (Model.CanCopyFiles)
         {
             <div class="menu-sep"></div>
-            <MenuItem Icon="download" Text="Copy To…" Command="Model.CopyToCommand" />
+            <MenuItem Icon="download" Text="Quick Copy…" Command="Model.QuickCopyCommand" Title="Copy to a folder you pick, all in that folder, with the original names" />
         }
     </ContextMenu>
     <ContextMenu @ref="_folderMenu" Header="@Model.ContextFolderName" Label="Folder actions">
@@ -422,7 +422,7 @@
     protected override void OnParametersSet() => Observe(Model, Model.Folders, Model.SavedSearches, Model.CopyPathCommand, Model.CopySha1Command,
         Model.OpenContainingFolderCommand, Model.ShowCopiesCommand, Model.AddToSavedSearchCommand,
         Model.RemoveFromSavedSearchCommand, Model.NewSavedSearchCommand,
-        Model.AddTargetsToSavedSearchCommand, Model.CopyToCommand, Model.FilterByExtensionCommand);
+        Model.AddTargetsToSavedSearchCommand, Model.QuickCopyCommand, Model.FilterByExtensionCommand);
 
     private bool Show(string key) => Model.VisibleColumns.Contains(key);
 

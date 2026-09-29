@@ -11,8 +11,14 @@ public enum CopyNamingMode
     /// <summary><c>&lt;destination&gt;\&lt;prefix&gt;&lt;number&gt;.&lt;ext&gt;</c>, numbered in media, folder, name order.</summary>
     Sequential,
 
-    /// <summary><c>&lt;destination&gt;\&lt;sha1&gt;_&lt;name&gt;</c>: flat, named by content (Copy To). Same SHA-1 and name = one copy.</summary>
+    /// <summary><c>&lt;destination&gt;\&lt;sha1&gt;_&lt;name&gt;</c>: flat, named by content. Same SHA-1 and name = one copy.</summary>
     Sha1Name,
+
+    /// <summary>
+    /// <c>&lt;destination&gt;\&lt;name&gt;</c>: flat, original names (Quick Copy). A name already taken, at the destination or by an
+    /// earlier file of the same copy, gets a number: abc.txt, abc_2_.txt, abc_3_.txt.
+    /// </summary>
+    OriginalName,
 }
 
 /// <summary>Naming options. <see cref="Prefix"/>, <see cref="Digits"/> and <see cref="StartNumber"/> apply to sequential names.</summary>
@@ -71,6 +77,32 @@ public sealed record CopyNaming
 
     /// <summary><c>&lt;sha1&gt;_&lt;name&gt;</c>, the SHA-1 in lowercase; the name keeps its extension.</summary>
     public static string Sha1FileName(string sha1, string name) => sha1.Trim().ToLowerInvariant() + "_" + name;
+
+    /// <summary>Number <paramref name="number"/> of a name for flat copies: abc.txt → abc_2_.txt; abc → abc_2_; .profile → .profile_2_.</summary>
+    public static string NumberedName(string name, int number)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        var suffix = "_" + number.ToString(CultureInfo.InvariantCulture) + "_";
+        var extension = Path.GetExtension(name);
+        var stem = name[..^extension.Length];
+        return stem.Length == 0 || extension.Length <= 1 ? name + suffix : stem + suffix + extension;
+    }
+
+    /// <summary>
+    /// The first of <paramref name="name"/>, abc_2_.txt, abc_3_.txt… that <paramref name="isTaken"/> says is free (case-insensitive
+    /// on Windows: the caller's check decides).
+    /// </summary>
+    public static string FreeName(string name, Func<string, bool> isTaken)
+    {
+        ArgumentNullException.ThrowIfNull(isTaken);
+        var candidate = name;
+        for (var number = 2; isTaken(candidate); number++)
+        {
+            candidate = NumberedName(name, number);
+        }
+
+        return candidate;
+    }
 
     /// <summary>An example of the first name, for the dialog.</summary>
     public string Example(string extension = "pdf") => Mode == CopyNamingMode.Sequential ? SequentialName(StartNumber, extension) : string.Empty;

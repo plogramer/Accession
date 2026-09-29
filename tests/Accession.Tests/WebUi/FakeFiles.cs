@@ -127,7 +127,7 @@ internal sealed partial class FakeFiles : ObservableObject, IFilesModel
     public ICommand CopyTargetSha1sCommand { get; } = new RelayCommand(() => { });
     public ICommand CopyTargetPathsCommand { get; } = new RelayCommand(() => { });
     public ICommand CopyTargetNamesCommand { get; } = new RelayCommand(() => { });
-    public ICommand CopyToCommand { get; } = new RelayCommand(() => { });
+    public ICommand QuickCopyCommand { get; } = new RelayCommand(() => { });
     public ICommand AddTargetsToSavedSearchCommand { get; } = new RelayCommand<object?>(_ => { });
     public ICommand FilterByExtensionCommand { get; } = new RelayCommand(() => { });
     public ICommand OpenFolderInExplorerCommand { get; } = new RelayCommand(() => { });

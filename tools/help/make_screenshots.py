@@ -46,7 +46,6 @@ SHOTS = [
     ("dialog-saved-search.png", "form-saved-search", (".modal", None), (1280, 800)),
     ("dialog-copy-batch.png", "form-copy-batch", (".modal", None), (1280, 1200)),
     ("dialog-copy-files.png", "form-copy-files", (".modal", None), (1280, 1000)),
-    ("dialog-copy-to.png", "form-copy-to", (".modal", None), (1280, 900)),
     ("update-banner.png", "start-update", (".update-banner", None), (1280, 760)),
     ("dialog-update.png", "form-update", (".modal", None), (1280, 900)),
 ]

@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Accession.Tests.Copying;
 
-/// <summary>Copy files and Copy To with several threads (Settings → Copy threads): same result as one thread, manifest in copy order.</summary>
+/// <summary>Copy files and Quick Copy with several threads (Settings → Copy threads): same result as one thread, manifest in copy order.</summary>
 public sealed class ParallelCopyTests : IDisposable
 {
     private const int Folders = 6;
@@ -74,6 +74,32 @@ public sealed class ParallelCopyTests : IDisposable
         {
             Assert.Equal(File.ReadAllText(row[2]), File.ReadAllText(row[1]));
         }
+    }
+
+    [Fact]
+    public void Quick_copy_puts_everything_in_one_folder_with_original_names_numbered_when_taken()
+    {
+        var request = Request(new CopyNaming { Mode = CopyNamingMode.OriginalName }, threads: 8, "quick");
+        Directory.CreateDirectory(request.Destination);
+        File.WriteAllText(Path.Combine(request.Destination, "same.txt"), "already there");
+
+        var result = _copy.CopyFiles(_test.Session, request, new CopyFileOptions(PreserveMetadata: false));
+
+        const int total = Folders * FilesPerFolder;
+        Assert.Equal((total, (long)total, 0L, 0L), (result.TotalFiles, result.Copied, result.Skipped, result.Failed));
+        Assert.Empty(Directory.GetDirectories(request.Destination)); // flat
+        Assert.Equal("already there", File.ReadAllText(Path.Combine(request.Destination, "same.txt"))); // never overwritten
+
+        // Each folder's same.txt, in copy order: same_2_.txt … same_7_.txt (same.txt was taken).
+        var rows = Manifest(result.ManifestPath);
+        Assert.Equal(Enumerable.Range(2, Folders).Select(n => $"same_{n}_.txt"),
+            rows.Where(r => Path.GetFileName(r[2]) == "same.txt").Select(r => Path.GetFileName(r[1])));
+        Assert.All(rows, r => Assert.Equal(File.ReadAllText(r[2]), File.ReadAllText(r[1])));
+
+        // doc001.txt exists in every folder too.
+        Assert.True(File.Exists(Path.Combine(request.Destination, "doc001.txt")));
+        Assert.True(File.Exists(Path.Combine(request.Destination, $"doc001_{Folders}_.txt")));
+        Assert.Equal(total + 1, Directory.GetFiles(request.Destination).Length);
     }
 
     [Fact]

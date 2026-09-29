@@ -20,7 +20,7 @@ public sealed class AppSettings
     public bool SplitExportPerMedia { get; set; }
 
     // Copying
-    /// <summary>Files copied at the same time by Copy files and Copy To.</summary>
+    /// <summary>Files copied at the same time by Copy files and Quick Copy.</summary>
     public int CopyThreads { get; set; } = SettingsLimits.DefaultCopyThreads;
 
     // Updates

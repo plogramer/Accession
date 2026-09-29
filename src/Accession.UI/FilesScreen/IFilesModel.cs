@@ -166,8 +166,8 @@ public interface IFilesModel : INotifyPropertyChanged, IRefreshableScreen
 
     ICommand CopyTargetNamesCommand { get; }
 
-    /// <summary>Copy To: the menu's files into one folder as &lt;sha1&gt;_&lt;name&gt;.</summary>
-    ICommand CopyToCommand { get; }
+    /// <summary>Quick Copy: the menu's files into a folder the user picks, flat, with their original names.</summary>
+    ICommand QuickCopyCommand { get; }
 
     /// <summary>Adds the menu's files. Parameter: the target <see cref="SavedSearchRow"/>, or null for a new one.</summary>
     ICommand AddTargetsToSavedSearchCommand { get; }

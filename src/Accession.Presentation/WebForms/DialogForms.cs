@@ -242,7 +242,7 @@ public static class DialogForms
                     new NumberField("Copy threads", () => vm.CopyThreads, v => vm.CopyThreads = v,
                         SettingsLimits.MinCopyThreads, SettingsLimits.MaxCopyThreads)
                     {
-                        Hint = vm.CopyThreadsRange + " files at a time (Copy files, Copy To). More helps with many small files; for large files the disks are the limit.",
+                        Hint = vm.CopyThreadsRange + " files at a time (Copy files, Quick Copy). More helps with many small files; for large files the disks are the limit.",
                         Error = () => Errors(nameof(vm.CopyThreads)),
                     },
                 ]),
@@ -341,13 +341,12 @@ public static class DialogForms
             [
                 new SelectField("Files", [.. vm.ScopeOptions.Select(o => new SelectOption(o.Value, o.Label))], () => vm.ScopeValue, v => vm.ScopeValue = v)
                 {
-                    Wide = true, Visible = () => vm.HasTicked && !vm.IsCopyTo,
+                    Wide = true, Visible = () => vm.HasTicked,
                 },
                 new InfoField("Files", () => "All results" + (vm.AllResultsText.Length == 0 ? " (all files)" : $" ({vm.AllResultsText})"))
                 {
-                    Wide = true, Visible = () => !vm.HasTicked && !vm.IsCopyTo, Hint = "Tick rows in the table to copy only those.",
+                    Wide = true, Visible = () => !vm.HasTicked, Hint = "Tick rows in the table to copy only those.",
                 },
-                new InfoField("Files", () => vm.TargetText) { Wide = true, Visible = () => vm.IsCopyTo },
                 new NoteItem(() => vm.EstimateText) { Tone = "info", Wide = true },
                 new TextField("Destination folder", () => vm.Destination, v => vm.Destination = v)
                 {
@@ -359,7 +358,7 @@ public static class DialogForms
             [
                 new SelectField("Naming", [.. CopyViewModel.NamingOptions.Select(o => new SelectOption(o.Value, o.Label))], () => vm.NamingValue, v => vm.NamingValue = v)
                 {
-                    Wide = true, Visible = () => !vm.IsCopyTo,
+                    Wide = true,
                 },
                 new TextField("Prefix", () => vm.Prefix, v => vm.Prefix = v) { Mono = true, Placeholder = "e.g. ABC_", Visible = () => vm.IsSequential },
                 new NumberField("Digits", () => vm.Digits, v => vm.Digits = v, CopyNaming.MinDigits, CopyNaming.MaxDigits) { Visible = () => vm.IsSequential },

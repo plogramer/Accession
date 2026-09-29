@@ -644,7 +644,7 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
         ContextHeader = _contextTargets.Count == 1 ? row.Name : $"{_contextTargets.Count.ToString("N0", CultureInfo.CurrentCulture)} ticked files";
         ContextTargetCount = _contextTargets.Count;
         AddTargetsToSavedSearchCommand.NotifyCanExecuteChanged();
-        CopyToCommand.NotifyCanExecuteChanged();
+        QuickCopyCommand.NotifyCanExecuteChanged();
     }
 
     public void OpenFolderMenu(FolderTreeNode node)
@@ -696,11 +696,11 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
         }
     }
 
-    /// <summary>Copy To: the target files into one folder as &lt;sha1&gt;_&lt;name&gt;.</summary>
-    [RelayCommand(CanExecute = nameof(CanCopyTo))]
-    private Task CopyTo() => _copyWorkflow!.CopyToAsync(_contextTargets);
+    /// <summary>Quick Copy: the target files into a folder the user picks, flat, with their original names.</summary>
+    [RelayCommand(CanExecute = nameof(CanQuickCopy))]
+    private Task QuickCopy() => _copyWorkflow!.QuickCopyAsync(_contextTargets);
 
-    private bool CanCopyTo() => CanCopyFiles && _contextTargets.Count > 0;
+    private bool CanQuickCopy() => CanCopyFiles && _contextTargets.Count > 0;
 
     [RelayCommand(CanExecute = nameof(CanAddTargets))]
     private async Task AddTargetsToSavedSearch(SavedSearchRow? target)
@@ -791,7 +791,7 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
 
     ICommand IFilesModel.CopyTargetNamesCommand => CopyTargetNamesCommand;
 
-    ICommand IFilesModel.CopyToCommand => CopyToCommand;
+    ICommand IFilesModel.QuickCopyCommand => QuickCopyCommand;
 
     ICommand IFilesModel.AddTargetsToSavedSearchCommand => AddTargetsToSavedSearchCommand;
 
