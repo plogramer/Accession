@@ -201,10 +201,6 @@
                             @Model.CheckedFileIds.Count.ToString("N0") ticked <Icon Name="x" Size="12" />
                         </button>
                     }
-                    else if (Model.CanChangeSavedSearches)
-                    {
-                        <span class="muted small">Nothing ticked: Add to saved search and Copy use all results.</span>
-                    }
                     <span class="card-header-spacer"></span>
                     @if (Model.SelectedSavedSearch is not null && Model.CanChangeSavedSearches)
                     {

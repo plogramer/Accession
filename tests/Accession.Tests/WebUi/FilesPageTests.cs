@@ -35,7 +35,7 @@ public sealed class FilesPageTests
         Assert.Contains("Privileged", html);
         Assert.Contains("1,204 files · 2.31 GB", html);
         Assert.Contains("title=\"Emails with outside counsel&#xA;Created by", html); // description and creator as tooltip
-        Assert.Contains(@"Created by LITSUPPORT\jane.doe on LIT-PC07, 2026-09-21 10:42</span>", html); // shown with the open saved search
+        Assert.Contains(@"Created by LITSUPPORT\jane.doe on 2026-09-21 10:42</span>", html); // shown with the open saved search
         Assert.Contains("New saved search", html);
         Assert.DoesNotContain("Include subfolders", html); // the Media tab is not shown
         Assert.Contains("aria-label=\"Tick every file on this page\"", html);

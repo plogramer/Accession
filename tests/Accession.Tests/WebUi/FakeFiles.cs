@@ -13,7 +13,7 @@ internal sealed partial class FakeFiles : ObservableObject, IFilesModel
     {
         IsCounting = counting;
         SavedSearches.Add(new SavedSearchRow(1, "Privileged", "Emails with outside counsel", 1_204, "1,204 files", "2.31 GB",
-            @"Created by LITSUPPORT\jane.doe on LIT-PC07, 2026-09-21 10:42"));
+            @"Created by LITSUPPORT\jane.doe on 2026-09-21 10:42"));
         SavedSearches.Add(new SavedSearchRow(2, "Board minutes 2021", string.Empty, 86, "86 files", "412.7 MB",
             @"Created by LITSUPPORT\john.roe on LIT-PC12, 2026-09-22 16:05"));
         SavedSearches.Add(new SavedSearchRow(3, "Hot documents", "For the first review round", 0, "0 files", "0 B"));

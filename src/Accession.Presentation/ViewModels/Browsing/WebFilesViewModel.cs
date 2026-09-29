@@ -287,7 +287,7 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
         {
             SavedSearches.Add(new SavedSearchRow(s.SavedSearchId, s.Name, s.Description ?? string.Empty, s.FileCount,
                 s.FileCount == 1 ? "1 file" : $"{s.FileCount.ToString("N0", culture)} files", SizeFormatter.Format(s.TotalBytes, unit),
-                SavedSearchViewModel.Describe("Created", s.CreatedBy, s.CreatedOnMachine, s.CreatedAtUtc, zone)));
+                SavedSearchViewModel.Describe("Created", s.CreatedBy, s.CreatedAtUtc, zone)));
         }
 
         // Keep the shown saved search selected (the row objects are new) without reloading the files.

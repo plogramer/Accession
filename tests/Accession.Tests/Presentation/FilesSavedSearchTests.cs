@@ -65,7 +65,7 @@ public sealed class FilesSavedSearchTests : IDisposable
 
         var row = Assert.Single(vm.SavedSearches);
         Assert.Equal(("PDFs", "30 files"), (row.Name, row.Files));
-        Assert.StartsWith(@"Created by CORP\jdoe on WS-114, ", row.Created, StringComparison.Ordinal);
+        Assert.StartsWith(@"Created by CORP\jdoe on 20", row.Created, StringComparison.Ordinal); // no computer name
         Assert.Equal("from M2\n" + row.Created, row.Tooltip);
 
         vm.SelectedSavedSearch = row;
@@ -177,7 +177,7 @@ public sealed class FilesSavedSearchTests : IDisposable
         var html = await Accession.Tests.WebUi.FormDialogTests.Render(Accession.Presentation.WebForms.DialogForms.Build(vm, () => { })!, "form-saved-search-edit");
 
         Assert.Contains("Edit saved search", html);
-        Assert.Contains(@"Created by CORP\jdoe on WS-114, 2026-09-27 09:00", html);
+        Assert.Contains(@"Created by CORP\jdoe on 2026-09-27 09:00", html);
         Assert.Contains("Last changed by CORP", html);
     }
 
