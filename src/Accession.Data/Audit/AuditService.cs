@@ -30,6 +30,10 @@ public sealed class AuditService : IAuditService
     public void Write(DbScope scope, AuditAction action, string? mediaId = null, object? details = null)
     {
         ArgumentNullException.ThrowIfNull(scope);
+        if (scope.Transaction is null)
+        {
+            LongReads.WriteStarting(scope.Connection); // a write on its own (in a transaction, BeginTransaction did it)
+        }
 
         scope.Connection.Execute(
             """

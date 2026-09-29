@@ -62,7 +62,7 @@
 
         <section id="start">
             <h2>Start screen and inventories</h2>
-            <p>An <strong>inventory</strong> is a single file (<code>.sqlite</code>) that holds everything about one matter's media. You can
+            <p>An <strong>inventory</strong> is a single file (<code>.accession</code>; a SQLite database, named so it is not mistaken for other SQLite files; inventories made before version 0.2 end in <code>.sqlite</code> and open as before) that holds everything about one matter's media. You can
                 keep it on a network share so colleagues can open it too.</p>
             <figure><img src="images/start.png" alt="The Start screen with New inventory, Open inventory and the recent inventories" />
                 <figcaption>The Start screen: create or open an inventory, or pick a recent one.</figcaption></figure>
@@ -188,8 +188,9 @@
                     <strong>All copies</strong> (every file with the same SHA-1). Files are never opened.</li>
                 <li><strong>Right-click</strong> a file (or press the menu key or <kbd>Shift</kbd>+<kbd>F10</kbd>) for Copy SHA-1, Copy path,
                     Copy file name, Show in folder, Find all copies, Filter by this extension, Add to saved search and
-                    <a href="#copy">Copy To…</a>. Right-clicking a <em>ticked</em> row acts on all ticked rows; any other row acts alone.
-                    Several SHA-1s, paths or names are copied one per line.</li>
+                    <a href="#copy">Quick Copy…</a>. Right-clicking a <em>ticked</em> row acts on all ticked rows; any other row acts alone.
+                    For several files the menu says so (e.g. <em>Copy 51 SHA-1 values</em>, one per line), and Show in folder, Find all copies
+                    and Filter by this extension, which are for one file, are unavailable.</li>
                 <li><strong>Export current view</strong> exports exactly the files shown (all pages) to Excel.</li>
                 <li><strong>Copy</strong> writes a copy batch or copies the ticked files (or all results): see <a href="#copy">Copying files</a>.</li>
             </ul>
@@ -208,16 +209,17 @@
                     <h3>Collecting files</h3>
                     <ol>
                         <li>Filter the files (or tick rows in the table).</li>
-                        <li>Choose <strong>Add to saved search</strong>: add <em>all results</em> (every page) or the <em>ticked</em> files, to
-                            an existing saved search or a <em>New saved search…</em>.</li>
+                        <li>Choose <strong>Add to saved search</strong> and an existing saved search or <em>New saved search…</em>. With files
+                            ticked, only the <em>ticked</em> files are added; with nothing ticked, <em>all results</em> (every page). The menu
+                            says which.</li>
                     </ol>
                     <p>A file already in the list is not added twice.</p>
                     <h3>Working with a saved search</h3>
                     <ul>
                         <li>Click it on the <strong>Saved searches</strong> tab to show its files; the filters narrow within it. The bar above
-                            the table shows who created it, on which computer and when (hover over it in the list for the description too).</li>
-                        <li><strong>Remove ticked</strong> and <strong>Remove all results</strong> take files out of it (the files themselves
-                            are not changed).</li>
+                            the table shows who created it and when (hover over it in the list for the description too).</li>
+                        <li><strong>Remove</strong> takes the ticked files out of it, or all results when nothing is ticked (the button says
+                            which, and asks first). The files themselves are not changed.</li>
                         <li>The <strong>⋯</strong> menu has <strong>Edit</strong> (name and description) and <strong>Delete</strong>.</li>
                     </ul>
                 </div>
@@ -293,17 +295,14 @@
                     </ul>
                 </div>
             </div>
-            <div class="row">
-                <figure class="small"><img src="images/dialog-copy-to.png" alt="Copy To dialog" /></figure>
-                <div>
-                    <h3>Copy To…</h3>
-                    <p>Right-click a file (or a ticked file, for all ticked files) and choose <strong>Copy To…</strong> to copy just those
-                        files into one folder, named <code>&lt;sha1&gt;_&lt;name&gt;</code>: handy for sending a few documents for
-                        review. Choose the destination; preserve metadata, verify and the manifest work as in <em>Copy files…</em>.
-                        Files not hashed yet are hashed while they are copied, and a file that changed since the scan is named by its
-                        current content (the manifest says so).</p>
-                </div>
-            </div>
+            <h3>Quick Copy…</h3>
+            <p>Right-click a file (or a ticked file, for all ticked files) and choose <strong>Quick Copy…</strong>: pick a folder and
+                the files are copied straight into it with their original names, e.g. to send a few documents for review. No folders,
+                metadata or verification: use <em>Copy files…</em> for those. A name already taken, in the folder or by another file
+                of the same copy, gets a number: <code>abc.txt</code>, <code>abc_2_.txt</code>, <code>abc_3_.txt</code>. Nothing is ever
+                overwritten. While it copies you see how many files are done (<em>Quick Copy: 12 of 51 files</em>). If every file was
+                copied, a short notice says so. If some could not be copied, the message at the end says how many, and a manifest
+                (<code>Quick Copy manifest &lt;date time&gt;.csv</code>, every file with its outcome and the reason) is left in the folder.</p>
             <h3>The manifest</h3>
             <p>Both write a CSV manifest (it opens in Excel) with one row per file in copy order: number, new path, original path,
                 Media ID, size in bytes, modified time (UTC), the SHA-1 from the inventory, and the outcome (<em>In batch</em>,
@@ -399,10 +398,19 @@
                         <li><strong>Display</strong>: sizes in decimal (KB, MB, GB) or binary (KiB, MiB, GiB) units; times in local or UTC.</li>
                         <li><strong>Scanning</strong>: threads for listing and hashing, and the database batch size. The defaults suit most shares.</li>
                         <li><strong>Export</strong>: the default export folder and whether to write one workbook per media.</li>
-                        <li><strong>Copying</strong>: how many files <a href="#copy">Copy files</a> and Copy To copy at the same time (4 by
+                        <li><strong>Updates</strong>: <em>Check for new versions</em> (on by default) – see below.</li>
+                        <li><strong>Copying</strong>: how many files <a href="#copy">Copy files</a> and Quick Copy copy at the same time (4 by
                             default, up to 16). More threads help with many small files or a network destination; for large files the
                             disks are the limit.</li>
                     </ul>
+                    <h3>New versions</h3>
+                    <p>A few seconds after start-up, at most once a day, Accession asks GitHub for its latest release. When there is a
+                        newer one, a bar says so on the Start screen and on the inventory screens: <em>What's new</em> shows the release
+                        notes, <em>Download</em> opens the release page, <em>Skip this version</em> stops announcing it (a later version
+                        is announced), and <strong>×</strong> hides it until the next start. <em>Check for updates…</em> in the
+                        <strong>⋯</strong> menu (or under the version on the Start screen) asks at once. Only the request is sent,
+                        nothing about you or your inventories; turn the check off in Settings on computers without internet.</p>
+                    <figure><img src="images/update-banner.png" alt="New version bar" /></figure>
                     <h3>Inventory properties</h3>
                     <p><strong>Inventory properties</strong> in the <strong>⋯</strong> menu edits the matter details (client, matter, IDs,
                         description, matter link) and shows the inventory's facts. <strong>Change root path</strong> points the inventory at

@@ -51,7 +51,7 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
             return namingError;
         }
 
-        return ValidateOutput(request.ManifestPath, root, "manifest");
+        return request.ManifestPath is null ? null : ValidateOutput(request.ManifestPath, root, "manifest");
     }
 
     /// <summary>Why a file cannot be written at <paramref name="path"/>; null when it can.</summary>
@@ -78,7 +78,8 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
         ArgumentNullException.ThrowIfNull(template);
         var root = session.Config.RootPath;
         var order = OrderedFiles(session, request.Filter, cancellationToken);
-        Check(Validate(session, request, order.Count) ?? template.Validate(request.Naming.Mode) ?? ValidateOutput(batchPath, root, "batch file"));
+        Check(Validate(session, request, order.Count) ?? ValidateOutput(request.ManifestPath, root, "manifest") ?? template.Validate(request.Naming.Mode)
+            ?? ValidateOutput(batchPath, root, "batch file"));
         var totalBytes = order.Sum(o => o.SizeBytes);
 
         var partial = batchPath + ".partial";
@@ -93,7 +94,7 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
                 Directory.CreateDirectory(batchFolder);
             }
 
-            using (var manifest = new CsvWriter(request.ManifestPath, ManifestHeaders))
+            using (var manifest = new CsvWriter(request.ManifestPath!, ManifestHeaders))
             using (var bat = new StreamWriter(partial, append: false, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false), 1 << 16) { NewLine = "\r\n" })
             {
                 WriteBatchHeader(bat, session, request, template, order.Count, totalBytes);
@@ -106,7 +107,7 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
                         // A batch cannot compute a SHA-1: the file is listed, not copied.
                         notInBatch++;
                         WriteManifestRow(manifest, done + notInBatch, null, source, file, "Not in batch",
-                            "No SHA-1 yet, so it cannot be named. Hash the media first, or use Copy To in the app.");
+                            "No SHA-1 yet, so it cannot be named. Hash the media first, or copy in the app.");
                         continue;
                     }
 
@@ -145,7 +146,7 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
             TryDelete(partial);
             if (manifestWritten)
             {
-                TryDelete(request.ManifestPath);
+                TryDelete(request.ManifestPath!);
             }
 
             throw;
@@ -165,7 +166,7 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
             request.ManifestPath,
         });
         logger.LogInformation("Copy batch {Path}: {Files} files to {Destination}", batchPath, done, request.Destination);
-        return new CopyBatchResult(batchPath, request.ManifestPath, done, bytes) { NotInBatch = notInBatch };
+        return new CopyBatchResult(batchPath, request.ManifestPath!, done, bytes) { NotInBatch = notInBatch };
     }
 
     /// <summary>
@@ -194,7 +195,9 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
         CopyProgress Snapshot() => new(Interlocked.Read(ref done), order.Count, Interlocked.Read(ref bytes), totalBytes,
             Interlocked.Read(ref copied), Interlocked.Read(ref skipped), Interlocked.Read(ref failed));
 
-        using (var manifest = new CsvWriter(request.ManifestPath, ManifestHeaders))
+        var keepManifest = false;
+        var manifest = request.ManifestPath is null ? null : new CsvWriter(request.ManifestPath, ManifestHeaders);
+        using (manifest)
         {
             // Files finish out of order with several threads; the manifest still lists them in copy order.
             var manifestGate = new Lock();
@@ -208,7 +211,7 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
                     pending[index] = row;
                     while (pending.Remove(nextRow, out var next))
                     {
-                        manifest.WriteRow(next);
+                        manifest?.WriteRow(next);
                         nextRow++;
                     }
                 }
@@ -224,9 +227,18 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
                 try
                 {
                     long index = 0;
+                    var taken = new HashSet<string>(StringComparer.OrdinalIgnoreCase); // flat original names given out so far
                     foreach (var file in Rows(session, order, stop.Token))
                     {
                         var (source, destination) = Paths(root, request, file, index);
+                        if (request.Naming.Mode == CopyNamingMode.OriginalName)
+                        {
+                            // abc.txt, abc_2_.txt…: never over a file already there, nor over an earlier file of this copy.
+                            var name = CopyNaming.FreeName(file.Name, candidate =>
+                                taken.Contains(candidate) || Path.Exists(Path.Combine(request.Destination, candidate)));
+                            taken.Add(name);
+                            destination = Path.Combine(request.Destination, name);
+                        }
                         if (preserveFolders)
                         {
                             NoteFolders(root, request.Destination, file.FolderPath, seenFolders, createdFolders);
@@ -327,6 +339,7 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
                 }
             }
 
+            progress?.Report(Snapshot()); // "0 of N files" at once, before the first file is done
             var workers = Enumerable.Range(0, threads).Select(_ => Task.Run(Worker, CancellationToken.None)).ToList();
             try
             {
@@ -343,15 +356,18 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
                 // Rows after a file that was being copied when the copy was cancelled.
                 foreach (var row in pending.OrderBy(p => p.Key).Select(p => p.Value))
                 {
-                    manifest.WriteRow(row);
+                    manifest?.WriteRow(row);
                 }
             }
 
             if (cancelled)
             {
-                manifest.WriteRow([null, null, null, null, null, null, null, "Stopped",
+                manifest?.WriteRow([null, null, null, null, null, null, null, "Stopped",
                     $"Cancelled by the user after {done.ToString("N0", CultureInfo.InvariantCulture)} of {order.Count.ToString("N0", CultureInfo.InvariantCulture)} files. The files not listed above were not copied."]);
             }
+
+            // Quick Copy: the manifest only when something failed; otherwise the partial file is deleted.
+            keepManifest = manifest is not null && (!request.ManifestOnlyOnFailure || failed > 0);
 
             if (preserveFolders)
             {
@@ -365,10 +381,13 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
                 }
             }
 
-            manifest.Complete();
+            if (keepManifest)
+            {
+                manifest!.Complete();
+            }
         }
 
-        var result2 = new CopyFilesResult(request.Destination, request.ManifestPath, order.Count, copied, verified, skipped, failed, bytes, cancelled, warnings);
+        var result2 = new CopyFilesResult(request.Destination, keepManifest ? request.ManifestPath : null, order.Count, copied, verified, skipped, failed, bytes, cancelled, warnings);
         WriteAudit(session, AuditAction.FilesCopied, new
         {
             request.ScopeText,
@@ -546,6 +565,7 @@ public sealed class CopyService(InventorySessionFactory factory, ILogger<CopySer
         {
             CopyNamingMode.Sequential => $"sequential names ({request.Naming.Example()} …)",
             CopyNamingMode.Sha1Name => "SHA-1 names (<sha1>_<name>, files without a SHA-1 are left out)",
+            CopyNamingMode.OriginalName => "original names in one folder",
             _ => "original folders and names",
         };
         bat.WriteLine("@echo off");

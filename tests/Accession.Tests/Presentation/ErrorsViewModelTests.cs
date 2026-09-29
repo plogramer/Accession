@@ -71,9 +71,9 @@ public sealed class ErrorsViewModelTests : IAsyncDisposable
     }
 
     [Fact]
-    public void First_page_and_total_exclude_info_entries()
+    public async Task First_page_and_total_exclude_info_entries()
     {
-        using var vm = Create();
+        using var vm = await Create();
 
         Assert.Equal(1_250, vm.TotalCount);
         Assert.Equal(500, vm.PageRows.Count);
@@ -83,7 +83,7 @@ public sealed class ErrorsViewModelTests : IAsyncDisposable
     [Fact]
     public async Task Last_page_by_jump_and_previous_page()
     {
-        using var vm = Create();
+        using var vm = await Create();
 
         await vm.GoToPageAsync(2);
         Assert.Equal(250, vm.PageRows.Count);
@@ -94,9 +94,9 @@ public sealed class ErrorsViewModelTests : IAsyncDisposable
     }
 
     [Fact]
-    public void Filters_by_type_media_and_info()
+    public async Task Filters_by_type_media_and_info()
     {
-        using var vm = Create();
+        using var vm = await Create();
 
         vm.ErrorTypeFilterValue = nameof(ScanErrorType.AccessDenied);
         Assert.Equal(250, vm.TotalCount);
@@ -113,7 +113,7 @@ public sealed class ErrorsViewModelTests : IAsyncDisposable
     [Fact]
     public async Task Page_size_change_returns_to_the_first_page()
     {
-        using var vm = Create();
+        using var vm = await Create();
         await vm.GoToPageAsync(2);
 
         await vm.SetPageSizeAsync(1_000);
@@ -123,9 +123,9 @@ public sealed class ErrorsViewModelTests : IAsyncDisposable
     }
 
     [Fact]
-    public void Copy_path_of_the_selected_error()
+    public async Task Copy_path_of_the_selected_error()
     {
-        using var vm = Create();
+        using var vm = await Create();
         vm.SelectedRow = vm.PageRows[3];
 
         vm.CopyPathCommand.Execute(null);
@@ -134,8 +134,12 @@ public sealed class ErrorsViewModelTests : IAsyncDisposable
         Assert.Contains(_toasts.Items, t => t.Message == "Path copied");
     }
 
-    private ErrorsViewModel Create() =>
-        new(_host, _scans, _settings, new NoDialogs(), NullLogger<ErrorsViewModel>.Instance, _desktop, _toasts);
+    private async Task<ErrorsViewModel> Create()
+    {
+        var vm = new ErrorsViewModel(_host, _scans, _settings, new NoDialogs(), NullLogger<ErrorsViewModel>.Instance, _desktop, _toasts);
+        await vm.LastLoad; // read in the background
+        return vm;
+    }
 
     private sealed class App : IAppInfo
     {

@@ -11,7 +11,7 @@ public static class SettingsLimits
     public const int MinHashingThreads = 1;
     public const int MaxHashingThreads = 32;
 
-    /// <summary>Files copied at the same time by Copy files and Copy To.</summary>
+    /// <summary>Files copied at the same time by Copy files and Quick Copy.</summary>
     public const int DefaultCopyThreads = 4;
     public const int MinCopyThreads = 1;
     public const int MaxCopyThreads = 16;

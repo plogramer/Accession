@@ -38,6 +38,7 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDashboardModel,
     private CancellationTokenSource? _loadCancel;
     private IReadOnlyList<ExtensionRowVm> _allExtensions = [];
     private bool _updatingFilter;
+    private bool _mediaRefreshPending;
     private bool? _lastScanBusy;
     private (SizeUnitSystem Unit, DisplayTimeZone Zone) _displaySettings;
 
@@ -61,8 +62,7 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDashboardModel,
         _scans.PropertyChanged += OnScansChanged;
         _settings.SettingsChanged += OnSettingsChanged;
         _displaySettings = (settings.Current.SizeUnit, settings.Current.DisplayTimeZone);
-        LoadMediaFilter();
-        _ = ReloadAsync();
+        _ = ReloadAsync(refreshMedia: true);
     }
 
     private readonly DashboardCache? _cache;
@@ -317,32 +317,26 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDashboardModel,
 
     partial void OnMediaSearchChanged(string value) => OnPropertyChanged(nameof(VisibleMediaFilter));
 
-    private void LoadMediaFilter()
-    {
-        if (_host.Session is not { } session)
-        {
-            return;
-        }
+    /// <summary>The query filter for <paramref name="media"/> when the media in <paramref name="unticked"/> stay unticked.</summary>
+    private static DashboardFilter? FilterFor(IReadOnlyList<DashboardMediaRow> media, HashSet<long> unticked) =>
+        !media.Any(m => unticked.Contains(m.MediaKey)) ? DashboardFilter.All
+        : media.All(m => unticked.Contains(m.MediaKey)) ? null
+        : new DashboardFilter(media.Where(m => !unticked.Contains(m.MediaKey)).Select(m => m.MediaKey).ToList());
 
-        var previouslyUnchecked = MediaFilter.Where(m => !m.IsChecked).Select(m => m.MediaKey).ToHashSet();
+    /// <summary>Rebuilds the media filter list; media unticked before stay unticked, new media are ticked.</summary>
+    private void ShowMediaFilter(IReadOnlyList<DashboardMediaRow> media, HashSet<long> unticked)
+    {
         foreach (var item in MediaFilter)
         {
             item.PropertyChanged -= OnFilterItemChanged;
         }
 
         MediaFilter.Clear();
-        try
+        foreach (var row in media)
         {
-            foreach (var row in _queries.ByMedia(session.Database, DashboardFilter.All))
-            {
-                var item = new MediaFilterItem(row.MediaKey, row.MediaId, !previouslyUnchecked.Contains(row.MediaKey));
-                item.PropertyChanged += OnFilterItemChanged;
-                MediaFilter.Add(item);
-            }
-        }
-        catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or System.IO.IOException)
-        {
-            _logger.LogError(ex, "Loading the media filter failed");
+            var item = new MediaFilterItem(row.MediaKey, row.MediaId, !unticked.Contains(row.MediaKey));
+            item.PropertyChanged += OnFilterItemChanged;
+            MediaFilter.Add(item);
         }
 
         OnSelectionChanged();
@@ -395,9 +389,15 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDashboardModel,
         : NoMediaSelected ? null
         : new DashboardFilter(MediaFilter.Where(m => m.IsChecked).Select(m => m.MediaKey).ToList());
 
-    private Task ReloadAsync()
+    /// <param name="refreshMedia">Also re-reads the media for the filter list (on open, and when media changed).</param>
+    private Task ReloadAsync(bool refreshMedia = false)
     {
         _reloadDelay?.Cancel();
+        if (refreshMedia)
+        {
+            _mediaRefreshPending = true; // kept until a load completes, even if this one is replaced
+        }
+
         var load = ReloadCoreAsync();
         LastLoad = load;
         return load;
@@ -414,6 +414,8 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDashboardModel,
         var cancel = new CancellationTokenSource();
         _loadCancel = cancel;
         var token = cancel.Token;
+        var refreshMedia = _mediaRefreshPending;
+        var unticked = MediaFilter.Where(m => !m.IsChecked).Select(m => m.MediaKey).ToHashSet();
         var filter = CurrentFilter();
         var database = session.Database;
         var unit = _settings.Current.SizeUnit;
@@ -425,14 +427,28 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDashboardModel,
         IsLoading = true;
         try
         {
-            var fast = await Task.Run(() => (
-                Summary: filter is null ? null : _queries.Summary(database, filter, token),
-                Media: _queries.ByMedia(database, DashboardFilter.All, token),
-                Categories: filter is null ? [] : _queries.ByCategory(database, filter, token),
-                Extensions: filter is null ? [] : _queries.ByExtension(database, filter, token)), token);
+            // All on a background thread, the media list too: the UI thread never waits for the database.
+            var fast = await Task.Run(() =>
+            {
+                var media = _queries.ByMedia(database, DashboardFilter.All, token);
+                var selected = refreshMedia ? FilterFor(media, unticked) : filter;
+                return (
+                    Filter: selected,
+                    Summary: selected is null ? null : _queries.Summary(database, selected, token),
+                    Media: media,
+                    Categories: selected is null ? [] : _queries.ByCategory(database, selected, token),
+                    Extensions: selected is null ? [] : _queries.ByExtension(database, selected, token));
+            }, token);
             if (token.IsCancellationRequested)
             {
                 return;
+            }
+
+            if (refreshMedia)
+            {
+                _mediaRefreshPending = false;
+                ShowMediaFilter(fast.Media, unticked);
+                filter = fast.Filter;
             }
 
             ShowFast(fast.Summary, fast.Media, fast.Categories, fast.Extensions, unit, zone);
@@ -485,26 +501,46 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDashboardModel,
             {
                 // Duplicates and years read every file (tens of seconds on millions of files): use the results saved on this
                 // computer while the inventory's data is unchanged.
-                var version = _cache is null ? null : DashboardCache.DataVersion(database, _queries);
-                var saved = version is null ? null : _cache!.Get(inventory, version, filter);
-                var sections = saved ?? new SlowDashboard(
-                    _queries.Duplicates(database, filter, token),
-                    _queries.DuplicatesByMedia(database, filter, token),
-                    _queries.ByYear(database, filter, token));
-                if (saved is null && version is not null && !token.IsCancellationRequested)
+                try
                 {
-                    _cache!.Put(inventory, version, filter, sections);
-                }
+                    var version = _cache is null ? null : DashboardCache.DataVersion(database, _queries);
+                    var saved = version is null ? null : _cache!.Get(inventory, version, filter);
+                    var sections = saved ?? new SlowDashboard(
+                        _queries.Duplicates(database, filter, token),
+                        _queries.DuplicatesByMedia(database, filter, token),
+                        _queries.ByYear(database, filter, token));
+                    if (saved is null && version is not null && !token.IsCancellationRequested)
+                    {
+                        _cache!.Put(inventory, version, filter, sections);
+                    }
 
-                return (Sections: sections, Largest: _queries.LargestFiles(database, filter, token));
+                    return (Interrupted: false, Sections: (SlowDashboard?)sections, Largest: (IReadOnlyList<LargeFile>?)_queries.LargestFiles(database, filter, token));
+                }
+                catch (Exception ex) when (Accession.Data.LongReads.IsInterrupted(ex))
+                {
+                    // Caught here, not after the await: an exception leaving the task stops the debugger ("user-unhandled").
+                    return (Interrupted: true, Sections: (SlowDashboard?)null, Largest: (IReadOnlyList<LargeFile>?)null);
+                }
             }, token);
-            if (!token.IsCancellationRequested)
+            if (slow.Interrupted && !token.IsCancellationRequested)
             {
-                ShowSlow(slow.Sections.Duplicates, slow.Sections.PerMedia, slow.Sections.Years, slow.Largest, unit, zone);
+                // Something was written meanwhile (media added, scan queued): the long queries gave way. Try again shortly.
+                _ = RetrySlowAsync(token); // its timer starts now, before anyone sees the note below
+                DuplicateNote = "paused while the inventory changes…";
+            }
+            else if (!token.IsCancellationRequested)
+            {
+                ShowSlow(slow.Sections!.Duplicates, slow.Sections.PerMedia, slow.Sections.Years, slow.Largest!, unit, zone);
             }
         }
         catch (Exception ex) when (ex is OperationCanceledException || token.IsCancellationRequested)
         {
+        }
+        catch (Exception ex) when (Accession.Data.LongReads.IsInterrupted(ex))
+        {
+            // Something was written meanwhile (media added, scan queued): the long queries gave way. Try again shortly.
+            _ = RetrySlowAsync(token); // its timer starts now, before anyone sees the note below
+            DuplicateNote = "paused while the inventory changes…";
         }
         catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or System.IO.IOException or InvalidOperationException)
         {
@@ -517,6 +553,26 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDashboardModel,
             {
                 IsLoadingDetails = false;
             }
+        }
+    }
+
+    /// <summary>After the long queries gave way to a write, reload once things are quiet (unless something reloaded already).</summary>
+    public static readonly TimeSpan RetryAfterInterrupt = TimeSpan.FromSeconds(3);
+
+    private async Task RetrySlowAsync(CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(RetryAfterInterrupt, _time, token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        if (!token.IsCancellationRequested)
+        {
+            await ReloadAsync();
         }
     }
 
@@ -644,11 +700,7 @@ public sealed partial class DashboardViewModel : ViewModelBase, IDashboardModel,
 
     private static string Percent(long part, long total) => $"{100d * part / total:0.0} %";
 
-    private void OnMediaChanged(object? sender, EventArgs e)
-    {
-        LoadMediaFilter();
-        _ = ReloadAsync();
-    }
+    private void OnMediaChanged(object? sender, EventArgs e) => _ = ReloadAsync(refreshMedia: true);
 
     private void OnScansChanged(object? sender, PropertyChangedEventArgs e)
     {

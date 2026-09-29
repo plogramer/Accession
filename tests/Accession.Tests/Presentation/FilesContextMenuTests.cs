@@ -62,12 +62,12 @@ public sealed class FilesContextMenuTests : IDisposable
         }
 
         vm.OpenFileMenu(rows[1]);
-        Assert.Equal("3 ticked files", vm.ContextHeader);
+        Assert.Equal(("3 ticked files", 3), (vm.ContextHeader, vm.ContextTargetCount));
         await vm.CopyTargetNamesCommand.ExecuteAsync(null);
         Assert.Equal(string.Join(Environment.NewLine, rows.Take(3).Select(r => r.Name)), _desktop.Clipboard);
 
         vm.OpenFileMenu(rows[4]); // not ticked: selected, and alone
-        Assert.Equal(rows[4].Name, vm.ContextHeader);
+        Assert.Equal((rows[4].Name, 1), (vm.ContextHeader, vm.ContextTargetCount));
         Assert.Equal(rows[4].FileId, vm.SelectedRow?.FileId);
         await vm.CopyTargetPathsCommand.ExecuteAsync(null);
         Assert.Equal(Path.Combine(_test.Root, "M1", "mail", rows[4].Name), _desktop.Clipboard);

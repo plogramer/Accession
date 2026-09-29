@@ -59,7 +59,7 @@ public sealed partial class NewInventoryViewModel : DialogViewModelBase
     public partial string RootInfo { get; set; } = string.Empty;
 
     public CreateInventoryRequest BuildRequest() => new(
-        ClientName, ClientCode, MatterName, MatterCode, Description, MatterUrl, RootFolder, SavePath);
+        ClientName, ClientCode, MatterName, MatterCode, Description, MatterUrl, RootFolder, InventoryFileName.WithExtension(SavePath));
 
     partial void OnClientNameChanged(string value) => Touch(InventoryFields.ClientName, pathsChanged: false);
 
@@ -114,7 +114,7 @@ public sealed partial class NewInventoryViewModel : DialogViewModelBase
         var folder = string.IsNullOrWhiteSpace(SavePath) ? NullIfEmpty(RootFolder) : Path.GetDirectoryName(SavePath);
         var path = _dialogs.PickSaveFile(
             "Save inventory as",
-            "Accession inventory (*.sqlite)|*.sqlite",
+            InventoryFileName.SaveFilter,
             InventoryFileName.Default(ClientCode, MatterCode),
             folder);
         if (path is not null)

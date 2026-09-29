@@ -60,6 +60,7 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
     private long? _mediaWithoutFolders;
     private Dictionary<long, FolderTreeNode> _mediaRoots = [];
     private Dictionary<long, string> _mediaNames = [];
+    private int _lookupsVersion;
 
     public WebFilesViewModel(InventoryHost host, FileBrowserQueries queries, CategoryQueries categories, ISettingsService settings,
         IDesktop desktop, IDialogService dialogs, ToastService toasts, ILogger<WebFilesViewModel> logger, ExportWorkflow? export = null,
@@ -79,9 +80,12 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
         PageSize = settings.Current.FilesPageSize;
         VisibleColumns = settings.Current.FilesColumns.ToHashSet(StringComparer.Ordinal);
         _host.MediaChanged += OnMediaChanged;
-        LoadLookups();
+        LastLookups = LoadLookupsAsync();
         _ = ReloadAsync();
     }
+
+    /// <summary>The latest load of the media tree, categories and saved searches (tests wait for it).</summary>
+    public Task LastLookups { get; private set; } = Task.CompletedTask;
 
     // ---- Saved searches ----
 
@@ -91,7 +95,7 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
     public ObservableCollection<SavedSearchRow> SavedSearches { get; } = [];
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(RemoveCheckedFromSavedSearchCommand), nameof(RemoveAllFromSavedSearchCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RemoveCheckedFromSavedSearchCommand), nameof(RemoveAllFromSavedSearchCommand), nameof(RemoveFromSavedSearchCommand))]
     public partial SavedSearchRow? SelectedSavedSearch { get; set; }
 
     public bool CanChangeSavedSearches => _savedSearchWorkflow?.CanChange ?? false;
@@ -104,11 +108,15 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
 
     ICommand IFilesModel.AddAllToSavedSearchCommand => AddAllToSavedSearchCommand;
 
+    ICommand IFilesModel.AddToSavedSearchCommand => AddToSavedSearchCommand;
+
     ICommand IFilesModel.AddCheckedToSavedSearchCommand => AddCheckedToSavedSearchCommand;
 
     ICommand IFilesModel.RemoveCheckedFromSavedSearchCommand => RemoveCheckedFromSavedSearchCommand;
 
     ICommand IFilesModel.RemoveAllFromSavedSearchCommand => RemoveAllFromSavedSearchCommand;
+
+    ICommand IFilesModel.RemoveFromSavedSearchCommand => RemoveFromSavedSearchCommand;
 
     // ---- Ticked rows ----
 
@@ -153,7 +161,9 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
     {
         OnPropertyChanged(nameof(CheckedFileIds));
         AddCheckedToSavedSearchCommand.NotifyCanExecuteChanged();
+        AddToSavedSearchCommand.NotifyCanExecuteChanged();
         RemoveCheckedFromSavedSearchCommand.NotifyCanExecuteChanged();
+        RemoveFromSavedSearchCommand.NotifyCanExecuteChanged();
     }
 
     [RelayCommand(CanExecute = nameof(CanChangeSavedSearches))]
@@ -202,7 +212,13 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
         }
     }
 
-    private bool CanAddAll(SavedSearchRow? target) => CanChangeSavedSearches && TotalCount > 0 && target?.Id != SelectedSavedSearch?.Id;
+    private bool CanAddAll(SavedSearchRow? target) => CanChangeSavedSearches && TotalCount > 0 && (target is null || target.Id != SelectedSavedSearch?.Id);
+
+    /// <summary>The ticked files, or all results when nothing is ticked, to a saved search (a new one when null).</summary>
+    [RelayCommand(CanExecute = nameof(CanAddToSavedSearch))]
+    private Task AddToSavedSearch(SavedSearchRow? target) => _checked.Count > 0 ? AddCheckedToSavedSearch(target) : AddAllToSavedSearch(target);
+
+    private bool CanAddToSavedSearch(SavedSearchRow? target) => _checked.Count > 0 ? CanAddChecked(target) : CanAddAll(target);
 
     [RelayCommand(CanExecute = nameof(CanAddChecked))]
     private async Task AddCheckedToSavedSearch(SavedSearchRow? target)
@@ -215,6 +231,12 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
     }
 
     private bool CanAddChecked(SavedSearchRow? target) => CanChangeSavedSearches && _checked.Count > 0 && (target is null || target.Id != SelectedSavedSearch?.Id);
+
+    /// <summary>The ticked files, or all results when nothing is ticked, out of the saved search shown (asks first).</summary>
+    [RelayCommand(CanExecute = nameof(CanRemoveFromSavedSearch))]
+    private Task RemoveFromSavedSearch() => _checked.Count > 0 ? RemoveCheckedFromSavedSearch() : RemoveAllFromSavedSearch();
+
+    private bool CanRemoveFromSavedSearch() => _checked.Count > 0 ? CanRemoveChecked() : CanRemoveAll();
 
     [RelayCommand(CanExecute = nameof(CanRemoveChecked))]
     private async Task RemoveCheckedFromSavedSearch()
@@ -246,24 +268,26 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
     partial void OnTotalCountChanged(long value)
     {
         AddAllToSavedSearchCommand.NotifyCanExecuteChanged();
+        AddToSavedSearchCommand.NotifyCanExecuteChanged();
         RemoveAllFromSavedSearchCommand.NotifyCanExecuteChanged();
+        RemoveFromSavedSearchCommand.NotifyCanExecuteChanged();
     }
 
     private SavedSearchInfo? Info(SavedSearchRow row) =>
         _savedSearchWorkflow?.List().FirstOrDefault(s => s.SavedSearchId == row.Id);
 
-    private void LoadSavedSearches()
+    private void LoadSavedSearches(IReadOnlyList<SavedSearchInfo>? list = null)
     {
         var unit = _settings.Current.SizeUnit;
         var zone = _settings.Current.DisplayTimeZone;
         var culture = CultureInfo.CurrentCulture;
         var selectedId = SelectedSavedSearch?.Id;
         SavedSearches.Clear();
-        foreach (var s in _savedSearchWorkflow?.List() ?? [])
+        foreach (var s in list ?? _savedSearchWorkflow?.List() ?? [])
         {
             SavedSearches.Add(new SavedSearchRow(s.SavedSearchId, s.Name, s.Description ?? string.Empty, s.FileCount,
                 s.FileCount == 1 ? "1 file" : $"{s.FileCount.ToString("N0", culture)} files", SizeFormatter.Format(s.TotalBytes, unit),
-                SavedSearchViewModel.Describe("Created", s.CreatedBy, s.CreatedOnMachine, s.CreatedAtUtc, zone)));
+                SavedSearchViewModel.Describe("Created", s.CreatedBy, s.CreatedAtUtc, zone)));
         }
 
         // Keep the shown saved search selected (the row objects are new) without reloading the files.
@@ -600,6 +624,9 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
     [ObservableProperty]
     public partial string ContextHeader { get; private set; } = string.Empty;
 
+    [ObservableProperty]
+    public partial int ContextTargetCount { get; private set; }
+
     /// <summary>The folder (or media) the tree's menu acts on.</summary>
     [ObservableProperty]
     public partial string ContextFolderName { get; private set; } = string.Empty;
@@ -615,8 +642,9 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
 
         _contextTargets = _checked.Contains(row.FileId) && _checked.Count > 1 ? [.. _checked] : [row.FileId];
         ContextHeader = _contextTargets.Count == 1 ? row.Name : $"{_contextTargets.Count.ToString("N0", CultureInfo.CurrentCulture)} ticked files";
+        ContextTargetCount = _contextTargets.Count;
         AddTargetsToSavedSearchCommand.NotifyCanExecuteChanged();
-        CopyToCommand.NotifyCanExecuteChanged();
+        QuickCopyCommand.NotifyCanExecuteChanged();
     }
 
     public void OpenFolderMenu(FolderTreeNode node)
@@ -668,11 +696,11 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
         }
     }
 
-    /// <summary>Copy To: the target files into one folder as &lt;sha1&gt;_&lt;name&gt;.</summary>
-    [RelayCommand(CanExecute = nameof(CanCopyTo))]
-    private Task CopyTo() => _copyWorkflow!.CopyToAsync(_contextTargets);
+    /// <summary>Quick Copy: the target files into a folder the user picks, flat, with their original names.</summary>
+    [RelayCommand(CanExecute = nameof(CanQuickCopy))]
+    private Task QuickCopy() => _copyWorkflow!.QuickCopyAsync(_contextTargets);
 
-    private bool CanCopyTo() => CanCopyFiles && _contextTargets.Count > 0;
+    private bool CanQuickCopy() => CanCopyFiles && _contextTargets.Count > 0;
 
     [RelayCommand(CanExecute = nameof(CanAddTargets))]
     private async Task AddTargetsToSavedSearch(SavedSearchRow? target)
@@ -763,7 +791,7 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
 
     ICommand IFilesModel.CopyTargetNamesCommand => CopyTargetNamesCommand;
 
-    ICommand IFilesModel.CopyToCommand => CopyToCommand;
+    ICommand IFilesModel.QuickCopyCommand => QuickCopyCommand;
 
     ICommand IFilesModel.AddTargetsToSavedSearchCommand => AddTargetsToSavedSearchCommand;
 
@@ -780,10 +808,10 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
     private string ViewText() => ActiveFilters.Count == 0 ? string.Empty : string.Join(" · ", ActiveFilters.Select(c => c.Label));
 
     [RelayCommand]
-    private Task Refresh()
+    private async Task Refresh()
     {
-        LoadLookups();
-        return ReloadAsync();
+        await (LastLookups = LoadLookupsAsync());
+        await ReloadAsync();
     }
 
     [RelayCommand(CanExecute = nameof(HasSelection))]
@@ -1062,18 +1090,52 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
         return (value / unitBytes).ToString("0.######", CultureInfo.CurrentCulture);
     }
 
-    private void LoadLookups()
+    /// <summary>
+    /// Reads the media tree, categories and saved searches on a background thread: the UI thread never waits for
+    /// the database (e.g. behind a scan's write), which froze the app while an inventory opened.
+    /// </summary>
+    private async Task LoadLookupsAsync()
     {
         if (_host.Session is not { } session)
         {
             return;
         }
 
+        var version = ++_lookupsVersion;
+        var database = session.Database;
+        var savedSearches = _savedSearchWorkflow;
+        IReadOnlyList<FolderNode> roots;
+        Dictionary<long, string> names;
+        IReadOnlyList<CategoryCount> categories;
+        IReadOnlyList<SavedSearchInfo> saved;
+        try
+        {
+            (roots, names, categories, saved) = await Task.Run(() =>
+            {
+                var mediaRoots = _queries.MediaRoots(database);
+                Dictionary<long, string> mediaNames;
+                using (var scope = database.Open())
+                {
+                    mediaNames = new Accession.Data.Repositories.MediaRepository(scope).ListActive().ToDictionary(m => m.MediaKey, m => m.MediaId);
+                }
+
+                return (mediaRoots, mediaNames, _categories.Categories(database), savedSearches?.List() ?? []);
+            });
+        }
+        catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or IOException)
+        {
+            _logger.LogError(ex, "Loading the Files lookups failed");
+            return;
+        }
+
+        if (version != _lookupsVersion || !ReferenceEquals(_host.Session, session))
+        {
+            return; // a newer load is on its way
+        }
+
         _suppressApply = true;
         try
         {
-            var database = session.Database;
-            var roots = _queries.MediaRoots(database);
             _mediaKeys = roots.Select(r => r.MediaKey).ToHashSet();
             Folders.Clear();
             _mediaRoots = [];
@@ -1084,22 +1146,14 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
                 _mediaRoots[root.MediaKey] = node;
             }
 
-            using (var scope = database.Open())
-            {
-                _mediaNames = new Accession.Data.Repositories.MediaRepository(scope).ListActive().ToDictionary(m => m.MediaKey, m => m.MediaId);
-            }
-
+            _mediaNames = names;
             CategoryOptions =
             [
                 new(string.Empty, "All categories"),
-                .. _categories.Categories(database).Select(c => new SelectOption(c.CategoryId.ToString(CultureInfo.InvariantCulture), c.Name)),
+                .. categories.Select(c => new SelectOption(c.CategoryId.ToString(CultureInfo.InvariantCulture), c.Name)),
             ];
             SelectedFolder = null;
-            LoadSavedSearches();
-        }
-        catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or IOException)
-        {
-            _logger.LogError(ex, "Loading the Files lookups failed");
+            LoadSavedSearches(saved);
         }
         finally
         {
@@ -1229,21 +1283,32 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
         _ => FileSortColumn.Default,
     };
 
-    private void OnMediaChanged(object? sender, EventArgs e)
+    private void OnMediaChanged(object? sender, EventArgs e) => _ = OnMediaChangedAsync();
+
+    private async Task OnMediaChangedAsync()
     {
         // Scans report status changes here. Keep the current page; refresh the count, and the tree if media changed.
-        if (_host.Session is { } session)
-        {
-            var keys = _queries.MediaRoots(session.Database).Select(r => r.MediaKey).ToHashSet();
-            if (!keys.SetEquals(_mediaKeys))
-            {
-                LoadLookups();
-            }
-        }
-
         if (_pager is { } pager && _cancel is { } cancel)
         {
             _ = CountAsync(pager, _settings.Current.SizeUnit, cancel.Token);
+        }
+
+        if (_host.Session is not { } session)
+        {
+            return;
+        }
+
+        try
+        {
+            var keys = await Task.Run(() => _queries.MediaRoots(session.Database).Select(r => r.MediaKey).ToHashSet());
+            if (!keys.SetEquals(_mediaKeys) && ReferenceEquals(_host.Session, session))
+            {
+                await (LastLookups = LoadLookupsAsync());
+            }
+        }
+        catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or IOException)
+        {
+            _logger.LogError(ex, "Checking the Files media tree failed");
         }
     }
 }

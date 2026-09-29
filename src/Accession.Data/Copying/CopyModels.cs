@@ -7,12 +7,16 @@ namespace Accession.Data.Copying;
 /// <param name="Filter">The ticked rows (a <see cref="FileFilter.FileIds"/> filter) or the Files screen's current filter.</param>
 /// <param name="Destination">Folder the copies go to. Never the root or inside it.</param>
 /// <param name="ManifestPath">The CSV manifest listing every file.</param>
-public sealed record CopyRequest(FileFilter Filter, string Destination, CopyNaming Naming, string ManifestPath)
+/// <param name="ManifestPath">Where the CSV manifest goes; null for none (the batch always needs one).</param>
+public sealed record CopyRequest(FileFilter Filter, string Destination, CopyNaming Naming, string? ManifestPath)
 {
     /// <summary>"12 ticked files", "All results: Media MED001": recorded in the audit entry.</summary>
     public string? ScopeText { get; init; }
 
-    /// <summary>Files copied at the same time (Copy files, Copy To; the batch ignores it). Settings → Copy threads.</summary>
+    /// <summary>Keep the manifest only when files failed (Quick Copy); otherwise it is not written.</summary>
+    public bool ManifestOnlyOnFailure { get; init; }
+
+    /// <summary>Files copied at the same time (Copy files, Quick Copy; the batch ignores it). Settings → Copy threads.</summary>
     public int Threads { get; init; } = 1;
 }
 
@@ -24,9 +28,10 @@ public sealed record CopyBatchResult(string BatchPath, string ManifestPath, long
     public long NotInBatch { get; init; }
 }
 
-public sealed record CopyFilesResult(string Destination, string ManifestPath, long TotalFiles, long Copied, long Verified, long Skipped, long Failed,
+public sealed record CopyFilesResult(string Destination, string? ManifestPath, long TotalFiles, long Copied, long Verified, long Skipped, long Failed,
     long BytesCopied, bool Cancelled, long MetadataWarnings)
 {
+
     /// <summary>Files not reached because the copy was cancelled.</summary>
     public long NotReached => TotalFiles - Copied - Skipped - Failed;
 }

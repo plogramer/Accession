@@ -13,7 +13,7 @@ internal sealed partial class FakeFiles : ObservableObject, IFilesModel
     {
         IsCounting = counting;
         SavedSearches.Add(new SavedSearchRow(1, "Privileged", "Emails with outside counsel", 1_204, "1,204 files", "2.31 GB",
-            @"Created by LITSUPPORT\jane.doe on LIT-PC07, 2026-09-21 10:42"));
+            @"Created by LITSUPPORT\jane.doe on 2026-09-21 10:42"));
         SavedSearches.Add(new SavedSearchRow(2, "Board minutes 2021", string.Empty, 86, "86 files", "412.7 MB",
             @"Created by LITSUPPORT\john.roe on LIT-PC12, 2026-09-22 16:05"));
         SavedSearches.Add(new SavedSearchRow(3, "Hot documents", "For the first review round", 0, "0 files", "0 B"));
@@ -62,8 +62,10 @@ internal sealed partial class FakeFiles : ObservableObject, IFilesModel
     public ICommand EditSavedSearchCommand { get; } = new RelayCommand<object?>(_ => { });
     public ICommand DeleteSavedSearchCommand { get; } = new RelayCommand<object?>(_ => { });
     public ICommand AddAllToSavedSearchCommand { get; } = new RelayCommand<object?>(_ => { });
+    public ICommand AddToSavedSearchCommand { get; } = new RelayCommand<object?>(_ => { });
     public ICommand AddCheckedToSavedSearchCommand { get; } = new RelayCommand<object?>(_ => { });
     public ICommand RemoveCheckedFromSavedSearchCommand { get; } = new RelayCommand(() => { });
+    public ICommand RemoveFromSavedSearchCommand { get; } = new RelayCommand(() => { });
     public ICommand RemoveAllFromSavedSearchCommand { get; } = new RelayCommand(() => { });
     public IReadOnlySet<long> CheckedFileIds => _checked;
     public void SetChecked(FileRow row, bool isChecked) { }
@@ -118,13 +120,14 @@ internal sealed partial class FakeFiles : ObservableObject, IFilesModel
     public ICommand GenerateCopyBatchCommand { get; } = new RelayCommand(() => { });
     public ICommand CopyFilesCommand { get; } = new RelayCommand(() => { });
     public string ContextHeader => "report.pdf";
+    public int ContextTargetCount { get; set; } = 1;
     public string ContextFolderName => "Shares";
     public void OpenFileMenu(FileRow row) { }
     public void OpenFolderMenu(FolderTreeNode node) { }
     public ICommand CopyTargetSha1sCommand { get; } = new RelayCommand(() => { });
     public ICommand CopyTargetPathsCommand { get; } = new RelayCommand(() => { });
     public ICommand CopyTargetNamesCommand { get; } = new RelayCommand(() => { });
-    public ICommand CopyToCommand { get; } = new RelayCommand(() => { });
+    public ICommand QuickCopyCommand { get; } = new RelayCommand(() => { });
     public ICommand AddTargetsToSavedSearchCommand { get; } = new RelayCommand<object?>(_ => { });
     public ICommand FilterByExtensionCommand { get; } = new RelayCommand(() => { });
     public ICommand OpenFolderInExplorerCommand { get; } = new RelayCommand(() => { });

@@ -33,11 +33,17 @@ public interface IFilesModel : INotifyPropertyChanged, IRefreshableScreen
     /// <summary>Parameter: the <see cref="SavedSearchRow"/>.</summary>
     ICommand DeleteSavedSearchCommand { get; }
 
+    /// <summary>Adds the ticked files, or all results when nothing is ticked, to the saved search given (a new one when null).</summary>
+    ICommand AddToSavedSearchCommand { get; }
+
     /// <summary>Adds every file matching the filters. Parameter: the target <see cref="SavedSearchRow"/>, or null for a new one.</summary>
     ICommand AddAllToSavedSearchCommand { get; }
 
     /// <summary>Adds the ticked rows. Parameter: the target <see cref="SavedSearchRow"/>, or null for a new one.</summary>
     ICommand AddCheckedToSavedSearchCommand { get; }
+
+    /// <summary>Removes the ticked files, or all results when nothing is ticked, from the saved search shown.</summary>
+    ICommand RemoveFromSavedSearchCommand { get; }
 
     /// <summary>Removes the ticked rows from the saved search being shown.</summary>
     ICommand RemoveCheckedFromSavedSearchCommand { get; }
@@ -150,6 +156,9 @@ public interface IFilesModel : INotifyPropertyChanged, IRefreshableScreen
     /// <summary>The file menu's header: the file's name or "3 ticked files".</summary>
     string ContextHeader { get; }
 
+    /// <summary>How many files the file menu acts on (the ticked files when a ticked row was right-clicked).</summary>
+    int ContextTargetCount { get; }
+
     /// <summary>One SHA-1 / full path / file name per line for the menu's files.</summary>
     ICommand CopyTargetSha1sCommand { get; }
 
@@ -157,8 +166,8 @@ public interface IFilesModel : INotifyPropertyChanged, IRefreshableScreen
 
     ICommand CopyTargetNamesCommand { get; }
 
-    /// <summary>Copy To: the menu's files into one folder as &lt;sha1&gt;_&lt;name&gt;.</summary>
-    ICommand CopyToCommand { get; }
+    /// <summary>Quick Copy: the menu's files into a folder the user picks, flat, with their original names.</summary>
+    ICommand QuickCopyCommand { get; }
 
     /// <summary>Adds the menu's files. Parameter: the target <see cref="SavedSearchRow"/>, or null for a new one.</summary>
     ICommand AddTargetsToSavedSearchCommand { get; }

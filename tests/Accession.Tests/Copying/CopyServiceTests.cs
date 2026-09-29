@@ -63,8 +63,8 @@ public sealed class CopyServiceTests : IDisposable
 
     private static readonly CopyNaming Sequential = new() { Mode = CopyNamingMode.Sequential, Prefix = "DOC", Digits = 4, StartNumber = 1 };
 
-    private static List<string[]> Manifest(string path) =>
-        [.. File.ReadAllLines(path, Encoding.UTF8).Skip(1).Select(line => line[1..^1].Split("\",\"").Select(f => f.Replace("\"\"", "\"", StringComparison.Ordinal)).ToArray())];
+    private static List<string[]> Manifest(string? path) =>
+        [.. File.ReadAllLines(path ?? throw new ArgumentNullException(nameof(path)), Encoding.UTF8).Skip(1).Select(line => line[1..^1].Split("\",\"").Select(f => f.Replace("\"\"", "\"", StringComparison.Ordinal)).ToArray())];
 
     [Fact]
     public void Sequential_names_follow_media_folder_name_order()

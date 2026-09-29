@@ -1,4 +1,5 @@
 using System.Globalization;
+using Accession.Core.Copying;
 using Accession.Core.Formatting;
 using Accession.Core.Settings;
 using Accession.Core.Threading;
@@ -28,7 +29,7 @@ public sealed class CopyWorkflow(
     ILogger<CopyWorkflow> logger)
 {
     private CopyDialogChoices? _last;
-    private CopyDialogChoices? _lastCopyTo;
+    private string? _lastQuickCopyFolder;
 
     public bool CanCopy => host.HasSession;
 
@@ -93,49 +94,69 @@ public sealed class CopyWorkflow(
         }
     }
 
-    /// <summary>Copy To: the given files straight into one folder as &lt;sha1&gt;_&lt;name&gt; (right-click on files).</summary>
-    public async Task CopyToAsync(IReadOnlyCollection<long> fileIds)
+    /// <summary>
+    /// Quick Copy (right-click): only a folder is asked. The files go straight into it with their original names (abc.txt,
+    /// then abc_2_.txt… when a name is taken); no metadata, verification or folders. A manifest is left in the folder only
+    /// when some files could not be copied.
+    /// </summary>
+    public async Task QuickCopyAsync(IReadOnlyCollection<long> fileIds)
     {
         ArgumentNullException.ThrowIfNull(fileIds);
         if (fileIds.Count == 0 || host.Session is not { } session
-            || Ask(CopyDialogMode.CopyTo, fileIds, FileFilter.None with { FileIds = [.. fileIds] }, string.Empty) is not { } dialog)
+            || dialogs.PickFolder("Quick Copy to", Directory.Exists(_lastQuickCopyFolder) ? _lastQuickCopyFolder : null) is not { } folder)
         {
             return;
         }
 
-        var request = dialog.Request! with { Threads = settings.Current.CopyThreads };
-        var options = dialog.Options;
+        _lastQuickCopyFolder = folder;
+        var culture = CultureInfo.CurrentCulture;
+        var files = fileIds.Count == 1 ? "1 file" : $"{fileIds.Count.ToString("N0", culture)} files";
+        // A manifest in the folder only when some files could not be copied (it lists every file and why).
+        var manifestName = CopyNaming.FreeName($"Quick Copy manifest {time.GetLocalNow().ToString("yyyy-MM-dd HHmmss", CultureInfo.InvariantCulture)}.csv",
+            name => Path.Exists(Path.Combine(folder, name)));
+        var request = new CopyRequest(FileFilter.None with { FileIds = [.. fileIds] }, folder, new CopyNaming { Mode = CopyNamingMode.OriginalName },
+            Path.Combine(folder, manifestName))
+        {
+            ScopeText = $"Quick Copy: {files}",
+            Threads = settings.Current.CopyThreads,
+            ManifestOnlyOnFailure = true,
+        };
         try
         {
+            if (CopyService.Validate(session, request, fileIds.Count) is { } error)
+            {
+                dialogs.ShowWarning("Quick Copy", error);
+                return;
+            }
+
             var result = await busy.RunAsync((token, update) =>
-                Task.FromResult(copy.CopyFiles(session, request, options, new ProgressText(update, "Copying…", settings), token)),
-                "Copying…", cancellable: true);
-            Finished(result);
+                Task.FromResult(copy.CopyFiles(session, request, new CopyFileOptions(PreserveMetadata: false), new ProgressText(update, "Quick Copy:", settings), token)),
+                $"Quick Copy: 0 of {fileIds.Count.ToString("N0", culture)} files", cancellable: true);
+            if (result.Failed == 0 && !result.Cancelled)
+            {
+                toasts.Show($"Copied {(result.Copied == 1 ? "1 file" : $"{result.Copied.ToString("N0", culture)} files")} to {folder}", ToastKind.Success);
+            }
+            else
+            {
+                Finished(result);
+            }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException or ArgumentException)
         {
-            logger.LogError(ex, "Copy To failed");
+            logger.LogError(ex, "Quick Copy failed");
             dialogs.ShowError("Copy failed", $"The files could not be copied: {ex.Message}", ex);
         }
     }
 
     private CopyViewModel? Ask(CopyDialogMode mode, IReadOnlyCollection<long> ticked, FileFilter allResults, string allResultsText)
     {
-        var last = mode == CopyDialogMode.CopyTo ? _lastCopyTo : _last;
-        var dialog = new CopyViewModel(mode, host.Session!, copy, settings, dialogs, ui, logger, ticked, allResults, allResultsText, time.GetUtcNow(), last);
+        var dialog = new CopyViewModel(mode, host.Session!, copy, settings, dialogs, ui, logger, ticked, allResults, allResultsText, time.GetUtcNow(), _last);
         if (dialogs.ShowDialog(dialog) != true || dialog.Request is null)
         {
             return null;
         }
 
-        if (mode == CopyDialogMode.CopyTo)
-        {
-            _lastCopyTo = dialog.Choices;
-        }
-        else
-        {
-            _last = dialog.Choices;
-        }
+        _last = dialog.Choices;
 
         return dialog;
     }
@@ -150,7 +171,7 @@ public sealed class CopyWorkflow(
         }
     }
 
-    /// <summary>The result as text: counts, then where the manifest is.</summary>
+    /// <summary>The result as text: counts, then where the manifest is (when one was kept).</summary>
     internal static string Summary(CopyFilesResult result, SizeUnitSystem unit, CultureInfo culture)
     {
         string N(long value) => value.ToString("N0", culture);
@@ -179,8 +200,12 @@ public sealed class CopyWorkflow(
             lines.Add($"Metadata could not be set on {N(result.MetadataWarnings)} files or folders.");
         }
 
-        lines.Add(string.Empty);
-        lines.Add($"Manifest: {result.ManifestPath}");
+        if (result.ManifestPath is not null)
+        {
+            lines.Add(string.Empty);
+            lines.Add($"Manifest: {result.ManifestPath}");
+        }
+
         return string.Join("\n", lines);
     }
 

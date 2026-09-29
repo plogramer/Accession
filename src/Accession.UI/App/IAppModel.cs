@@ -36,4 +36,24 @@ public interface IAppModel : INotifyPropertyChanged
 
     /// <summary>Opens the help window; parameter: the topic (see <see cref="HelpTopics"/>), or null for the contents.</summary>
     ICommand HelpCommand { get; }
+
+    // New versions (GitHub releases)
+
+    /// <summary>"Accession 0.2 is available. You have 0.1." while a newer version is available; empty otherwise.</summary>
+    string UpdateText { get; }
+
+    /// <summary>The release notes of the newer version.</summary>
+    ICommand ShowUpdateCommand { get; }
+
+    /// <summary>Opens the newer version's page on GitHub.</summary>
+    ICommand DownloadUpdateCommand { get; }
+
+    /// <summary>Do not announce this version again.</summary>
+    ICommand SkipUpdateCommand { get; }
+
+    /// <summary>Hides the banner until the next start.</summary>
+    ICommand DismissUpdateCommand { get; }
+
+    /// <summary>Asks GitHub now and shows the outcome.</summary>
+    ICommand CheckForUpdatesCommand { get; }
 }

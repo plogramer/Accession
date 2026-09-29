@@ -181,6 +181,7 @@ public sealed class InventoryLockService : IDisposable
         try
         {
             using var scope = _database.Open();
+            LongReads.WriteStarting(scope.Connection);
             var updated = scope.Connection.Execute(
                 "UPDATE InventoryLock SET HeartbeatAtUtc = @now WHERE LockId = 1 AND IsLocked = 1 AND SessionGuid = @SessionGuid",
                 new { now = _timeProvider.GetUtcNow(), SessionGuid });

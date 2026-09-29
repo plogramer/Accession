@@ -65,7 +65,7 @@ public sealed class FilesSavedSearchTests : IDisposable
 
         var row = Assert.Single(vm.SavedSearches);
         Assert.Equal(("PDFs", "30 files"), (row.Name, row.Files));
-        Assert.StartsWith(@"Created by CORP\jdoe on WS-114, ", row.Created, StringComparison.Ordinal);
+        Assert.StartsWith(@"Created by CORP\jdoe on 20", row.Created, StringComparison.Ordinal); // no computer name
         Assert.Equal("from M2\n" + row.Created, row.Tooltip);
 
         vm.SelectedSavedSearch = row;
@@ -80,7 +80,7 @@ public sealed class FilesSavedSearchTests : IDisposable
     }
 
     [Fact]
-    public async Task All_results_go_into_a_new_saved_search_created_on_the_spot()
+    public async Task With_nothing_ticked_all_results_go_into_a_new_saved_search_created_on_the_spot()
     {
         using var vm = await Create();
         vm.ExtensionText = "msg";
@@ -88,7 +88,8 @@ public sealed class FilesSavedSearchTests : IDisposable
         await Idle(vm);
         _dialogs.NextName = "Emails";
 
-        await vm.AddAllToSavedSearchCommand.ExecuteAsync(null);
+        Assert.True(vm.AddToSavedSearchCommand.CanExecute(null)); // no saved search shown: "New saved search…" is available
+        await vm.AddToSavedSearchCommand.ExecuteAsync(null);
 
         var row = Assert.Single(vm.SavedSearches);
         Assert.Equal(("Emails", 120L), (row.Name, row.FileCount));
@@ -106,7 +107,7 @@ public sealed class FilesSavedSearchTests : IDisposable
         vm.SetChecked(vm.Rows[0], true);
         vm.SetChecked(vm.Rows[1], true);
         Assert.Equal(2, vm.CheckedFileIds.Count);
-        await vm.AddCheckedToSavedSearchCommand.ExecuteAsync(target);
+        await vm.AddToSavedSearchCommand.ExecuteAsync(target); // ticked files only
         Assert.Empty(vm.CheckedFileIds);
         Assert.Equal(2, Assert.Single(vm.SavedSearches).FileCount);
 
@@ -115,7 +116,7 @@ public sealed class FilesSavedSearchTests : IDisposable
         vm.SetPageChecked(true);
         Assert.Equal(2, vm.CheckedFileIds.Count);
         _dialogs.Answer = true;
-        await vm.RemoveCheckedFromSavedSearchCommand.ExecuteAsync(null);
+        await vm.RemoveFromSavedSearchCommand.ExecuteAsync(null); // ticked files only
         await Idle(vm);
         Assert.Equal(0, vm.TotalCount);
         Assert.Equal(0, _service.List(_test.Session.Database).Single(s => s.SavedSearchId == id).FileCount);
@@ -176,7 +177,7 @@ public sealed class FilesSavedSearchTests : IDisposable
         var html = await Accession.Tests.WebUi.FormDialogTests.Render(Accession.Presentation.WebForms.DialogForms.Build(vm, () => { })!, "form-saved-search-edit");
 
         Assert.Contains("Edit saved search", html);
-        Assert.Contains(@"Created by CORP\jdoe on WS-114, 2026-09-27 09:00", html);
+        Assert.Contains(@"Created by CORP\jdoe on 2026-09-27 09:00", html);
         Assert.Contains("Last changed by CORP", html);
     }
 

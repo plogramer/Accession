@@ -5,6 +5,23 @@ namespace Accession.Tests.Copying;
 /// <summary>Naming, destination guard and copy command rules (CPY-02, CPY-04, CPY-05).</summary>
 public sealed class CopyRulesTests
 {
+    [Theory]
+    [InlineData("abc.txt", 2, "abc_2_.txt")]
+    [InlineData("abc.txt", 13, "abc_13_.txt")]
+    [InlineData("report.final.PDF", 3, "report.final_3_.PDF")]
+    [InlineData("README", 2, "README_2_")]
+    [InlineData(".profile", 2, ".profile_2_")]
+    public void Quick_copy_numbers_a_taken_name_before_its_extension(string name, int number, string expected) =>
+        Assert.Equal(expected, CopyNaming.NumberedName(name, number));
+
+    [Fact]
+    public void Quick_copy_takes_the_first_free_name_ignoring_case()
+    {
+        var taken = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "abc.txt", "ABC_2_.TXT", "abc_4_.txt" };
+        Assert.Equal("abc_3_.txt", CopyNaming.FreeName("abc.txt", taken.Contains));
+        Assert.Equal("new.txt", CopyNaming.FreeName("new.txt", taken.Contains));
+    }
+
     [Fact]
     public void Sequential_names_are_padded_and_keep_the_extension()
     {
