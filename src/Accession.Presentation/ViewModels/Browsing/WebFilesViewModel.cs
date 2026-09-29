@@ -108,6 +108,8 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
 
     ICommand IFilesModel.AddAllToSavedSearchCommand => AddAllToSavedSearchCommand;
 
+    ICommand IFilesModel.AddToSavedSearchCommand => AddToSavedSearchCommand;
+
     ICommand IFilesModel.AddCheckedToSavedSearchCommand => AddCheckedToSavedSearchCommand;
 
     ICommand IFilesModel.RemoveCheckedFromSavedSearchCommand => RemoveCheckedFromSavedSearchCommand;
@@ -157,6 +159,7 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
     {
         OnPropertyChanged(nameof(CheckedFileIds));
         AddCheckedToSavedSearchCommand.NotifyCanExecuteChanged();
+        AddToSavedSearchCommand.NotifyCanExecuteChanged();
         RemoveCheckedFromSavedSearchCommand.NotifyCanExecuteChanged();
     }
 
@@ -206,7 +209,13 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
         }
     }
 
-    private bool CanAddAll(SavedSearchRow? target) => CanChangeSavedSearches && TotalCount > 0 && target?.Id != SelectedSavedSearch?.Id;
+    private bool CanAddAll(SavedSearchRow? target) => CanChangeSavedSearches && TotalCount > 0 && (target is null || target.Id != SelectedSavedSearch?.Id);
+
+    /// <summary>The ticked files, or all results when nothing is ticked, to a saved search (a new one when null).</summary>
+    [RelayCommand(CanExecute = nameof(CanAddToSavedSearch))]
+    private Task AddToSavedSearch(SavedSearchRow? target) => _checked.Count > 0 ? AddCheckedToSavedSearch(target) : AddAllToSavedSearch(target);
+
+    private bool CanAddToSavedSearch(SavedSearchRow? target) => _checked.Count > 0 ? CanAddChecked(target) : CanAddAll(target);
 
     [RelayCommand(CanExecute = nameof(CanAddChecked))]
     private async Task AddCheckedToSavedSearch(SavedSearchRow? target)
@@ -250,6 +259,7 @@ public sealed partial class WebFilesViewModel : ViewModelBase, IFilesModel, IDis
     partial void OnTotalCountChanged(long value)
     {
         AddAllToSavedSearchCommand.NotifyCanExecuteChanged();
+        AddToSavedSearchCommand.NotifyCanExecuteChanged();
         RemoveAllFromSavedSearchCommand.NotifyCanExecuteChanged();
     }
 

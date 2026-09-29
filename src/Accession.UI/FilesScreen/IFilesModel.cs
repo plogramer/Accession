@@ -34,6 +34,9 @@ public interface IFilesModel : INotifyPropertyChanged, IRefreshableScreen
     ICommand DeleteSavedSearchCommand { get; }
 
     /// <summary>Adds every file matching the filters. Parameter: the target <see cref="SavedSearchRow"/>, or null for a new one.</summary>
+    /// <summary>Adds the ticked files, or all results when nothing is ticked, to the saved search given (a new one when null).</summary>
+    ICommand AddToSavedSearchCommand { get; }
+
     ICommand AddAllToSavedSearchCommand { get; }
 
     /// <summary>Adds the ticked rows. Parameter: the target <see cref="SavedSearchRow"/>, or null for a new one.</summary>

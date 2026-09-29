@@ -203,7 +203,7 @@
                     }
                     else if (Model.CanChangeSavedSearches)
                     {
-                        <span class="muted small">Tick files, or use all results, to collect them in a saved search.</span>
+                        <span class="muted small">Nothing ticked: Add to saved search and Copy use all results.</span>
                     }
                     <span class="card-header-spacer"></span>
                     @if (Model.SelectedSavedSearch is not null && Model.CanChangeSavedSearches)
@@ -217,25 +217,16 @@
                     }
                     @if (Model.CanChangeSavedSearches)
                     {
-                        <Dropdown TriggerClass="btn btn-sm" Title="Add files to a saved search" Wide="true">
+                        <Dropdown TriggerClass="btn btn-sm" Title="Add the ticked files, or all results, to a saved search" Wide="true">
                             <Trigger><Icon Name="bookmark" Size="14" /> Add to saved search <Icon Name="chevron-down" Size="13" /></Trigger>
                             <ChildContent>
-                                @if (Model.CheckedFileIds.Count > 0)
-                                {
-                                    <div class="menu-header"><span>Add @Model.CheckedFileIds.Count.ToString("N0") ticked to</span></div>
-                                    @foreach (var saved in Model.SavedSearches.Where(s => s.Id != Model.SelectedSavedSearch?.Id))
-                                    {
-                                        <MenuItem Icon="bookmark" Text="@saved.Name" Command="Model.AddCheckedToSavedSearchCommand" CommandParameter="saved" />
-                                    }
-                                    <MenuItem Icon="plus" Text="New saved search…" Command="Model.AddCheckedToSavedSearchCommand" />
-                                    <div class="menu-sep"></div>
-                                }
-                                <div class="menu-header"><span>Add all @Model.TotalCount.ToString("N0") results to</span></div>
+                                @* Ticked files when any are ticked, otherwise all results (like Copy); the header says which. *@
+                                <div class="menu-header"><span>@(Model.CheckedFileIds.Count > 0 ? $"Add {Model.CheckedFileIds.Count:N0} ticked files to" : $"Add all {Model.TotalCount:N0} results to")</span></div>
                                 @foreach (var saved in Model.SavedSearches.Where(s => s.Id != Model.SelectedSavedSearch?.Id))
                                 {
-                                    <MenuItem Icon="bookmark" Text="@saved.Name" Command="Model.AddAllToSavedSearchCommand" CommandParameter="saved" />
+                                    <MenuItem Icon="bookmark" Text="@saved.Name" Command="Model.AddToSavedSearchCommand" CommandParameter="saved" />
                                 }
-                                <MenuItem Icon="plus" Text="New saved search…" Command="Model.AddAllToSavedSearchCommand" />
+                                <MenuItem Icon="plus" Text="New saved search…" Command="Model.AddToSavedSearchCommand" />
                             </ChildContent>
                         </Dropdown>
                     }
@@ -423,7 +414,7 @@
     }
 
     protected override void OnParametersSet() => Observe(Model, Model.Folders, Model.SavedSearches, Model.CopyPathCommand, Model.CopySha1Command,
-        Model.OpenContainingFolderCommand, Model.ShowCopiesCommand, Model.AddAllToSavedSearchCommand, Model.AddCheckedToSavedSearchCommand,
+        Model.OpenContainingFolderCommand, Model.ShowCopiesCommand, Model.AddToSavedSearchCommand,
         Model.RemoveCheckedFromSavedSearchCommand, Model.RemoveAllFromSavedSearchCommand, Model.NewSavedSearchCommand,
         Model.AddTargetsToSavedSearchCommand, Model.CopyToCommand, Model.FilterByExtensionCommand);
 

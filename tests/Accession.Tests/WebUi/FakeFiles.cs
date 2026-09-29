@@ -62,6 +62,7 @@ internal sealed partial class FakeFiles : ObservableObject, IFilesModel
     public ICommand EditSavedSearchCommand { get; } = new RelayCommand<object?>(_ => { });
     public ICommand DeleteSavedSearchCommand { get; } = new RelayCommand<object?>(_ => { });
     public ICommand AddAllToSavedSearchCommand { get; } = new RelayCommand<object?>(_ => { });
+    public ICommand AddToSavedSearchCommand { get; } = new RelayCommand<object?>(_ => { });
     public ICommand AddCheckedToSavedSearchCommand { get; } = new RelayCommand<object?>(_ => { });
     public ICommand RemoveCheckedFromSavedSearchCommand { get; } = new RelayCommand(() => { });
     public ICommand RemoveAllFromSavedSearchCommand { get; } = new RelayCommand(() => { });

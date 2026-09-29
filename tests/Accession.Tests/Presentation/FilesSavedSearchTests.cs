@@ -80,7 +80,7 @@ public sealed class FilesSavedSearchTests : IDisposable
     }
 
     [Fact]
-    public async Task All_results_go_into_a_new_saved_search_created_on_the_spot()
+    public async Task With_nothing_ticked_all_results_go_into_a_new_saved_search_created_on_the_spot()
     {
         using var vm = await Create();
         vm.ExtensionText = "msg";
@@ -88,7 +88,8 @@ public sealed class FilesSavedSearchTests : IDisposable
         await Idle(vm);
         _dialogs.NextName = "Emails";
 
-        await vm.AddAllToSavedSearchCommand.ExecuteAsync(null);
+        Assert.True(vm.AddToSavedSearchCommand.CanExecute(null)); // no saved search shown: "New saved search…" is available
+        await vm.AddToSavedSearchCommand.ExecuteAsync(null);
 
         var row = Assert.Single(vm.SavedSearches);
         Assert.Equal(("Emails", 120L), (row.Name, row.FileCount));
@@ -106,7 +107,7 @@ public sealed class FilesSavedSearchTests : IDisposable
         vm.SetChecked(vm.Rows[0], true);
         vm.SetChecked(vm.Rows[1], true);
         Assert.Equal(2, vm.CheckedFileIds.Count);
-        await vm.AddCheckedToSavedSearchCommand.ExecuteAsync(target);
+        await vm.AddToSavedSearchCommand.ExecuteAsync(target); // ticked files only
         Assert.Empty(vm.CheckedFileIds);
         Assert.Equal(2, Assert.Single(vm.SavedSearches).FileCount);
 
